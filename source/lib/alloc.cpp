@@ -12,7 +12,7 @@ namespace heap
     void slab_t::init(uint64_t size)
     {
         this->size = size;
-        this->firstfree = tohh(mm::pmm::alloc<uint64_t>());
+        this->firstfree = tohh(pmm::alloc<uint64_t>());
 
         uint64_t available = 0x1000 - align_up(sizeof(slabHdr), this->size);
         slabHdr *slabptr = reinterpret_cast<slabHdr*>(this->firstfree);
@@ -73,7 +73,7 @@ namespace heap
     void *slaballoc::big_malloc(size_t size)
     {
         size_t pages = div_roundup(size, 0x1000);
-        void *ptr = tohh(mm::pmm::alloc(pages + 1));
+        void *ptr = tohh(pmm::alloc(pages + 1));
         if (ptr == nullptr) return nullptr;
         bigallocMeta *metadata = reinterpret_cast<bigallocMeta*>(ptr);
         metadata->pages = pages;
@@ -112,7 +112,7 @@ namespace heap
     void slaballoc::big_free(void *ptr)
     {
         bigallocMeta *metadata = reinterpret_cast<bigallocMeta*>(reinterpret_cast<uint64_t>(ptr) - 0x1000);
-        mm::pmm::free(fromhh(metadata), metadata->pages + 1);
+        pmm::free(fromhh(metadata), metadata->pages + 1);
     }
 
     size_t slaballoc::big_allocsize(void *ptr)

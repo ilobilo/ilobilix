@@ -3,12 +3,11 @@
 #include <drivers/serial/serial.hpp>
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
-#include <cpu/gdt/gdt.hpp>
-#include <cpu/idt/idt.hpp>
 #include <mm/pmm/pmm.hpp>
-#include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
 #include <lib/panic.hpp>
+#include <arch/arch.hpp>
+#include <lib/log.hpp>
 #include <main.hpp>
 #include <cstddef>
 
@@ -115,7 +114,9 @@ extern "C" constructor_t __init_array_start[];
 extern "C" constructor_t __init_array_end[];
 void constructors_init()
 {
+    log::info("Running global gonstructors... ");
     for (constructor_t *ctor = __init_array_start; ctor < __init_array_end; ctor++) (*ctor)();
+    log::println("Done!");
 }
 
 extern "C" void _start()
@@ -137,16 +138,13 @@ extern "C" void _start()
     hhdm_offset = hhdm_request.response->offset;
 
     serial::init();
-    mm::pmm::init();
-    mm::vmm::init();
+    pmm::init();
 
     frm::init();
     term::init();
+    arch::init();
 
     constructors_init();
-
-    cpu::gdt::init();
-    cpu::idt::init();
 
     printf("Hello, World!");
 

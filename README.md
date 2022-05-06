@@ -51,7 +51,7 @@ Second attempt at making an OS
 
 #### Network
 - [ ] RTL8139
-- [ ] RTL8169 (Broken)
+- [ ] RTL8169
 - [ ] E1000
 - [ ] Virtio network
 
@@ -77,7 +77,7 @@ Second attempt at making an OS
 - [ ] GPT
 
 ### Filesystems
-- [ ] VFS (Based on Vinix)
+- [ ] VFS
 - [ ] TMPFS
 - [ ] DEVFS
 - [ ] Initrd
@@ -164,3 +164,4 @@ https://discord.gg/fM5GK3RpS7
 * String: https://github.com/cocoz1/cpp-string
 * Cxxshim: https://github.com/managarm/cxxshim
 * Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
+* Terminal: https://github.com/V01D-NULL/limine-terminal-port
