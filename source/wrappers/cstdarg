@@ -1,0 +1,10 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <stdarg.h>
+
+namespace std
+{
+    using ::va_list;
+}

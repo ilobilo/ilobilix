@@ -1,0 +1,6 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <lib/function.hpp>
+#include <lib/bind.hpp>
