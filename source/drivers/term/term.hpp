@@ -25,6 +25,7 @@ namespace term
     extern size_t term_count;
 
     int printf(terminal_t *term, const char *fmt, ...);
+    int vprintf(terminal_t *term, const char *fmt, va_list arg);
 
     void init();
 } // namespace term

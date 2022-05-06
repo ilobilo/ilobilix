@@ -3,6 +3,7 @@
 #include <drivers/serial/serial.hpp>
 #include <drivers/term/term.hpp>
 #include <lib/lock.hpp>
+#include <lib/log.hpp>
 #include <cstdarg>
 
 namespace log
@@ -13,11 +14,26 @@ namespace log
     {
         lockit(lock);
 
-        va_list args;
-        va_start(args, fmt);
-        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, args);
-        va_end(args);
+        va_list arg;
+        va_start(arg, fmt);
 
+        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, arg);
+
+        va_end(arg);
+        return ret;
+    }
+
+    int println(const char *fmt, ...)
+    {
+        lockit(lock);
+
+        va_list arg;
+        va_start(arg, fmt);
+
+        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, arg);
+        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "\n", arg);
+
+        va_end(arg);
         return ret;
     }
 
@@ -25,13 +41,13 @@ namespace log
     {
         lockit(lock);
 
-        va_list args;
-        va_start(args, fmt);
-        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "[\033[32mINFO\033[0m] ", args);
-        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, args);
-        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "\n", args);
-        va_end(args);
+        va_list arg;
+        va_start(arg, fmt);
 
+        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), info_prefix, arg);
+        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, arg);
+
+        va_end(arg);
         return ret;
     }
 
@@ -39,13 +55,13 @@ namespace log
     {
         lockit(lock);
 
-        va_list args;
-        va_start(args, fmt);
-        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "[\033[33mWARN\033[0m] ", args);
-        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, args);
-        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "\n", args);
-        va_end(args);
+        va_list arg;
+        va_start(arg, fmt);
 
+        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), warn_prefix, arg);
+        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, arg);
+
+        va_end(arg);
         return ret;
     }
 
@@ -53,13 +69,13 @@ namespace log
     {
         lockit(lock);
 
-        va_list args;
-        va_start(args, fmt);
-        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "[\033[31mERROR\033[0m] ", args);
-        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, args);
-        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), "\n", args);
-        va_end(args);
+        va_list arg;
+        va_start(arg, fmt);
 
+        int ret = vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), error_prefix, arg);
+        ret += vfctprintf(serial::printc, reinterpret_cast<void*>(serial::COM1), fmt, arg);
+
+        va_end(arg);
         return ret;
     }
 } // namespace log

@@ -1,9 +1,9 @@
 // Copyright (C) 2022  ilobilo
 
 #include <drivers/serial/serial.hpp>
+#include <arch/x86_64/misc/io.hpp>
 #include <drivers/term/term.hpp>
 #include <lib/lock.hpp>
-#include <lib/io.hpp>
 #include <cstdarg>
 
 namespace serial

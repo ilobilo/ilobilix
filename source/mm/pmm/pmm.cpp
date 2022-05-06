@@ -6,10 +6,11 @@
 #include <lib/panic.hpp>
 #include <lib/lock.hpp>
 #include <lib/misc.hpp>
+#include <lib/log.hpp>
 #include <algorithm>
 #include <main.hpp>
 
-namespace mm::pmm
+namespace pmm
 {
     static uint64_t highest_addr = 0;
     static size_t lastindex = 0;
@@ -82,6 +83,8 @@ namespace mm::pmm
 
     void init()
     {
+        log::info("Initialising PMM... ");
+
         limine_memmap_entry **memmaps = memmap_request.response->entries;
         uint64_t memmap_count = memmap_request.response->entry_count;
 
@@ -123,5 +126,7 @@ namespace mm::pmm
                 bitmap.set((memmaps[i]->base + t) / 0x1000, false);
             }
         }
+
+        log::println("Done!");
     }
-} // namespace mm::pmm
+} // namespace pmm

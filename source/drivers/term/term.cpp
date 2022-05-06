@@ -3,6 +3,7 @@
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
 #include <lib/panic.hpp>
+#include <lib/log.hpp>
 
 namespace term
 {
@@ -29,6 +30,22 @@ namespace term
         return ret;
     }
 
+    int vprintf(terminal_t *term, const char *fmt, va_list arg)
+    {
+        if (term == nullptr) return -1;
+        lockit(term->lock);
+
+        auto printc = [](char c, void *arg)
+        {
+            auto str = reinterpret_cast<uint64_t>(&c);
+            reinterpret_cast<terminal_t*>(arg)->write(str, 1);
+        };
+
+        int ret = vfctprintf(printc, term, fmt, arg);
+
+        return ret;
+    }
+
     extern "C" void putchar_(char c)
     {
         if (main_term == nullptr) return;
@@ -49,6 +66,8 @@ namespace term
 
     void init()
     {
+        log::info("Initialising Terminals... ");
+
         auto callback = [](uint64_t _term, uint64_t type, uint64_t first, uint64_t second, uint64_t third)
         {
             auto term = reinterpret_cast<terminal_t*>(_term);
@@ -135,5 +154,7 @@ namespace term
             if (main_term == nullptr) main_term = term;
         }
         term_count = frm::frm_count;
+
+        log::println("Done!");
     }
 } // namespace term
