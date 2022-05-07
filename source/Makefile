@@ -22,10 +22,11 @@ VERSION = 0
 NET_DEBUG = 1
 LVL5_PAGING = 0
 
+ARCH ?= x86_64
+
 CC = clang
 CPP = clang++
 LD = ld.lld
-ASM = nasm
 
 CXXFILT = llvm-cxxfilt
 
@@ -35,42 +36,43 @@ TAR = tar
 XORRISO = xorriso
 QEMU = qemu-system-x86_64
 
-QEMUFLAGS = -M q35 -serial stdio \
-	-cpu max -smp 4 -m 512M \
-	-boot d -rtc base=localtime \
-	-drive format=raw,file=$(DISK0) \
-	-device piix3-ide,id=ide \
+QEMUFLAGS = -M q35 -serial stdio                    \
+	-cpu max -smp 4 -m 512M                         \
+	-boot d -rtc base=localtime                     \
+	-drive format=raw,file=$(DISK0)                 \
+	-device piix3-ide,id=ide                        \
 	-drive id=disk,file=$(DISK1),format=raw,if=none \
-	-device ide-hd,drive=disk,bus=ide.0 \
-	-audiodev id=audio,driver=alsa \
-	-machine pcspk-audiodev=audio \
-	-net nic,model=rtl8139 -net user,hostfwd=tcp::1234-:1234
+	-device ide-hd,drive=disk,bus=ide.0             \
+	-audiodev id=audio,driver=alsa                  \
+	-machine pcspk-audiodev=audio                   \
+	-net nic,model=rtl8139                          \
+	-net user,hostfwd=tcp::1234-:1234
 #	-net nic -net tap,ifname=tap0,script=no
 
-XORRISOFLAGS = -as mkisofs -b limine-cd.bin \
+XORRISOFLAGS = -as mkisofs -b limine-cd.bin              \
 		-no-emul-boot -boot-load-size 4 -boot-info-table \
-		--efi-boot limine-cd-efi.bin -efi-boot-part \
+		--efi-boot limine-cd-efi.bin -efi-boot-part      \
 		--efi-boot-image --protective-msdos-label
 
-CFLAGS = -Ofast -pipe -Werror -Wall -Wextra \
-	-DNET_DEBUG=$(NET_DEBUG) -DLVL5_PAGING=$(LVL5_PAGING) -g -F dwarf
+CFLAGS = -Ofast -pipe -Werror -Wall -Wextra -F dwarf -g  \
+	-DNET_DEBUG=$(NET_DEBUG) -DLVL5_PAGING=$(LVL5_PAGING)
 
 CPPFLAGS = $(CFLAGS) -Wno-c99-designator -Wno-unused-parameter -Wno-deprecated-volatile -Wno-register
 
 LDFLAGS = 
-ASMFLAGS = -f elf64 -g
+ASFLAGS = 
 
-INCLUDES := \
-	-I$(SOURCEDIR)/ \
-	-I$(SOURCEDIR)/wrappers/ \
-	-I$(EXTLIBDIR)/limine/ \
-	-I$(EXTLIBDIR)/functional/ \
-	-I$(EXTLIBDIR)/printf/src/ \
-	-I$(EXTLIBDIR)/lai/include/ \
-	-I$(EXTLIBDIR)/cwalk/include/ \
-	-I$(EXTLIBDIR)/scalable-font2/ \
-	-I$(EXTLIBDIR)/cxxshim/stage2/include/ \
-	-I$(EXTLIBDIR)/limine-terminal-port/source/ \
+INCLUDES :=                                       \
+	-I$(SOURCEDIR)/                               \
+	-I$(SOURCEDIR)/wrappers/                      \
+	-I$(EXTLIBDIR)/limine/                        \
+	-I$(EXTLIBDIR)/functional/                    \
+	-I$(EXTLIBDIR)/printf/src/                    \
+	-I$(EXTLIBDIR)/lai/include/                   \
+	-I$(EXTLIBDIR)/cwalk/include/                 \
+	-I$(EXTLIBDIR)/scalable-font2/                \
+	-I$(EXTLIBDIR)/cxxshim/stage2/include/        \
+	-I$(EXTLIBDIR)/limine-terminal-port/source/   \
 	-I$(EXTLIBDIR)/cxxshim/std-coroutine/include/
 
 override INTERNALLDFLAGS :=  \
@@ -79,14 +81,14 @@ override INTERNALLDFLAGS :=  \
 	-zmax-page-size=0x1000   \
 	-static
 
-override INTERNALCFLAGS :=     \
+ifeq ($(ARCH), arm64)
+override INTERNALFLAGS :=    \
+	-target aarch64-elf \
+	-fno-pic                 \
+	$(INCLUDES)
+else
+override INTERNALFLAGS :=      \
 	-target x86_64-pc-none-elf \
-	-std=gnu17                 \
-	-ffreestanding             \
-	-fno-exceptions            \
-	-fno-stack-protector       \
-	-fno-omit-frame-pointer    \
-	-fno-rtti                  \
 	-fno-pic                   \
 	-mabi=sysv                 \
 	-mno-80387                 \
@@ -94,28 +96,35 @@ override INTERNALCFLAGS :=     \
 	-mno-3dnow                 \
 	-mno-sse                   \
 	-mno-sse2                  \
-	-mno-red-zone              \
-	-mcmodel=kernel            \
+	$(INCLUDES)
+endif
+
+override INTERNALCFLAGS :=  \
+	$(INTERNALFLAGS)        \
+	-std=gnu17              \
+	-ffreestanding          \
+	-fno-stack-protector    \
+	-fno-omit-frame-pointer \
+	-mno-red-zone           \
+	-mcmodel=kernel         \
 	$(INCLUDES)
 
-override INTERNALCPPFLAGS :=   \
-	-target x86_64-pc-none-elf \
-	-std=gnu++20               \
-	-ffreestanding             \
-	-fno-exceptions            \
-	-fno-stack-protector       \
-	-fno-omit-frame-pointer    \
-	-fno-rtti                  \
-	-fno-pic                   \
-	-mabi=sysv                 \
-	-mno-80387                 \
-	-mno-mmx                   \
-	-mno-3dnow                 \
-	-mno-sse                   \
-	-mno-sse2                  \
-	-mno-red-zone              \
-	-mcmodel=kernel            \
+override INTERNALCPPFLAGS := \
+	$(INTERNALFLAGS)         \
+	-std=gnu++20             \
+	-ffreestanding           \
+	-fno-exceptions          \
+	-fno-stack-protector     \
+	-fno-omit-frame-pointer  \
+	-fno-rtti                \
+	-mno-red-zone            \
+	-mcmodel=kernel         \
 	$(INCLUDES)
+
+override INTERNALASFLAGS := \
+	$(INTERNALFLAGS)        \
+	-masm=intel             \
+	-mgeneral-regs-only
 
 override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c' -not -path "$(SOURCEDIR)/initrd/*") \
 	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c')
@@ -123,11 +132,11 @@ override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c' -not -path "$(
 #	$(shell find $(EXTLIBDIR)/cwalk/src/ -type f -name '*.c' 2> /dev/null)
 
 override CPPFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.cpp' -not -path "$(SOURCEDIR)/initrd/*")
-override ASMFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.asm' -not -path "$(SOURCEDIR)/initrd/*")
+override ASFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.S' -not -path "$(SOURCEDIR)/initrd/*")
 
 override OBJ = $(CFILES:.c=.o)
 override OBJ += $(CPPFILES:.cpp=.o)
-override OBJ += $(ASMFILES:.asm=_asm.o)
+override OBJ += $(ASFILES:.S=_S.o)
 
 .PHONY: all
 all: $(KERNEL) initrd
@@ -165,9 +174,9 @@ else
 	$(CPP) $(CPPFLAGS) $(INTERNALCPPFLAGS) -c $< -o $@
 endif
 
-%_asm.o: %.asm
-	@printf "ASM\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(ASM) $(ASMFLAGS) $< -o $@
+%_S.o: %.S
+	@printf "AS\t%s\n" $(<:$(ROOTDIR)/%=%)
+	$(CC) $(ASFLAGS) $(INTERNALASFLAGS) -c $< -o $@
 
 .PHONY: initrd
 initrd:

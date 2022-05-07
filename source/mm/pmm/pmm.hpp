@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace pmm
+namespace mm::pmm
 {
     static constexpr size_t block_size = 0x1000;
 
@@ -20,4 +20,4 @@ namespace pmm
     void free(void *ptr, size_t count = 1);
 
     void init();
-} // namespace pmm
+} // namespace mm::pmm

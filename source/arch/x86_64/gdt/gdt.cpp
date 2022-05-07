@@ -10,7 +10,7 @@ namespace arch::x86_64::gdt
 {
     TSS *tss = nullptr;
     GDTDescriptor gdtr;
-    lock_t lock;
+    static lock_t lock;
     GDT gdt
     {
         { 0x0000, 0, 0, 0x00, 0x00, 0 }, // Null

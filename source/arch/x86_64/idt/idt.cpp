@@ -14,9 +14,9 @@
 namespace arch::x86_64::idt
 {
     int_handler handlers[256];
+    static lock_t lock;
     IDTEntry idt[256];
     IDTPtr idtr;
-    lock_t lock;
 
     void IDTEntry::set(void *isr, uint8_t typeattr, uint8_t ist)
     {

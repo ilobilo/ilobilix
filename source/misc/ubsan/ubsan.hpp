@@ -52,6 +52,14 @@ struct type_mismatch_v1_data
     uint8_t type_check_kind;
 };
 
+struct function_type_mismatch_v1_data
+{
+    source_location location;
+    type_descriptor *type;
+    uint8_t log_alignment;
+    uint8_t type_check_kind;
+};
+
 struct negative_vla_data
 {
     source_location location;

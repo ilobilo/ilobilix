@@ -5,13 +5,9 @@
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #include <arch/arm64/arm64.hpp>
 #endif
-#include <arch/arch.hpp>
-#include <lib/log.hpp>
 
 namespace arch
 {
-    Pagemap *kernel_pagemap;
-
     void init()
     {
         #if defined(__x86_64__) || defined(_M_X64)

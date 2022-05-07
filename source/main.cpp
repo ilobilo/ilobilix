@@ -1,9 +1,10 @@
 // Copyright (C) 2022  ilobilo
 
-#include <drivers/serial/serial.hpp>
+#include <drivers/uart/uart.hpp>
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
 #include <mm/pmm/pmm.hpp>
+#include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
 #include <lib/panic.hpp>
 #include <arch/arch.hpp>
@@ -137,8 +138,9 @@ extern "C" void _start()
     cmdline = kernel_file_request.response->kernel_file->cmdline;
     hhdm_offset = hhdm_request.response->offset;
 
-    serial::init();
-    pmm::init();
+    uart::init();
+    mm::pmm::init();
+    mm::vmm::init();
 
     frm::init();
     term::init();

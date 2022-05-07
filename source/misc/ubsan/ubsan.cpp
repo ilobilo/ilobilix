@@ -67,6 +67,11 @@ extern "C" void __ubsan_handle_type_mismatch_v1(type_mismatch_v1_data *data, uin
     else print("no space for object", data->location);
 }
 
+extern "C" void __ubsan_handle_function_type_mismatch_v1(function_type_mismatch_v1_data *data, uintptr_t ptr, uintptr_t calleeRTTI, uintptr_t fnRTTI)
+{
+    print("call to a function through pointer to incorrect function", data->location);
+}
+
 extern "C" void __ubsan_handle_vla_bound_not_positive(negative_vla_data *data)
 {
     print("variable-length argument is negative", data->location);
