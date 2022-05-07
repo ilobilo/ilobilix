@@ -5,6 +5,7 @@
 #include <arch/x86_64/vmm/vmm.hpp>
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <mm/pmm/pmm.hpp>
+#include <mm/vmm/vmm.hpp>
 #include <arch/arch.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
@@ -23,9 +24,9 @@ namespace arch::x86_64::vmm
         }
         else if (allocate == true)
         {
-            ret = pmm::alloc<PTable*>();
+            ret = mm::pmm::alloc<PTable*>();
             curr_lvl->entries[entry].setAddr(reinterpret_cast<uint64_t>(ret) >> 12);
-            curr_lvl->entries[entry].setflags(Present | ReadWrite | UserSuper, true);
+            curr_lvl->entries[entry].setflags(Present | Write | UserSuper, true);
         }
         return ret;
     }
@@ -130,61 +131,17 @@ namespace arch::x86_64::vmm
         this->toplvl = reinterpret_cast<PTable*>(read_cr(3));
     }
 
-    Pagemap::Pagemap(bool user)
+    Pagemap::Pagemap()
     {
-        this->toplvl = pmm::alloc<PTable*>();
+        this->large_page_size = 0x200000;
+        this->page_size = 0x1000;
 
-        if (kernel_pagemap)
-        {
-
-            PTable *toplvl = tohh(this->toplvl);
-            PTable *kerenltoplvl = tohh(kernel_pagemap->toplvl);
-            for (size_t i = 256; i < 512; i++) toplvl[i] = kerenltoplvl[i];
-        }
-        else for (size_t i = 256; i < 512; i++) get_next_lvl(this->toplvl, i, true);
-
-        if (user == false)
-        {
-            for (uint64_t i = 0; i < 0x100000000; i += large_page_size)
-            {
-                this->mapMem(i, i, Present | ReadWrite, true);
-                this->mapMem(i + hhdm_offset, i, Present | ReadWrite, true);
-            }
-
-            for (size_t i = 0; i < memmap_request.response->entry_count; i++)
-            {
-                limine_memmap_entry *mmap = memmap_request.response->entries[i];
-
-                uint64_t base = align_down(mmap->base, page_size);
-                uint64_t top = align_up(mmap->base + mmap->length, page_size);
-                if (top < 0x100000000) continue;
-
-                for (uint64_t t = base; t < top; t += page_size)
-                {
-                    if (t < 0x100000000) continue;
-                    this->mapMem(t, t, Present | ReadWrite);
-                    this->mapMem(t + hhdm_offset, t, Present | ReadWrite);
-                }
-            }
-        }
-
-        for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += page_size)
-        {
-            uint64_t paddr = kernel_address_request.response->physical_base + i;
-            uint64_t vaddr = kernel_address_request.response->virtual_base + i;
-            this->mapMem(vaddr, paddr, Present | ReadWrite | (!kernel_pagemap ? 0 : UserSuper));
-        }
+        this->toplvl = mm::pmm::alloc<PTable*>();
     }
 
     uint64_t getPagemap()
     {
         return read_cr(3);
-    }
-
-    void init()
-    {
-        kernel_pagemap = new Pagemap();
-        kernel_pagemap->switchTo();
     }
 } // namespace arch::x86_64::vmm
 

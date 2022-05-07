@@ -1,6 +1,8 @@
-; Copyright (C) 2022  ilobilo
+# Copyright (C) 2022  ilobilo
 
-%macro pushall 0
+#if defined(__x86_64__) || defined(_M_X64)
+
+.macro pushall
     push rax
     push rbx
     push rcx
@@ -16,9 +18,9 @@
     push r13
     push r14
     push r15
-%endmacro
+.endm
 
-%macro popall 0
+.macro popall
     pop r15
     pop r14
     pop r13
@@ -34,4 +36,6 @@
     pop rcx
     pop rbx
     pop rax
-%endmacro
+.endm
+
+#endif

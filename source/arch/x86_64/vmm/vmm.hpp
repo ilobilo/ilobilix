@@ -9,13 +9,10 @@
 
 namespace arch::x86_64::vmm
 {
-    static constexpr uint64_t large_page_size = 0x200000;
-    static constexpr uint64_t page_size = 0x1000;
-
     enum flags
     {
         Present = (1 << 0),
-        ReadWrite = (1 << 1),
+        Write = (1 << 1),
         UserSuper = (1 << 2),
         WriteThrough = (1 << 3),
         CacheDisable = (1 << 4),
@@ -25,7 +22,7 @@ namespace arch::x86_64::vmm
         Custom0 = (1 << 9),
         Custom1 = (1 << 10),
         Custom2 = (1 << 11),
-        NX = (1UL << 63)
+        NoExec = (1UL << 63)
     };
 
     struct PDEntry
@@ -63,6 +60,8 @@ namespace arch::x86_64::vmm
     struct Pagemap
     {
         PTable *toplvl = nullptr;
+        uint64_t large_page_size = 0x200000;
+        uint64_t page_size = 0x1000;
         lock_t lock;
 
         PDEntry *virt2pte(uint64_t vaddr, bool allocate = true, bool hugepages = false);
@@ -74,21 +73,19 @@ namespace arch::x86_64::vmm
             return pml_entry->getAddr() << 12;
         }
 
-        bool mapMem(uint64_t vaddr, uint64_t paddr, uint64_t flags = (Present | ReadWrite), bool hugepages = false);
-        bool remapMem(uint64_t vaddr_old, uint64_t vaddr_new, uint64_t flags = (Present | ReadWrite), bool hugepages = false);
+        bool mapMem(uint64_t vaddr, uint64_t paddr, uint64_t flags = (Present | Write), bool hugepages = false);
+        bool remapMem(uint64_t vaddr_old, uint64_t vaddr_new, uint64_t flags = (Present | Write), bool hugepages = false);
         bool unmapMem(uint64_t vaddr, bool hugepages = false);
 
         void switchTo();
         void save();
 
-        Pagemap(bool user = false);
+        Pagemap();
     };
 
     extern bool lvl5;
 
     uint64_t getPagemap();
-
-    void init();
 } // namespace arch::x86_64::vmm
 
 #endif

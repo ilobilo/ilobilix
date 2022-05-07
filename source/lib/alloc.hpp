@@ -44,9 +44,10 @@ namespace heap
         size_t big_allocsize(void *ptr);
 
         public:
+        bool initialised = false;
         slab_t slabs[10];
 
-        slaballoc();
+        void init();
 
         void *malloc(size_t size);
         void *calloc(size_t num, size_t size);
@@ -83,14 +84,14 @@ namespace heap
             return this->allocsize(reinterpret_cast<void*>(ptr));
         }
     };
-} // namespace heap
 
-extern heap::slaballoc allocator;
+    extern slaballoc allocator;
+} // namespace heap
 
 template<typename type = void*>
 type malloc(size_t size, bool phys = false)
 {
-    type ret = allocator.malloc<type>(size);
+    type ret = heap::allocator.malloc<type>(size);
     if (phys) ret = fromhh(ret);
     return ret;
 }
@@ -98,7 +99,7 @@ type malloc(size_t size, bool phys = false)
 template<typename type = void*>
 type calloc(size_t num, size_t size, bool phys = false)
 {
-    type ret = allocator.calloc<type>(num, size);
+    type ret = heap::allocator.calloc<type>(num, size);
     if (phys) ret = fromhh(ret);
     return ret;
 }
@@ -106,17 +107,17 @@ type calloc(size_t num, size_t size, bool phys = false)
 template<typename type = void*>
 type realloc(void *oldptr, size_t size, bool phys = false)
 {
-    type ret = allocator.realloc<type>(oldptr, size);
+    type ret = heap::allocator.realloc<type>(oldptr, size);
     if (phys) ret = fromhh(ret);
     return ret;
 }
 
 void free(auto ptr, bool phys = false)
 {
-    allocator.free(phys ? fromhh(ptr) : ptr);
+    heap::allocator.free(phys ? fromhh(ptr) : ptr);
 }
 
 size_t allocsize(auto ptr, bool phys = false)
 {
-    return allocator.allocsize(phys ? fromhh(ptr) : ptr);
+    return heap::allocator.allocsize(phys ? fromhh(ptr) : ptr);
 }

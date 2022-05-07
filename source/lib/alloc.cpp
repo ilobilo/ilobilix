@@ -5,14 +5,14 @@
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
 
-heap::slaballoc allocator;
-
 namespace heap
 {
+    slaballoc allocator;
+
     void slab_t::init(uint64_t size)
     {
         this->size = size;
-        this->firstfree = tohh(pmm::alloc<uint64_t>());
+        this->firstfree = tohh(mm::pmm::alloc<uint64_t>());
 
         uint64_t available = 0x1000 - align_up(sizeof(slabHdr), this->size);
         slabHdr *slabptr = reinterpret_cast<slabHdr*>(this->firstfree);
@@ -47,8 +47,10 @@ namespace heap
         this->firstfree = reinterpret_cast<uint64_t>(newhead);
     }
 
-    slaballoc::slaballoc()
+    void slaballoc::init()
     {
+        if (this->initialised == true) return;
+
         this->slabs[0].init(8);
         this->slabs[1].init(16);
         this->slabs[2].init(24);
@@ -59,6 +61,8 @@ namespace heap
         this->slabs[7].init(256);
         this->slabs[8].init(512);
         this->slabs[9].init(1024);
+
+        this->initialised = true;
     }
 
     slab_t *slaballoc::get_slab(size_t size)
@@ -73,7 +77,7 @@ namespace heap
     void *slaballoc::big_malloc(size_t size)
     {
         size_t pages = div_roundup(size, 0x1000);
-        void *ptr = tohh(pmm::alloc(pages + 1));
+        void *ptr = tohh(mm::pmm::alloc(pages + 1));
         if (ptr == nullptr) return nullptr;
         bigallocMeta *metadata = reinterpret_cast<bigallocMeta*>(ptr);
         metadata->pages = pages;
@@ -112,7 +116,7 @@ namespace heap
     void slaballoc::big_free(void *ptr)
     {
         bigallocMeta *metadata = reinterpret_cast<bigallocMeta*>(reinterpret_cast<uint64_t>(ptr) - 0x1000);
-        pmm::free(fromhh(metadata), metadata->pages + 1);
+        mm::pmm::free(fromhh(metadata), metadata->pages + 1);
     }
 
     size_t slaballoc::big_allocsize(void *ptr)
@@ -122,6 +126,8 @@ namespace heap
 
     void *slaballoc::malloc(size_t size)
     {
+        if (this->initialised == false) this->init();
+
         slab_t *slab = this->get_slab(size);
         if (slab == nullptr) return this->big_malloc(size);
         return slab->alloc();
@@ -138,6 +144,12 @@ namespace heap
 
     void *slaballoc::realloc(void *oldptr, size_t size)
     {
+        if (this->initialised == false)
+        {
+            this->init();
+            return this->malloc(size);
+        }
+
         if (oldptr == nullptr) return this->malloc(size);
 
         if ((reinterpret_cast<uint64_t>(oldptr) & 0xFFF) == 0) return this->big_realloc(oldptr, size);
@@ -162,7 +174,7 @@ namespace heap
 
     void slaballoc::free(void *ptr)
     {
-        if (ptr == nullptr) return;
+        if (ptr == nullptr || this->initialised == false) return;
 
         if ((reinterpret_cast<uint64_t>(ptr) & 0xFFF) == 0) return this->big_free(ptr);
         reinterpret_cast<slabHdr*>(reinterpret_cast<uint64_t>(ptr) & ~0xFFF)->slab->free(ptr);
@@ -170,7 +182,7 @@ namespace heap
 
     size_t slaballoc::allocsize(void *ptr)
     {
-        if (ptr == nullptr) return 0;
+        if (ptr == nullptr || this->initialised == false) return 0;
 
         if ((reinterpret_cast<uint64_t>(ptr) & 0xFFF) == 0) return this->big_allocsize(ptr);
         return reinterpret_cast<slabHdr*>(reinterpret_cast<uint64_t>(ptr) & ~0xFFF)->slab->size;

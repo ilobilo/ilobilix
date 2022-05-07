@@ -9,7 +9,7 @@ $(EXTLIBDIR)/lai:
 
 $(EXTLIBDIR)/limine-terminal-port:
 	echo "Downloading limine-terminal-port"
-	git clone --single-branch --branch=master --depth=1 https://github.com/V01D-NULL/limine-terminal-port || echo "\e[31mFailed to download limine-terminal-port!\e[0m"
+	git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/limine-terminal-port || echo "\e[31mFailed to download limine-terminal-port!\e[0m"
 
 $(EXTLIBDIR)/ilar:
 ifdef USEILAR

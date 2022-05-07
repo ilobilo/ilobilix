@@ -23,10 +23,6 @@ namespace arch::x86_64
         log::info("Initialising PIC... ");
         pic::init();
         log::println("Done!");
-
-        log::info("Initialising VMM... ");
-        vmm::init();
-        log::println("Done!");
     }
 } // namespace arch::x86_64
 

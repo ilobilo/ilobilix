@@ -4,48 +4,48 @@
 
 void mmoutb(void *addr, uint8_t value)
 {
-    asm volatile("mov %1, %0" : "=m"(BYTE_PTR(addr)) : "r"(value) : "memory");
+    volatile auto ptr = reinterpret_cast<volatile uint8_t*>(addr);
+    *ptr = value;
 }
 
 void mmoutw(void *addr, uint16_t value)
 {
-    asm volatile("mov %1, %0" : "=m"(WORD_PTR(addr)) : "r"(value) : "memory");
+    volatile auto ptr = reinterpret_cast<volatile uint16_t*>(addr);
+    *ptr = value;
 }
 
 void mmoutl(void *addr, uint32_t value)
 {
-    asm volatile("mov %1, %0" : "=m"(DWORD_PTR(addr)) : "r"(value) : "memory");
+    volatile auto ptr = reinterpret_cast<volatile uint32_t*>(addr);
+    *ptr = value;
 }
 
 void mmoutq(void *addr, uint64_t value)
 {
-    asm volatile("mov %1, %0" : "=m"(QWORD_PTR(addr)) : "r"(value) : "memory");
+    volatile auto ptr = reinterpret_cast<volatile uint64_t*>(addr);
+    *ptr = value;
 }
 
 uint8_t mminb(void *addr)
 {
-    uint8_t ret;
-    asm volatile("mov %1, %0" : "=r"(ret) : "m"(BYTE_PTR(addr)) : "memory");
-    return ret;
+    volatile auto ptr = reinterpret_cast<volatile uint8_t*>(addr);
+    return *ptr;
 }
 
 uint16_t mminw(void *addr)
 {
-    uint16_t ret;
-    asm volatile("mov %1, %0" : "=r"(ret) : "m"(WORD_PTR(addr)) : "memory");
-    return ret;
+    volatile auto ptr = reinterpret_cast<volatile uint16_t*>(addr);
+    return *ptr;
 }
 
 uint32_t mminl(void *addr)
 {
-    uint32_t ret;
-    asm volatile("mov %1, %0" : "=r"(ret) : "m"(DWORD_PTR(addr)) : "memory");
-    return ret;
+    volatile auto ptr = reinterpret_cast<volatile uint32_t*>(addr);
+    return *ptr;
 }
 
 uint64_t mminq(void *addr)
 {
-    uint64_t ret;
-    asm volatile("mov %1, %0" : "=r"(ret) : "m"(QWORD_PTR(addr)) : "memory");
-    return ret;
+    volatile auto ptr = reinterpret_cast<volatile uint64_t*>(addr);
+    return *ptr;
 }

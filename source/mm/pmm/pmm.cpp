@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <main.hpp>
 
-namespace pmm
+namespace mm::pmm
 {
     static uint64_t highest_addr = 0;
     static size_t lastindex = 0;
@@ -129,4 +129,4 @@ namespace pmm
 
         log::println("Done!");
     }
-} // namespace pmm
+} // namespace mm::pmm
