@@ -9,10 +9,6 @@ bios: libs
 	@$(MAKE) -sC $(SOURCEDIR) clean
 	@$(MAKE) -sC $(SOURCEDIR) bios
 
-vnc: libs
-	@$(MAKE) -sC $(SOURCEDIR) clean
-	@$(MAKE) -sC $(SOURCEDIR) vnc
-
 libs:
 	@$(MAKE) -sC $(ROOTDIR)/extlibs
 
