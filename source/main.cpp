@@ -122,7 +122,9 @@ void constructors_init()
 
 extern "C" void _start()
 {
+    #if defined(__x86_64__) || defined(_M_X64)
     asm volatile ("movq %%rsp, %0" : "=r"(kernel_stack));
+    #endif
 
     assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
@@ -150,5 +152,10 @@ extern "C" void _start()
 
     printf("Hello, World!");
 
-    while (true) asm volatile ("hlt");
+    while (true)
+    {
+        #if defined(__x86_64__) || defined(_M_X64)
+        asm volatile ("hlt");
+        #endif
+    }
 }

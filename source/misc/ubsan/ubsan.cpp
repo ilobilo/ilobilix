@@ -8,7 +8,7 @@ static void print(const char *message, source_location loc)
 {
     // if (strstr(loc.file, "acpi.cpp") && ((loc.line == 101 && loc.column == 55) || (loc.line == 100 && loc.column == 64))) return;
     log::warn("Ubsan: %s at file %s, line %d, column %d\n", message, loc.file, loc.line, loc.column);
-    while (true) asm volatile ("cli; hlt");
+    // while (true) asm volatile ("cli; hlt");
 }
 
 extern "C" void __ubsan_handle_add_overflow(overflow_data *data)

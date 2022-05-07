@@ -5,6 +5,16 @@
 #include <cstddef>
 #include <utility>
 
+[[noreturn]] void halt()
+{
+    while (true)
+    {
+        #if defined(__x86_64__) || defined(_M_X64)
+        asm volatile ("cli; hlt");
+        #endif
+    }
+}
+
 [[noreturn]] void panic(const char *message, const char *file, const char *func, int line)
 {
     log::error("PANIC: %s\n", message);
@@ -19,7 +29,7 @@
     printf("\n[\033[31mPANIC\033[0m] Line: %d", line);
     printf("\n[\033[31mPANIC\033[0m] System halted!\n");
 
-    while (true) asm volatile ("cli; hlt");
+    halt();
 }
 
 [[noreturn]] extern "C" void abort()
@@ -30,5 +40,5 @@
     printf("\n[\033[31mPANIC\033[0m] abort()");
     printf("\n[\033[31mPANIC\033[0m] System halted!\n");
 
-    while (true) asm volatile ("cli; hlt");
+    halt();
 }

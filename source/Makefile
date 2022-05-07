@@ -24,6 +24,10 @@ LVL5_PAGING = 0
 
 ARCH ?= x86_64
 
+ifneq ($(ARCH), $(filter $(ARCH), arm64 x86_64))
+$(error Please set ARCH to either arm64 or x86_64)
+endif
+
 CC = clang
 CPP = clang++
 LD = ld.lld
@@ -34,30 +38,58 @@ LIMINE = $(LIMINEDIR)/limine-deploy
 ILAR = $(ILARDIR)/bin/ilar
 TAR = tar
 XORRISO = xorriso
-QEMU = qemu-system-x86_64
 
-QEMUFLAGS = -M q35 -serial stdio                    \
-	-cpu max -smp 4 -m 512M                         \
-	-boot d -rtc base=localtime                     \
-	-drive format=raw,file=$(DISK0)                 \
-	-device piix3-ide,id=ide                        \
-	-drive id=disk,file=$(DISK1),format=raw,if=none \
-	-device ide-hd,drive=disk,bus=ide.0             \
-	-audiodev id=audio,driver=alsa                  \
-	-machine pcspk-audiodev=audio                   \
-	-net nic,model=rtl8139                          \
+ifeq ($(ARCH), arm64)
+LDSCRIPT = $(SOURCEDIR)/linker_arm64.ld
+QEMU = qemu-system-aarch64
+else ifeq ($(ARCH), x86_64)
+LDSCRIPT = $(SOURCEDIR)/linker_x86_64.ld
+QEMU = qemu-system-x86_64
+endif
+
+QEMUFLAGS = -serial stdio             \
+	-cpu max -smp 4 -m 512M           \
+	-boot d -rtc base=localtime       \
+	-drive format=raw,file=$(DISK0)   \
+	-net nic,model=rtl8139            \
 	-net user,hostfwd=tcp::1234-:1234
 #	-net nic -net tap,ifname=tap0,script=no
 
-XORRISOFLAGS = -as mkisofs -b limine-cd.bin              \
-		-no-emul-boot -boot-load-size 4 -boot-info-table \
-		--efi-boot limine-cd-efi.bin -efi-boot-part      \
-		--efi-boot-image --protective-msdos-label
+ifeq ($(ARCH), arm64)
+QEMUFLAGS += -M virt -cpu cortex-a57
+else ifeq ($(ARCH), x86_64)
+QEMUFLAGS += -M q35                                 \
+	-audiodev id=audio,driver=alsa                  \
+	-machine pcspk-audiodev=audio                   \
+	-device piix3-ide,id=ide                        \
+	-drive id=disk,file=$(DISK1),format=raw,if=none \
+	-device ide-hd,drive=disk,bus=ide.0
+endif
+
+ifdef VNC
+QEMUFLAGS += -vnc 0.0.0.0:1
+endif
+
+ifdef DEBUG
+QEMJFLAGS += -no-reboot -no-shutdown              \
+	-d int -D $(LOGFILE) -M smm=off               \
+	-monitor telnet:127.0.0.1:12345,server,nowait
+else ifeq ($(ARCH), x86_64)
+ifndef NOKVM
+QEMUFLAGS += -enable-kvm
+endif
+endif
+
+XORRISOFLAGS = -as mkisofs -b limine-cd.bin          \
+	-no-emul-boot -boot-load-size 4 -boot-info-table \
+	--efi-boot limine-cd-efi.bin -efi-boot-part      \
+	--efi-boot-image --protective-msdos-label
 
 CFLAGS = -Ofast -pipe -Werror -Wall -Wextra -F dwarf -g  \
 	-DNET_DEBUG=$(NET_DEBUG) -DLVL5_PAGING=$(LVL5_PAGING)
 
-CPPFLAGS = $(CFLAGS) -Wno-c99-designator -Wno-unused-parameter -Wno-deprecated-volatile -Wno-register
+CPPFLAGS = $(CFLAGS) -Wno-c99-designator -Wno-register \
+	-Wno-unused-parameter -Wno-deprecated-volatile
 
 LDFLAGS = 
 ASFLAGS = 
@@ -75,18 +107,18 @@ INCLUDES :=                                       \
 	-I$(EXTLIBDIR)/limine-terminal-port/source/   \
 	-I$(EXTLIBDIR)/cxxshim/std-coroutine/include/
 
-override INTERNALLDFLAGS :=  \
-	-T$(SOURCEDIR)/linker.ld \
+override INTERNALLDFLAGS =   \
+	-T$(LDSCRIPT)            \
 	-nostdlib                \
 	-zmax-page-size=0x1000   \
 	-static
 
 ifeq ($(ARCH), arm64)
 override INTERNALFLAGS :=    \
-	-target aarch64-elf \
+	-target aarch64-none-elf \
 	-fno-pic                 \
 	$(INCLUDES)
-else
+else ifeq ($(ARCH), x86_64)
 override INTERNALFLAGS :=      \
 	-target x86_64-pc-none-elf \
 	-fno-pic                   \
@@ -96,6 +128,7 @@ override INTERNALFLAGS :=      \
 	-mno-3dnow                 \
 	-mno-sse                   \
 	-mno-sse2                  \
+	-mcmodel=kernel	           \
 	$(INCLUDES)
 endif
 
@@ -106,7 +139,6 @@ override INTERNALCFLAGS :=  \
 	-fno-stack-protector    \
 	-fno-omit-frame-pointer \
 	-mno-red-zone           \
-	-mcmodel=kernel         \
 	$(INCLUDES)
 
 override INTERNALCPPFLAGS := \
@@ -118,16 +150,21 @@ override INTERNALCPPFLAGS := \
 	-fno-omit-frame-pointer  \
 	-fno-rtti                \
 	-mno-red-zone            \
-	-mcmodel=kernel         \
 	$(INCLUDES)
 
+ifeq ($(ARCH), arm64)
 override INTERNALASFLAGS := \
 	$(INTERNALFLAGS)        \
-	-masm=intel             \
 	-mgeneral-regs-only
+else ifeq ($(ARCH), x86_64)
+override INTERNALASFLAGS := \
+	$(INTERNALFLAGS)        \
+	-mgeneral-regs-only     \
+	-masm=intel
+endif
 
 override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c' -not -path "$(SOURCEDIR)/initrd/*") \
-	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c')
+	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c' 2> /dev/null)
 #	$(shell find $(EXTLIBDIR)/lai/ -type f -name '*.c' 2> /dev/null)
 #	$(shell find $(EXTLIBDIR)/cwalk/src/ -type f -name '*.c' 2> /dev/null)
 
@@ -147,11 +184,6 @@ all: $(KERNEL) initrd
 bios: $(KERNEL) initrd
 	$(MAKE) iso
 	$(MAKE) clean run-bios
-
-.PHONY: vnc
-vnc: $(KERNEL) initrd
-	$(MAKE) iso
-	$(MAKE) clean run-vnc
 
 $(KERNEL):
 	$(MAKE) $(OBJ)
@@ -206,29 +238,11 @@ endif
 run:
 ifndef NORUN
 	@echo "\nBooting iso in uefi mode...\n"
-ifndef DEBUG
-	$(QEMU) $(QEMUFLAGS) -enable-kvm -cdrom $(ISO) -drive if=pflash,format=raw,unit=0,file=$(ROOTDIR)/ovmf/OVMF_CODE-pure-efi.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=$(ROOTDIR)/ovmf/OVMF_VARS-pure-efi.fd | $(CXXFILT)
-else
-	$(QEMU) $(QEMUFLAGS) -no-reboot -no-shutdown -d int -D $(LOGFILE) -machine smm=off -monitor telnet:127.0.0.1:12345,server,nowait -cdrom $(ISO) -drive if=pflash,format=raw,unit=0,file=$(ROOTDIR)/ovmf/OVMF_CODE-pure-efi.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=$(ROOTDIR)/ovmf/OVMF_VARS-pure-efi.fd | $(CXXFILT)
-endif
+	$(QEMU) $(QEMUFLAGS) -cdrom $(ISO) -drive if=pflash,format=raw,unit=0,file=$(ROOTDIR)/ovmf/OVMF_CODE-pure-efi.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=$(ROOTDIR)/ovmf/OVMF_VARS-pure-efi.fd | $(CXXFILT)
 endif
 
 run-bios:
 ifndef NORUN
 	@echo "\nBooting iso in bios mode...\n"
-ifndef DEBUG
-	$(QEMU) $(QEMUFLAGS) -enable-kvm -cdrom $(ISO) | $(CXXFILT)
-else
-	$(QEMU) $(QEMUFLAGS) -no-reboot -no-shutdown -d int -D $(LOGFILE) -machine smm=off -monitor telnet:127.0.0.1:12345,server,nowait -cdrom $(ISO) | $(CXXFILT)
-endif
-endif
-
-run-vnc:
-ifndef NORUN
-	@echo "\nBooting iso in bios mode... (VNC)\n"
-ifndef DEBUG
-	$(QEMU) $(QEMUFLAGS) -vnc 0.0.0.0:1 -cdrom $(ISO) | $(CXXFILT)
-else
-	$(QEMU) $(QEMUFLAGS) -vnc 0.0.0.0:1 -no-reboot -no-shutdown -d int -D $(LOGFILE) -machine smm=off -monitor telnet:127.0.0.1:12345,server,nowait -cdrom $(ISO) | $(CXXFILT)
-endif
+	$(QEMU) $(QEMUFLAGS) -cdrom $(ISO) | $(CXXFILT)
 endif

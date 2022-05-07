@@ -134,15 +134,16 @@ Follow these steps to build and run the os
 ``make -j$(nproc --all)`` For UEFI mode\
 ``make bios -j$(nproc --all)`` For BIOS mode
 
-If you are on Termux, run this command instead and connect to ``127.0.0.1:5901`` with VNC viewer:\
-``make vnc -j$(nproc --all)``
+Note: If you are on Termux, add ``VNC=1`` and ``NOKVM=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer:\
 
 ### Options
 * ``USEILAR=1``: Use ILAR archive format for initrd instead of USTAR (requires libboost-iostreams-dev)
-* ``NOUBSAN=1``: Turn off UBSAN
+* ``NOUBSAN=1``: Disable UBSAN
 * ``NOCLEAN=1``: Don't clean the source after compiling
 * ``NORUN=1``: Don't run the kernel, just compile
-* ``DEBUG=1``: Turn off kvm and enable qemu logging
+* ``NOKVM=1``: Disable KVM
+* ``DEBUG=1``: Disable KVM and enable QEMU logging
+* ``VNC=1``: Disable QEMU GUI window and run VNC on port 5901
 
 ## Discord server
 https://discord.gg/fM5GK3RpS7

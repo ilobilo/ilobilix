@@ -48,18 +48,18 @@ namespace arch::arm64::vmm
 
     void Pagemap::switchTo()
     {
-        asm volatile ("MSR %[ttbr0], TTBR0_EL1; MSR %[ttbr1], TTBR1_EL1" :: [ttbr0]"r"(this->ttbr0), [ttbr1]"r"(this->ttbr1) : "memory");
+        asm volatile ("msr TTBR0_EL1, %[ttbr0]; msr TTBR1_EL1, %[ttbr1]" :: [ttbr0]"r"(this->ttbr0), [ttbr1]"r"(this->ttbr1) : "memory");
     }
 
     void Pagemap::save()
     {
-        asm volatile ("MSR TTBR0_EL1, %[ttbr0]; MSR TTBR1_EL1, %[ttbr1]" : [ttbr0]"=r"(this->ttbr0), [ttbr1]"=r"(this->ttbr1) :: "memory");
+        // asm volatile ("msr %[ttbr0], TTBR0_EL1; msr %[ttbr1], TTBR1_EL1" : [ttbr0]"=r"(this->ttbr0), [ttbr1]"=r"(this->ttbr1) :: "memory");
     }
 
     Pagemap::Pagemap()
     {
         uint64_t aa64mmfr0 = 0;
-        asm volatile ("MRS %[aa64mmfr0], ID_AA64MMFR0_EL1" : [aa64mmfr0]"=r"(aa64mmfr0));
+        asm volatile ("mrs %[aa64mmfr0], ID_AA64MMFR0_EL1" : [aa64mmfr0]"=r"(aa64mmfr0));
 
         if (((aa64mmfr0 >> 28) & 0x0F) == 0b0000) this->page_size = 0x1000;
         else if (((aa64mmfr0 >> 20) & 0x0F) == 0b0001) this->page_size = 0x4000;

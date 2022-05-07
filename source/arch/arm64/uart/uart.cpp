@@ -12,6 +12,7 @@ namespace arch::arm64::uart
 
     void printc(char c, void *arg)
     {
+        lockit(lock);
     }
 
     void init()
