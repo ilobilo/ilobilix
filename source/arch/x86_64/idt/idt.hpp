@@ -54,7 +54,9 @@ namespace arch::x86_64::idt
 
         void load()
         {
+            asm volatile ("cli");
             asm volatile ("lidt %0" : : "memory"(*this));
+            asm volatile ("sti");
         }
     };
 
@@ -75,17 +77,10 @@ namespace arch::x86_64::idt
             return true;
         }
 
-        bool get()
-        {
-            return this->handler == true;
-        }
-
-        bool operator()(cpu::registers_t *regs)
-        {
-            if (this->handler == false) return false;
-            this->handler(regs);
-            return true;
-        }
+        bool ioapic_redirect(uint8_t vector);
+        bool clear();
+        bool get();
+        bool operator()(cpu::registers_t *regs);
     };
 
     extern int_handler handlers[];

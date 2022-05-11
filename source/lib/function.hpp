@@ -16,6 +16,11 @@ class function<retval(Args...)>
 
     ~function()
     {
+        this->clear();
+    }
+
+    void clear()
+    {
         if (this->callable_ == nullptr) return;
         delete this->callable_;
     }
@@ -34,7 +39,7 @@ class function<retval(Args...)>
         return this->callable_->invoke(args...);
     }
 
-    bool operator ==(bool set)
+    bool operator==(bool set)
     {
         return (this->callable_ != nullptr) == set;
     }

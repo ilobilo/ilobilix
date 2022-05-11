@@ -49,11 +49,9 @@ namespace mm::vmm
 
     void init()
     {
-        log::info("Initialising VMM... ");
+        log::info("Initialising VMM...");
 
         kernel_pagemap = newPagemap();
         kernel_pagemap->switchTo();
-
-        log::println("Done!");
     }
 } // namespace mm::vmm

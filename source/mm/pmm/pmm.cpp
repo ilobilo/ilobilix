@@ -83,7 +83,7 @@ namespace mm::pmm
 
     void init()
     {
-        log::info("Initialising PMM... ");
+        log::info("Initialising PMM...");
 
         limine_memmap_entry **memmaps = memmap_request.response->entries;
         uint64_t memmap_count = memmap_request.response->entry_count;
@@ -126,7 +126,5 @@ namespace mm::pmm
                 bitmap.set((memmaps[i]->base + t) / 0x1000, false);
             }
         }
-
-        log::println("Done!");
     }
 } // namespace mm::pmm

@@ -53,7 +53,7 @@ namespace arch::arm64::vmm
 
     void Pagemap::save()
     {
-        // asm volatile ("msr %[ttbr0], TTBR0_EL1; msr %[ttbr1], TTBR1_EL1" : [ttbr0]"=r"(this->ttbr0), [ttbr1]"=r"(this->ttbr1) :: "memory");
+        asm volatile ("mrs %[ttbr0], TTBR0_EL1; mrs %[ttbr1], TTBR1_EL1" : [ttbr0]"=r"(this->ttbr0), [ttbr1]"=r"(this->ttbr1) :: "memory");
     }
 
     Pagemap::Pagemap()

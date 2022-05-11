@@ -66,7 +66,7 @@ namespace term
 
     void init()
     {
-        log::info("Initialising Terminals... ");
+        log::info("Initialising Terminals...");
 
         auto callback = [](uint64_t _term, uint64_t type, uint64_t first, uint64_t second, uint64_t third)
         {
@@ -154,7 +154,5 @@ namespace term
             if (main_term == nullptr) main_term = term;
         }
         term_count = frm::frm_count;
-
-        log::println("Done!");
     }
 } // namespace term

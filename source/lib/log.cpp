@@ -46,6 +46,7 @@ namespace log
 
         int ret = vfctprintf(uart::printc, nullptr, info_prefix, arg);
         ret += vfctprintf(uart::printc, nullptr, fmt, arg);
+        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;
@@ -60,6 +61,7 @@ namespace log
 
         int ret = vfctprintf(uart::printc, nullptr, warn_prefix, arg);
         ret += vfctprintf(uart::printc, nullptr, fmt, arg);
+        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;
@@ -74,6 +76,7 @@ namespace log
 
         int ret = vfctprintf(uart::printc, nullptr, error_prefix, arg);
         ret += vfctprintf(uart::printc, nullptr, fmt, arg);
+        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;

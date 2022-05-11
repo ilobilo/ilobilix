@@ -67,11 +67,11 @@ QEMUFLAGS += -M q35                                 \
 endif
 
 ifdef VNC
-QEMUFLAGS += -vnc 0.0.0.0:1
+QEMUFLAGS += -vnc 127.0.0.1:1
 endif
 
 ifdef DEBUG
-QEMJFLAGS += -no-reboot -no-shutdown              \
+QEMUFLAGS += -no-reboot -no-shutdown              \
 	-d int -D $(LOGFILE) -M smm=off               \
 	-monitor telnet:127.0.0.1:12345,server,nowait
 else ifeq ($(ARCH), x86_64)
@@ -164,8 +164,8 @@ override INTERNALASFLAGS := \
 endif
 
 override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c' -not -path "$(SOURCEDIR)/initrd/*") \
-	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c' 2> /dev/null)
-#	$(shell find $(EXTLIBDIR)/lai/ -type f -name '*.c' 2> /dev/null)
+	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c' 2> /dev/null) \
+	$(shell find $(EXTLIBDIR)/lai/ -type f -name '*.c' 2> /dev/null)
 #	$(shell find $(EXTLIBDIR)/cwalk/src/ -type f -name '*.c' 2> /dev/null)
 
 override CPPFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.cpp' -not -path "$(SOURCEDIR)/initrd/*")
