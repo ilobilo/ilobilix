@@ -1,3 +1,5 @@
+// Copyright (C) 2022  ilobilo
+
 #include <misc/cxxabi/cxxabi.hpp>
 #include <lib/panic.hpp>
 #include <cstdint>

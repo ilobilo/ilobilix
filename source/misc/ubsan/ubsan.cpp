@@ -7,7 +7,7 @@
 static void print(const char *message, source_location loc)
 {
     // if (strstr(loc.file, "acpi.cpp") && ((loc.line == 101 && loc.column == 55) || (loc.line == 100 && loc.column == 64))) return;
-    log::warn("Ubsan: %s at file %s, line %d, column %d\n", message, loc.file, loc.line, loc.column);
+    log::warn("Ubsan: %s at file %s, line %d, column %d", message, loc.file, loc.line, loc.column);
     // while (true) asm volatile ("cli; hlt");
 }
 

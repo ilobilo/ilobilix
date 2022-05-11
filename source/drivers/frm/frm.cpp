@@ -12,7 +12,7 @@ namespace frm
 
     void init()
     {
-        log::info("Initialising Framebuffers... ");
+        log::info("Initialising Framebuffers...");
 
         auto response = framebuffer_request.response;
         frm_count = response->framebuffer_count;
@@ -21,7 +21,5 @@ namespace frm
             frms.push_back(response->framebuffers[i]);
             if (main_frm == nullptr) main_frm = frms.back();
         }
-
-        log::println("Done!");
     }
 } // namespace frm

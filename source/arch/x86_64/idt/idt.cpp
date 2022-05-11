@@ -2,6 +2,7 @@
 
 #if defined(__x86_64__) || defined(_M_X64)
 
+#include <arch/x86_64/apic/apic.hpp>
 #include <arch/x86_64/gdt/gdt.hpp>
 #include <arch/x86_64/idt/idt.hpp>
 #include <arch/x86_64/pic/pic.hpp>
@@ -17,6 +18,32 @@ namespace arch::x86_64::idt
     static lock_t lock;
     IDTEntry idt[256];
     IDTPtr idtr;
+
+    bool int_handler::ioapic_redirect(uint8_t vector)
+    {
+        if (apic::initialised == false && vector < 32 && vector > 47) return false;
+        apic::ioapic::redirect_irq(vector - 32, vector);
+        return true;
+    }
+
+    bool int_handler::clear()
+    {
+        bool ret = (this->handler == true);
+        this->handler.clear();
+        return ret;
+    }
+
+    bool int_handler::get()
+    {
+        return this->handler == true;
+    }
+
+    bool int_handler::operator()(cpu::registers_t *regs)
+    {
+        if (this->handler == false) return false;
+        this->handler(regs);
+        return true;
+    }
 
     void IDTEntry::set(void *isr, uint8_t typeattr, uint8_t ist)
     {
@@ -73,11 +100,11 @@ namespace arch::x86_64::idt
         static bool halt = true;
 
         log::println();
-        log::error("System exception!\n");
-        // log::error("Exception: %s on CPU %zu\n", exception_messages[regs->int_no], (smp::initialised ? this_cpu->id : 0));
-        log::error("Exception: %s\n", exception_messages[regs->int_no]);
-        log::error("Address: 0x%lX\n", regs->rip);
-        log::error("Error code: 0x%lX, 0b%b\n", regs->error_code, regs->error_code);
+        log::error("System exception!");
+        // log::error("Exception: %s on CPU %zu", exception_messages[regs->int_no], (smp::initialised ? this_cpu->id : 0));
+        log::error("Exception: %s", exception_messages[regs->int_no]);
+        log::error("Address: 0x%lX", regs->rip);
+        log::error("Error code: 0x%lX, 0b%b", regs->error_code, regs->error_code);
 
         switch (regs->int_no)
         {
@@ -85,7 +112,7 @@ namespace arch::x86_64::idt
 
         if (!halt)
         {
-            log::print("\n");
+            log::println();
             return;
         }
 
@@ -107,20 +134,19 @@ namespace arch::x86_64::idt
         }
 
         printf("[\033[31mPANIC\033[0m] System halted!");
-        log::error("System halted!\n\n");
+        log::error("System halted!\n");
         while (true) asm volatile ("cli; hlt");
-    }
-
-    static void irq_handler(cpu::registers_t *regs)
-    {
-        handlers[regs->int_no](regs);
-        pic::eoi(regs->int_no);
     }
 
     extern "C" void int_handler(cpu::registers_t *regs)
     {
         if (regs->int_no < 32) exception_handler(regs);
-        else if (regs->int_no >= 32 && regs->int_no < 256) irq_handler(regs);
+        else if (regs->int_no >= 32 && regs->int_no < 256)
+        {
+            handlers[regs->int_no](regs);
+            if (apic::initialised) apic::eoi();
+            else pic::eoi(regs->int_no);
+        }
         else panic("Unknown interrupt!");
     }
 

@@ -1,5 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
+#include <drivers/acpi/acpi.hpp>
 #include <drivers/uart/uart.hpp>
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
@@ -117,7 +118,6 @@ void constructors_init()
 {
     log::info("Running global gonstructors... ");
     for (constructor_t *ctor = __init_array_start; ctor < __init_array_end; ctor++) (*ctor)();
-    log::println("Done!");
 }
 
 extern "C" void _start()
@@ -146,6 +146,7 @@ extern "C" void _start()
 
     frm::init();
     term::init();
+    acpi::init();
     arch::init();
 
     constructors_init();

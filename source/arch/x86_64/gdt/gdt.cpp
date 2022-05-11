@@ -38,8 +38,24 @@ namespace arch::x86_64::gdt
         gdt.Tss.Base3 = base >> 32;
         gdt.Tss.Reserved = 0x00;
 
-        asm volatile ("lgdt %0" : : "m"(gdtr) : "memory");
-        asm volatile ("ltr %0" : : "r"(static_cast<uint16_t>(GDT_TSS)));
+        asm volatile ("lgdt %0" :: "m"(gdtr) : "memory");
+        asm volatile (
+            "mov %[dsel], %%ds \n\t"
+            "mov %[dsel], %%fs \n\t"
+            "mov %[dsel], %%gs \n\t"
+            "mov %[dsel], %%es \n\t"
+            "mov %[dsel], %%ss \n\t"
+            :: [dsel]"rm"(GDT_DATA)
+        );
+        asm volatile (
+            "push %[csel] \n\t"
+            "lea 1f(%%rip), %%rax \n\t"
+            "push %%rax \n\t"
+            ".byte 0x48, 0xCB \n\t"
+            "1:"
+            :: [csel]"i"(GDT_CODE) : "rax"
+        );
+        asm volatile ("ltr %0" :: "r"(static_cast<uint16_t>(GDT_TSS)));
     }
 
     void init()
