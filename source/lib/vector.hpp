@@ -25,7 +25,7 @@ class vector
     void init()
     {
         if (this->on) return;
-        this->storage = new type;
+        this->storage = new type[1];
         this->cap = allocsize(this->storage) / sizeof(type);
         this->num = 0;
         this->on = true;
@@ -231,3 +231,9 @@ class vector
         }
     }
 };
+
+namespace std
+{
+    template<typename type>
+    using vector = ::vector<type>;
+} // namespace std

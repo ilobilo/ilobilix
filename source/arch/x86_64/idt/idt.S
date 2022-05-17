@@ -44,7 +44,7 @@ int_common_stub:
 
 .section .data
 int_table:
-.set i,0
+.set i, 0
 .rept 256
     isr_insert %i
     .set i, i + 1
