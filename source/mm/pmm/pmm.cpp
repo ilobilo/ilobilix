@@ -12,6 +12,7 @@
 
 namespace mm::pmm
 {
+    static uint64_t highest_addr = 0;
     static size_t lastindex = 0;
     static Bitmap bitmap;
     static lock_t lock;
@@ -19,7 +20,7 @@ namespace mm::pmm
     static size_t freeram = 0;
     static size_t usedram = 0;
 
-    uint64_t highest_addr = 0;
+    uint64_t mem_top = 0;
 
     size_t freemem()
     {
@@ -91,11 +92,12 @@ namespace mm::pmm
 
         for (size_t i = 0; i < memmap_count; i++)
         {
+            uintptr_t top = memmaps[i]->base + memmaps[i]->length;
+            mem_top = std::max(mem_top, top);
+
             if (memmaps[i]->type != LIMINE_MEMMAP_USABLE) continue;
 
-            uintptr_t top = memmaps[i]->base + memmaps[i]->length;
             freeram += memmaps[i]->length;
-
             highest_addr = std::max(highest_addr, top);
         }
 

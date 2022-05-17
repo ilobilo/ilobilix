@@ -98,6 +98,7 @@ INCLUDES :=                                       \
 	-I$(EXTLIBDIR)/limine/                        \
 	-I$(EXTLIBDIR)/functional/                    \
 	-I$(EXTLIBDIR)/printf/src/                    \
+	-I$(EXTLIBDIR)/cdi/include/                   \
 	-I$(EXTLIBDIR)/lai/include/                   \
 	-I$(EXTLIBDIR)/cwalk/include/                 \
 	-I$(EXTLIBDIR)/scalable-font2/                \
