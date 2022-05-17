@@ -1,10 +1,12 @@
 // Copyright (C) 2022  ilobilo
 
 #include <cstddef>
+#include <cstdint>
 
 namespace mm::pmm
 {
     static constexpr size_t block_size = 0x1000;
+    extern uint64_t highest_addr;
 
     size_t freemem();
     size_t usedmem();

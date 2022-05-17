@@ -47,23 +47,21 @@ LDSCRIPT = $(SOURCEDIR)/linker_x86_64.ld
 QEMU = qemu-system-x86_64
 endif
 
-QEMUFLAGS = -serial stdio             \
-	-cpu max -smp 4 -m 512M           \
-	-boot d -rtc base=localtime       \
-	-drive format=raw,file=$(DISK0)   \
-	-net nic,model=rtl8139            \
-	-net user,hostfwd=tcp::1234-:1234
-#	-net nic -net tap,ifname=tap0,script=no
+QEMUFLAGS = -smp 4 -m 512M -serial stdio -boot d -cdrom $(ISO)
 
 ifeq ($(ARCH), arm64)
 QEMUFLAGS += -M virt -cpu cortex-a57
 else ifeq ($(ARCH), x86_64)
-QEMUFLAGS += -M q35                                 \
+QEMUFLAGS += -cpu max -M q35 -rtc base=localtime    \
 	-audiodev id=audio,driver=alsa                  \
 	-machine pcspk-audiodev=audio                   \
 	-device piix3-ide,id=ide                        \
 	-drive id=disk,file=$(DISK1),format=raw,if=none \
-	-device ide-hd,drive=disk,bus=ide.0
+	-device ide-hd,drive=disk,bus=ide.0             \
+	-drive format=raw,file=$(DISK0)                 \
+	-net nic,model=rtl8139                          \
+	-net user,hostfwd=tcp::1234-:1234
+#	-net nic -net tap,ifname=tap0,script=no
 endif
 
 ifdef VNC
@@ -238,11 +236,11 @@ endif
 run:
 ifndef NORUN
 	@echo "\nBooting iso in uefi mode...\n"
-	$(QEMU) $(QEMUFLAGS) -cdrom $(ISO) -drive if=pflash,format=raw,unit=0,file=$(ROOTDIR)/ovmf/OVMF_CODE-pure-efi.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=$(ROOTDIR)/ovmf/OVMF_VARS-pure-efi.fd | $(CXXFILT)
+	$(QEMU) $(QEMUFLAGS) -drive if=pflash,format=raw,unit=0,file=$(ROOTDIR)/ovmf/OVMF_CODE-pure-efi.fd,readonly=on -drive if=pflash,format=raw,unit=1,file=$(ROOTDIR)/ovmf/OVMF_VARS-pure-efi.fd | $(CXXFILT)
 endif
 
 run-bios:
 ifndef NORUN
 	@echo "\nBooting iso in bios mode...\n"
-	$(QEMU) $(QEMUFLAGS) -cdrom $(ISO) | $(CXXFILT)
+	$(QEMU) $(QEMUFLAGS) | $(CXXFILT)
 endif

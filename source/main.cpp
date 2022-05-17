@@ -4,6 +4,7 @@
 #include <drivers/uart/uart.hpp>
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
+#include <lib/symbols.hpp>
 #include <mm/pmm/pmm.hpp>
 #include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
@@ -149,9 +150,8 @@ extern "C" void _start()
     acpi::init();
     arch::init();
 
+    symbols::init();
     constructors_init();
-
-    printf("Hello, World!");
 
     while (true)
     {

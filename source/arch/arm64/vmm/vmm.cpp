@@ -48,12 +48,14 @@ namespace arch::arm64::vmm
 
     void Pagemap::switchTo()
     {
-        asm volatile ("msr TTBR0_EL1, %[ttbr0]; msr TTBR1_EL1, %[ttbr1]" :: [ttbr0]"r"(this->ttbr0), [ttbr1]"r"(this->ttbr1) : "memory");
+        asm volatile ("msr TTBR0_EL1, %[ttbr0]" :: [ttbr0]"r"(this->ttbr0) : "memory");
+        asm volatile ("msr TTBR1_EL1, %[ttbr1]" :: [ttbr1]"r"(this->ttbr1) : "memory");
     }
 
     void Pagemap::save()
     {
-        asm volatile ("mrs %[ttbr0], TTBR0_EL1; mrs %[ttbr1], TTBR1_EL1" : [ttbr0]"=r"(this->ttbr0), [ttbr1]"=r"(this->ttbr1) :: "memory");
+        asm volatile ("mrs %[ttbr0], TTBR0_EL1" : [ttbr0]"=r"(this->ttbr0) :: "memory");
+        asm volatile ("mrs %[ttbr1], TTBR1_EL1" : [ttbr1]"=r"(this->ttbr1) :: "memory");
     }
 
     Pagemap::Pagemap()

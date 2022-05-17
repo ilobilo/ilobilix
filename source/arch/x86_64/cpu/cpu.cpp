@@ -55,13 +55,13 @@ namespace arch::x86_64::cpu
     void wrxcr(uint32_t i, uint64_t value)
     {
         uint32_t edx = value >> 32;
-        uint32_t eax = static_cast<uint64_t>(value);
+        uint32_t eax = static_cast<uint32_t>(value);
         asm volatile ("xsetbv" : : "a"(eax), "d"(edx), "c"(i) : "memory");
     }
 
-    static uint64_t rfbm = ~0ull;
-    static uint32_t rfbm_low = rfbm & 0xFFFF'FFFF;
-    static uint32_t rfbm_high = (rfbm >> 32) & 0xFFFF'FFFF;
+    static uint64_t rfbm = ~0ULL;
+    static uint32_t rfbm_low = rfbm & 0xFFFFFFFF;
+    static uint32_t rfbm_high = (rfbm >> 32) & 0xFFFFFFFF;
 
     void xsaveopt(uint8_t *region)
     {

@@ -12,13 +12,14 @@
 
 namespace mm::pmm
 {
-    static uint64_t highest_addr = 0;
     static size_t lastindex = 0;
     static Bitmap bitmap;
     static lock_t lock;
 
     static size_t freeram = 0;
     static size_t usedram = 0;
+
+    uint64_t highest_addr = 0;
 
     size_t freemem()
     {
