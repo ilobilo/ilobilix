@@ -1,26 +1,31 @@
 EXTLIBDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOTDIR := $(shell dirname $(EXTLIBDIR))
 
-all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
+# all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
+all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim
 
 $(EXTLIBDIR)/lai:
 	echo "Downloading lai"
 	git clone --single-branch --branch=master --depth=1 https://github.com/managarm/lai || echo "\e[31mFailed to download lai!\e[0m"
 
+$(EXTLIBDIR)/cdi:
+	echo "Downloading cdi"
+	git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/cdi || echo "\e[31mFailed to download cdi!\e[0m"
+
 $(EXTLIBDIR)/limine-terminal-port:
 	echo "Downloading limine-terminal-port"
 	git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/limine-terminal-port || echo "\e[31mFailed to download limine-terminal-port!\e[0m"
 
-$(EXTLIBDIR)/ilar:
-ifdef USEILAR
-	echo "Downloading ilar"
-	git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/ilar || echo "\e[31mFailed to download ilar!\e[0m"
-	$(MAKE) -sC $(EXTLIBDIR)/ilar
-endif
+# $(EXTLIBDIR)/ilar:
+# ifdef USEILAR
+# 	echo "Downloading ilar"
+# 	git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/ilar || echo "\e[31mFailed to download ilar!\e[0m"
+# 	$(MAKE) -sC $(EXTLIBDIR)/ilar
+# endif
 
-$(EXTLIBDIR)/cwalk:
-	echo "Downloading cwalk"
-	git clone --single-branch --branch=master --depth=1 https://github.com/likle/cwalk || echo "\e[31mFailed to download cwalk!\e[0m"
+# $(EXTLIBDIR)/cwalk:
+# 	echo "Downloading cwalk"
+# 	git clone --single-branch --branch=master --depth=1 https://github.com/likle/cwalk || echo "\e[31mFailed to download cwalk!\e[0m"
 
 $(EXTLIBDIR)/printf:
 	echo "Downloading printf"
@@ -35,9 +40,10 @@ $(EXTLIBDIR)/cxxshim:
 	echo "Downloading cxxshim"
 	git clone --single-branch --branch=master --depth=1 https://github.com/managarm/cxxshim || echo "\e[31mFailed to download cxxshim!\e[0m"
 
-$(EXTLIBDIR)/scalable-font2:
-	echo "Downloading scalable-font2"
-	git clone --single-branch --branch=master --depth=1 https://gitlab.com/bztsrc/scalable-font2 || echo "\e[31mFailed to download ssfn!\e[0m"
+# $(EXTLIBDIR)/scalable-font2:
+# 	echo "Downloading scalable-font2"
+# 	git clone --single-branch --branch=master --depth=1 https://gitlab.com/bztsrc/scalable-font2 || echo "\e[31mFailed to download ssfn!\e[0m"
 
 clean:
-	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
+#	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
+	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim

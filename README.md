@@ -13,6 +13,7 @@ Second attempt at making an OS
 - [ ] PCIe
 - [ ] MSI
 - [ ] MSI-X
+- [x] Modules
 
 ### Memory
 - [x] PMM
@@ -20,13 +21,12 @@ Second attempt at making an OS
 - [x] Heap
 
 ### ACPI
-- [ ] ACPI
-- [ ] LAPIC
-- [ ] IOAPIC
-- [ ] Shutdown
-- [ ] Reboot
+- [x] ACPI
+- [x] LAPIC
+- [x] IOAPIC
+- [x] LAI
 
-### Device drivers
+<!-- ### Device drivers
 #### Audio
 - [ ] PC speaker
 - [ ] AC97
@@ -59,24 +59,25 @@ Second attempt at making an OS
 - [ ] UHCI
 - [ ] OHCI
 - [ ] EHCI
-- [ ] XHCI
+- [ ] XHCI -->
 
 ### Timers
-- [ ] HPET
-- [ ] PIT
-- [ ] RTC
-- [ ] LAPIC Timer
+- [x] HPET
+- [x] PIT
+- [x] RTC
+- [x] LAPIC Timer
 
 ### Tasking
 - [ ] SMP
 - [ ] Scheduling
 - [ ] IPC
+- [ ] Signals
 
-### Partition tables
+<!-- ### Partition tables
 - [ ] MBR
-- [ ] GPT
+- [ ] GPT -->
 
-### Filesystems
+<!-- ### Filesystems
 - [ ] VFS
 - [ ] TMPFS
 - [ ] DEVFS
@@ -86,12 +87,11 @@ Second attempt at making an OS
 - [ ] Ext2
 - [ ] Fat32
 - [ ] ISO9660
-- [ ] NTFS
+- [ ] NTFS -->
 
 ### Userspace
 - [ ] System calls
 - [ ] ELF
-- [ ] Signals
 - [ ] Userspace
 - [ ] Libc
 - [ ] Bash
@@ -101,7 +101,6 @@ Second attempt at making an OS
 - [ ] Ethernet
 - [ ] ARP
 - [ ] IPv4
-- [ ] IPv4 fragmentation support
 - [ ] ICMPv4
 - [ ] TCP
 - [ ] UDP
@@ -109,6 +108,7 @@ Second attempt at making an OS
 - [ ] HTTP
 - [ ] Telnet
 - [ ] SSL
+- [ ] Or just LWIP
 
 ## Building And Running
 
@@ -117,27 +117,28 @@ Make sure you have following programs installed:
 * lld
 * llvm
 * Make
-* Nasm
-* Qemu x86-64
 * Xorriso
 * Wget
 * Tar
+* Qemu x86-64
+* Qemu aarch64 (For arm64)
+<!-- * libboost-iostreams-dev (To ILAR instead of TAR) -->
 
-If you have Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
-```sudo apt install clang lld make nasm qemu-system-x86 xorriso wget tar```
+If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
+```sudo apt install clang lld llvm xorriso wget tar qemu-system-x86 qemu-system-aarch64```
 
-Follow these steps to build and run the os
+Follow these steps to build and run the os:
 1. Clone this repo with:\
-``git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/kernel``
+``git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/kernelv2``
 
-2. Go to the root directory of cloned repo and run:\
-``make -j$(nproc --all)`` For UEFI mode\
-``make bios -j$(nproc --all)`` For BIOS mode
+2. Go to the root directory of the cloned repo and run:\
+``make -j$(nproc --all)`` To run in UEFI mode\
+``make bios -j$(nproc --all)`` To run in BIOS mode
 
 Note: If you are on Termux, add ``VNC=1`` and ``NOKVM=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer:\
 
 ### Options
-* ``USEILAR=1``: Use ILAR archive format for initrd instead of USTAR (requires libboost-iostreams-dev)
+<!-- * ``USEILAR=1``: Use ILAR archive format for initrd instead of USTAR -->
 * ``NOUBSAN=1``: Disable UBSAN
 * ``NOCLEAN=1``: Don't clean the source after compiling
 * ``NORUN=1``: Don't run the kernel, just compile
@@ -151,18 +152,20 @@ https://discord.gg/fM5GK3RpS7
 ## Resources used:
 * Osdev wiki: https://wiki.osdev.org
 * Osdev discord server: https://discord.gg/RnCtsqD
-* PonchoOS: https://github.com/Absurdponcho/PonchoOS
-* Poncho discord server: https://discord.gg/N2Dpwpu4qT
 * Limine: https://github.com/limine-bootloader/limine
+* Frigg: https://github.com/managarm/frigg
+* MLibc: https://github.com/managarm/mlibc
+* ToaruOS: https://github.com/klange/toaruos
+* LemonOS: https://github.com/LemonOSProject/LemonOS
+* Sigma: https://github.com/sigma-os/Sigma
+* Luna: https://github.com/thomtl/Luna
 * Vinix: https://github.com/vlang/vinix
 * Lyre: https://github.com/lyre-os/lyre
 * Polaris: https://github.com/NSG650/Polaris
-* Ilar: https://github.com/ilobilo/ilar
+<!-- * Ilar: https://github.com/ilobilo/ilar -->
 * Printf: https://github.com/eyalroz/printf
-* Scalable Screen Font: https://gitlab.com/bztsrc/scalable-font2
-* Liballoc: https://github.com/blanham/liballoc
-* CWalk: https://github.com/likle/cwalk
-* String: https://github.com/cocoz1/cpp-string
+<!-- * Scalable Font 2: https://gitlab.com/bztsrc/scalable-font2 -->
+<!-- * CWalk: https://github.com/likle/cwalk -->
 * Cxxshim: https://github.com/managarm/cxxshim
 * Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
 * Terminal: https://github.com/V01D-NULL/limine-terminal-port

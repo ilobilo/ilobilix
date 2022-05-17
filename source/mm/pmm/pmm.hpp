@@ -6,7 +6,7 @@
 namespace mm::pmm
 {
     static constexpr size_t block_size = 0x1000;
-    extern uint64_t highest_addr;
+    extern uint64_t mem_top;
 
     size_t freemem();
     size_t usedmem();
