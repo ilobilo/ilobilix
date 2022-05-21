@@ -2,14 +2,22 @@
 
 #pragma once
 
+#include <type_traits>
 #include <cstdint>
 
-void mmoutb(void *addr, uint8_t value);
-void mmoutw(void *addr, uint16_t value);
-void mmoutl(void *addr, uint32_t value);
-void mmoutq(void *addr, uint64_t value);
+template<typename type>
+concept valuetype = (std::is_same<type, uint8_t>() || std::is_same<type, uint16_t>() || std::is_same<type, uint32_t>() || std::is_same<type, uint64_t>());
 
-uint8_t mminb(void *addr);
-uint16_t mminw(void *addr);
-uint32_t mminl(void *addr);
-uint64_t mminq(void *addr);
+template<valuetype type>
+static inline type mmin(void *addr)
+{
+    volatile auto ptr = reinterpret_cast<volatile type*>(addr);
+    return *ptr;
+}
+
+template<valuetype type>
+static inline void mmout(void *addr, type value)
+{
+    volatile auto ptr = reinterpret_cast<volatile type*>(addr);
+    *ptr = value;
+}

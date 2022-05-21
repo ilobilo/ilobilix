@@ -1,9 +1,11 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/gdt/gdt.hpp>
+#include <mm/pmm/pmm.hpp>
 #include <lib/lock.hpp>
+#include <lib/misc.hpp>
 #include <main.hpp>
 
 namespace arch::x86_64::gdt
@@ -37,6 +39,8 @@ namespace arch::x86_64::gdt
         gdt.Tss.Base2 = base >> 24;
         gdt.Tss.Base3 = base >> 32;
         gdt.Tss.Reserved = 0x00;
+
+        tss[num].RSP[0] = tohh(mm::pmm::alloc<uint64_t>(STACK_SIZE / mm::pmm::block_size));
 
         asm volatile ("lgdt %0" :: "m"(gdtr) : "memory");
         asm volatile (

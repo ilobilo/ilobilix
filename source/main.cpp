@@ -1,10 +1,10 @@
 // Copyright (C) 2022  ilobilo
 
+#include <drivers/syms/syms.hpp>
 #include <drivers/acpi/acpi.hpp>
 #include <drivers/uart/uart.hpp>
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
-#include <lib/symbols.hpp>
 #include <mm/pmm/pmm.hpp>
 #include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
@@ -14,9 +14,8 @@
 #include <main.hpp>
 #include <cstddef>
 
-uint8_t *kernel_stack;
-const char *cmdline;
-uint64_t hhdm_offset;
+const char *cmdline = nullptr;
+uint64_t hhdm_offset = 0;
 
 #if LVL5_PAGING
 volatile limine_5_level_paging_request _5_level_paging_request
@@ -123,10 +122,6 @@ void constructors_init()
 
 extern "C" void _start()
 {
-    #if defined(__x86_64__) || defined(_M_X64)
-    asm volatile ("movq %%rsp, %0" : "=r"(kernel_stack));
-    #endif
-
     assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
     assert(memmap_request.response, "Could not get memmap response!");
@@ -142,20 +137,23 @@ extern "C" void _start()
     hhdm_offset = hhdm_request.response->offset;
 
     uart::init();
+
     mm::pmm::init();
     mm::vmm::init();
 
+    syms::init();
+
     frm::init();
     term::init();
+
     acpi::init();
     arch::init();
 
-    symbols::init();
     constructors_init();
 
     while (true)
     {
-        #if defined(__x86_64__) || defined(_M_X64)
+        #if defined(__x86_64__)
         asm volatile ("hlt");
         #endif
     }

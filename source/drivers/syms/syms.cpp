@@ -5,7 +5,7 @@
 #include <lib/elf.h>
 #include <main.hpp>
 
-namespace symbols
+namespace syms
 {
     struct symtable_t
     {
@@ -80,4 +80,4 @@ namespace symbols
             symbol_table[i] = sym;
         }
     }
-} // namespace symbols
+} // namespace syms

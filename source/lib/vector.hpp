@@ -2,9 +2,8 @@
 
 #pragma once
 
-#include <lib/string.hpp>
 #include <lib/alloc.hpp>
-#include <cstddef>
+#include <string.h>
 
 template<typename type>
 class vector

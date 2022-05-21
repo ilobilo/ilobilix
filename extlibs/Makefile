@@ -1,16 +1,12 @@
 EXTLIBDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOTDIR := $(shell dirname $(EXTLIBDIR))
 
-# all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
-all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim
+# all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
+all: $(EXTLIBDIR)/lai $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim
 
 $(EXTLIBDIR)/lai:
 	echo "Downloading lai"
 	git clone --single-branch --branch=master --depth=1 https://github.com/managarm/lai || echo "\e[31mFailed to download lai!\e[0m"
-
-$(EXTLIBDIR)/cdi:
-	echo "Downloading cdi"
-	git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/cdi || echo "\e[31mFailed to download cdi!\e[0m"
 
 $(EXTLIBDIR)/limine-terminal-port:
 	echo "Downloading limine-terminal-port"
@@ -45,5 +41,5 @@ $(EXTLIBDIR)/cxxshim:
 # 	git clone --single-branch --branch=master --depth=1 https://gitlab.com/bztsrc/scalable-font2 || echo "\e[31mFailed to download ssfn!\e[0m"
 
 clean:
-#	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
-	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/cdi $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim
+#	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/ilar $(EXTLIBDIR)/cwalk $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim $(EXTLIBDIR)/scalable-font2
+	rm -rf $(EXTLIBDIR)/lai $(EXTLIBDIR)/limine-terminal-port $(EXTLIBDIR)/printf $(EXTLIBDIR)/limine $(EXTLIBDIR)/cxxshim

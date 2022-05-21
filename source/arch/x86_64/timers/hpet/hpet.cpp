@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/timers/hpet/hpet.hpp>
 #include <drivers/acpi/acpi.hpp>
@@ -16,7 +16,7 @@ namespace arch::x86_64::timers::hpet
 
     uint64_t counter()
     {
-        return mminq(&hpet->main_counter_value);
+        return mmin<uint64_t>(reinterpret_cast<void*>(&hpet->main_counter_value));
     }
 
     void usleep(uint64_t us)
@@ -46,9 +46,9 @@ namespace arch::x86_64::timers::hpet
         hpet = reinterpret_cast<HPET*>(acpi::hpethdr->address.Address);
         clk = hpet->general_capabilities >> 32;
 
-        mmoutq(&hpet->general_configuration, 0);
-        mmoutq(&hpet->main_counter_value, 0);
-        mmoutq(&hpet->general_configuration, 1);
+        mmout<uint64_t>(&hpet->general_configuration, 0);
+        mmout<uint64_t>(&hpet->main_counter_value, 0);
+        mmout<uint64_t>(&hpet->general_configuration, 1);
 
         initialised = true;
     }

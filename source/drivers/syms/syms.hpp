@@ -4,8 +4,8 @@
 
 #include <cstdint>
 
-namespace symbols
+namespace syms
 {
     uint64_t lookup(const char *name);
     void init();
-} // namespace symbols
+} // namespace syms

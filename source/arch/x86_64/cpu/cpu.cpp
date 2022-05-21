@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <lib/mmio.hpp>
@@ -19,7 +19,7 @@ namespace arch::x86_64::cpu
     {
         uint32_t edx = value >> 32;
         uint32_t eax = static_cast<uint32_t>(value);
-        asm volatile("wrmsr" : : "a"(eax), "d"(edx), "c"(msr) : "memory");
+        asm volatile("wrmsr" :: "a"(eax), "d"(edx), "c"(msr) : "memory");
     }
 
     void set_kernel_gs(uint64_t addr)
@@ -56,7 +56,7 @@ namespace arch::x86_64::cpu
     {
         uint32_t edx = value >> 32;
         uint32_t eax = static_cast<uint32_t>(value);
-        asm volatile ("xsetbv" : : "a"(eax), "d"(edx), "c"(i) : "memory");
+        asm volatile ("xsetbv" :: "a"(eax), "d"(edx), "c"(i) : "memory");
     }
 
     static uint64_t rfbm = ~0ULL;
@@ -65,32 +65,32 @@ namespace arch::x86_64::cpu
 
     void xsaveopt(uint8_t *region)
     {
-        asm volatile ("xsaveopt64 (%0)" : : "r"(region), "a"(rfbm_low), "d"(rfbm_high) : "memory");
+        asm volatile ("xsaveopt64 (%0)" :: "r"(region), "a"(rfbm_low), "d"(rfbm_high) : "memory");
     }
 
     void xsave(uint8_t *region)
     {
-        asm volatile ("xsaveq (%0)" : : "r"(region), "a"(rfbm_low), "d"(rfbm_high) : "memory");
+        asm volatile ("xsaveq (%0)" :: "r"(region), "a"(rfbm_low), "d"(rfbm_high) : "memory");
     }
 
     void xrstor(uint8_t *region)
     {
-        asm volatile ("xrstorq (%0)" : : "r"(region), "a"(rfbm_low), "d"(rfbm_high) : "memory");
+        asm volatile ("xrstorq (%0)" :: "r"(region), "a"(rfbm_low), "d"(rfbm_high) : "memory");
     }
 
     void fxsave(uint8_t *region)
     {
-        asm volatile ("fxsaveq (%0)" : : "r"(region) : "memory");
+        asm volatile ("fxsaveq (%0)" :: "r"(region) : "memory");
     }
 
     void fxrstor(uint8_t *region)
     {
-        asm volatile ("fxrstorq (%0)" : : "r"(region) : "memory");
+        asm volatile ("fxrstorq (%0)" :: "r"(region) : "memory");
     }
 
     void invlpg(uint64_t addr)
     {
-        asm volatile ("invlpg (%0)" : : "r"(addr));
+        asm volatile ("invlpg (%0)" :: "r"(addr));
     }
 
     void enableSSE()

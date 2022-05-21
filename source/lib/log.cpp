@@ -4,6 +4,7 @@
 #include <drivers/term/term.hpp>
 #include <lib/lock.hpp>
 #include <lib/log.hpp>
+#include <lai/host.h>
 #include <cstdarg>
 
 namespace log
@@ -82,3 +83,16 @@ namespace log
         return ret;
     }
 } // namespace log
+
+void laihost_log(int level, const char *msg)
+{
+    switch (level)
+    {
+        case LAI_DEBUG_LOG:
+            log::info("%s", msg);
+            break;
+        case LAI_WARN_LOG:
+            log::warn("%s", msg);
+            break;
+    }
+}

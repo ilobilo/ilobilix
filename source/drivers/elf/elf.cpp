@@ -1,9 +1,9 @@
 // Copyright (C) 2022  ilobilo
 
-#include <lib/string.hpp>
-#include <lib/symbols.hpp>
+#include <drivers/syms/syms.hpp>
 #include <mm/pmm/pmm.hpp>
 #include <mm/vmm/vmm.hpp>
+#include <lib/string.hpp>
 #include <lib/vector.hpp>
 #include <lib/errno.hpp>
 #include <lib/misc.hpp>
@@ -98,7 +98,7 @@ namespace elf
                 }
             }
 
-            #if defined(__aarch64__) || defined(_M_ARM64)
+            #if defined(__aarch64__)
             auto aarch64_imm_adr = [](uint32_t val) -> uint32_t
             {
                 uint32_t low  = (val & 0x03) << 29;
@@ -133,7 +133,7 @@ namespace elf
 
                         if (sym->st_shndx == SHN_UNDEF)
                         {
-                            auto addr = symbols::lookup(name);
+                            auto addr = syms::lookup(name);
                             if (addr == 0)
                             {
                                 log::error("ELF: Could not find kernel symbol \"%s\"", name);
@@ -145,7 +145,7 @@ namespace elf
 
                         switch (ELF64_R_TYPE(entry->r_info))
                         {
-                            #if defined(__x86_64__) || defined(_M_X64)
+                            #if defined(__x86_64__)
                             case R_X86_64_NONE:
                                 break;
                             case R_X86_64_64:
@@ -161,7 +161,7 @@ namespace elf
                             case R_X86_64_PLT32:
                                 *static_cast<uint32_t*>(loc) = val - reinterpret_cast<uintptr_t>(loc);
                                 break;
-                            #elif defined(__aarch64__) || defined(_M_ARM64)
+                            #elif defined(__aarch64__)
                             case 275:
                                 *static_cast<uint32_t*>(loc) = *static_cast<uint32_t*>(loc) | aarch64_imm_adr(((val) >> 12) - (reinterpret_cast<uintptr_t>(loc) >> 12));
                                 break;
@@ -188,39 +188,34 @@ namespace elf
                 }
             }
 
-            cdi_driver *driver = nullptr;
+            auto strtable = reinterpret_cast<char*>(loadaddr + sections[header->e_shstrndx].sh_offset);
+            bool found = false;
 
             for (size_t i = 0; i < header->e_shnum; i++)
             {
                 auto section = &sections[i];
-                if (section->sh_type == SHT_SYMTAB)
+                if (section->sh_size != 0 && (section->sh_size % sizeof(void*)) == 0 && !strcmp(DRIVER_SECTION, strtable + section->sh_name))
                 {
-                    auto symtable = reinterpret_cast<Elf64_Sym*>(section->sh_addr);
-                    auto strtable = reinterpret_cast<char*>(sections[section->sh_link].sh_addr);
-
-                    for (size_t s = 0; s < (section->sh_size / section->sh_entsize); s++)
+                    found = true;
+                    uint64_t offset = section->sh_addr;
+                    for (size_t d = 0; d < (section->sh_size / sizeof(void*)); d++)
                     {
-                        auto sym = &symtable[s];
-                        auto tgtsect = &sections[sym->st_shndx];
-                        auto name = reinterpret_cast<char*>(strtable + sym->st_name);
-
-                        if (!strcmp("__driver_metadata__", name))
-                        {
-                            driver = reinterpret_cast<cdi_driver*>(*reinterpret_cast<uintptr_t*>(tgtsect->sh_addr + sym->st_value));
-                            break;
-                        }
+                        auto driver = reinterpret_cast<cdi_driver*>(*reinterpret_cast<uintptr_t*>(offset));
+                        log::info("Found driver: \"%s\", Type: %d", driver->name, driver->type);
+                        drivers.push_back(driver);
+                        offset += sizeof(void*);
                     }
+                    break;
                 }
             }
 
-            if (driver == nullptr)
+            if (found == false)
             {
-                log::error("ELF: Could not find symbol \"__driver_metadata__\" in module!");
+                log::error("ELF: Could not find any drivers in module!");
                 unmap(loadaddr, size);
                 return false;
             }
 
-            drivers.push_back(driver);
             return true;
         }
     } // namespace module

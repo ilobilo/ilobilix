@@ -4,8 +4,6 @@
 
 #include <lib/misc.hpp>
 #include <lib/lock.hpp>
-#include <cstdint>
-#include <cstddef>
 
 namespace heap
 {

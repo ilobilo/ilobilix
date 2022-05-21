@@ -2,7 +2,7 @@
 
 #pragma once
 
-#if defined(__aarch64__) || defined(_M_ARM64)
+#if defined(__aarch64__)
 
 namespace arch::arm64::uart
 {
