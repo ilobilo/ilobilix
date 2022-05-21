@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/timers/lapic/lapic.hpp>
 #include <arch/x86_64/timers/hpet/hpet.hpp>
@@ -11,6 +11,7 @@
 #include <arch/x86_64/idt/idt.hpp>
 #include <arch/x86_64/pic/pic.hpp>
 #include <arch/x86_64/vmm/vmm.hpp>
+#include <smp/smp.hpp>
 #include <lib/log.hpp>
 
 namespace arch::x86_64
@@ -28,6 +29,9 @@ namespace arch::x86_64
 
         log::info("Initialising APIC...");
         apic::init();
+
+        log::info("Initialising SMP...");
+        smp::init();
 
         log::info("Initialising PIT...");
         timers::pit::init();

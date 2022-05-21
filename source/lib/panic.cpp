@@ -2,6 +2,7 @@
 
 #include <drivers/term/term.hpp>
 #include <lib/log.hpp>
+#include <lai/host.h>
 #include <cstddef>
 #include <utility>
 
@@ -9,7 +10,7 @@
 {
     while (true)
     {
-        #if defined(__x86_64__) || defined(_M_X64)
+        #if defined(__x86_64__)
         asm volatile ("cli; hlt");
         #endif
     }
@@ -43,4 +44,15 @@
     printf("\n[\033[31mPANIC\033[0m] System halted!\n");
 
     halt();
+}
+
+[[gnu::noreturn]] void laihost_panic(const char *msg)
+{
+    log::error("%s", msg);
+    while (true)
+    {
+        #if defined(__x86_64__)
+        asm volatile ("cli; hlt");
+        #endif
+    }
 }

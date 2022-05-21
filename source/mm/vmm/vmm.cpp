@@ -3,6 +3,7 @@
 #include <mm/vmm/vmm.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
+#include <lai/host.h>
 
 namespace mm::vmm
 {
@@ -32,7 +33,7 @@ namespace mm::vmm
                 {
                     if (t < 0x100000000) continue;
                     pagemap->mapMem(t, t, flags::Present | flags::Write);
-                    pagemap->mapMem(t + hhdm_offset, t, flags::Present | flags::Write);
+                    pagemap->mapMem(tohh(t), t, flags::Present | flags::Write);
                 }
             }
         }
@@ -55,3 +56,20 @@ namespace mm::vmm
         kernel_pagemap->switchTo();
     }
 } // namespace mm::vmm
+
+void *laihost_map(size_t address, size_t count)
+{
+    for (size_t i = 0; i < count; i += 0x1000)
+    {
+        mm::vmm::kernel_pagemap->mapMem(address + hhdm_offset, address);
+    }
+    return reinterpret_cast<void*>(address + hhdm_offset);
+}
+
+void laihost_unmap(void *address, size_t count)
+{
+    for (size_t i = 0; i < count; i += 0x1000)
+    {
+        mm::vmm::kernel_pagemap->unmapMem(reinterpret_cast<uint64_t>(address) + i);
+    }
+}

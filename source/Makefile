@@ -2,21 +2,20 @@ SOURCEDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOTDIR := $(shell dirname $(SOURCEDIR))
 
 EXTLIBDIR := $(ROOTDIR)/extlibs
-LIMINEDIR = $(EXTLIBDIR)/limine
-ILARDIR = $(EXTLIBDIR)/ilar
+LIMINEDIR ?= $(EXTLIBDIR)/limine
 
-BACKGROUND = $(ROOTDIR)/misc/bg.bmp
-TERMFONT = $(ROOTDIR)/misc/font.bin
-SFNFONT = $(ROOTDIR)/misc/font.sfn
+BACKGROUND ?= $(ROOTDIR)/misc/bg.bmp
+TERMFONT ?= $(ROOTDIR)/misc/font.bin
+SFNFONT ?= $(ROOTDIR)/misc/font.sfn
 
-INITRD := $(SOURCEDIR)/initrd.img.gz
-KERNEL := $(SOURCEDIR)/kernel.elf
+KERNEL ?= $(SOURCEDIR)/kernel.elf
+ISO_ROOT ?= $(ROOTDIR)/iso_root
 
-ISO = $(ROOTDIR)/image.iso
-DISK0 = $(ROOTDIR)/disk0.img
-DISK1 = $(ROOTDIR)/disk1.img
+ISO ?= $(ROOTDIR)/image.iso
+DISK0 ?= $(ROOTDIR)/disk0.img
+DISK1 ?= $(ROOTDIR)/disk1.img
 
-LOGFILE = $(ROOTDIR)/log.txt
+LOGFILE ?= $(ROOTDIR)/log.txt
 
 VERSION = 0
 NET_DEBUG = 1
@@ -32,19 +31,17 @@ CC = clang
 CPP = clang++
 LD = ld.lld
 
-CXXFILT = llvm-cxxfilt
+CXXFILT ?= llvm-cxxfilt
 
-LIMINE = $(LIMINEDIR)/limine-deploy
-ILAR = $(ILARDIR)/bin/ilar
-TAR = tar
-XORRISO = xorriso
+LIMINE ?= $(LIMINEDIR)/limine-deploy
+XORRISO ?= xorriso
 
 ifeq ($(ARCH), arm64)
 LDSCRIPT = $(SOURCEDIR)/linker_arm64.ld
-QEMU = qemu-system-aarch64
+QEMU ?= qemu-system-aarch64
 else ifeq ($(ARCH), x86_64)
 LDSCRIPT = $(SOURCEDIR)/linker_x86_64.ld
-QEMU = qemu-system-x86_64
+QEMU ?= qemu-system-x86_64
 endif
 
 QEMUFLAGS = -smp 4 -m 512M -serial stdio -boot d -cdrom $(ISO)
@@ -94,11 +91,11 @@ ASFLAGS =
 
 INCLUDES :=                                       \
 	-I$(SOURCEDIR)/                               \
-	-I$(SOURCEDIR)/wrappers/                      \
+	-I$(SOURCEDIR)/cdi/                           \
+	-I$(SOURCEDIR)/libc/                          \
 	-I$(EXTLIBDIR)/limine/                        \
 	-I$(EXTLIBDIR)/functional/                    \
 	-I$(EXTLIBDIR)/printf/src/                    \
-	-I$(EXTLIBDIR)/cdi/include/                   \
 	-I$(EXTLIBDIR)/lai/include/                   \
 	-I$(EXTLIBDIR)/cwalk/include/                 \
 	-I$(EXTLIBDIR)/scalable-font2/                \
@@ -162,25 +159,25 @@ override INTERNALASFLAGS := \
 	-masm=intel
 endif
 
-override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c' -not -path "$(SOURCEDIR)/initrd/*") \
+override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c') \
 	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c' 2> /dev/null) \
 	$(shell find $(EXTLIBDIR)/lai/ -type f -name '*.c' 2> /dev/null)
 #	$(shell find $(EXTLIBDIR)/cwalk/src/ -type f -name '*.c' 2> /dev/null)
 
-override CPPFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.cpp' -not -path "$(SOURCEDIR)/initrd/*")
-override ASFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.S' -not -path "$(SOURCEDIR)/initrd/*")
+override CPPFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.cpp')
+override ASFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.S')
 
 override OBJ = $(CFILES:.c=.o)
 override OBJ += $(CPPFILES:.cpp=.o)
 override OBJ += $(ASFILES:.S=_S.o)
 
 .PHONY: all
-all: $(KERNEL) initrd
+all: $(KERNEL)
 	$(MAKE) iso
 	$(MAKE) clean run
 
 .PHONY: bios
-bios: $(KERNEL) initrd
+bios: $(KERNEL)
 	$(MAKE) iso
 	$(MAKE) clean run-bios
 
@@ -209,29 +206,19 @@ endif
 	@printf "AS\t%s\n" $(<:$(ROOTDIR)/%=%)
 	$(CC) $(ASFLAGS) $(INTERNALASFLAGS) -c $< -o $@
 
-.PHONY: initrd
-initrd:
-ifndef USEILAR
-	@printf "TAR\t%s\n" $(INITRD:$(ROOTDIR)/%=%)
-	$(TAR) czf $(INITRD) -C $(SOURCEDIR)/initrd/ ./ --format=ustar
-else
-	@printf "ILAR\t%s\n" $(INITRD:$(ROOTDIR)/%=%)
-	$(ILAR) create $(INITRD) $(SOURCEDIR)/initrd/*
-endif
-
 iso:
-	cp $(KERNEL) $(BACKGROUND) $(TERMFONT) $(SFNFONT) $(INITRD) $(ROOTDIR)/limine.cfg $(LIMINEDIR)/limine.sys \
-		$(LIMINEDIR)/limine-cd.bin $(LIMINEDIR)/limine-cd-efi.bin $(ROOTDIR)/iso_root/
+	cp $(KERNEL) $(BACKGROUND) $(TERMFONT) $(SFNFONT) $(ROOTDIR)/limine.cfg $(LIMINEDIR)/limine.sys \
+		$(LIMINEDIR)/limine-cd.bin $(LIMINEDIR)/limine-cd-efi.bin $(ISO_ROOT)
 
 	@printf "XORRISO\t%s\n" $(ISO:$(ROOTDIR)/%=%)
-	$(XORRISO) $(XORRISOFLAGS) $(ROOTDIR)/iso_root -o $(ISO) 2> /dev/null || echo "\e[31mFailed to build iso!\e[0m"
+	$(XORRISO) $(XORRISOFLAGS) $(ISO_ROOT) -o $(ISO) 2> /dev/null || echo "\e[31mFailed to build iso!\e[0m"
 
 	@printf "LIMINE\t%s\n" $(ISO:$(ROOTDIR)/%=%)
 	$(LIMINE) $(ISO) 2> /dev/null || echo "\e[31mFailed to install Limine!\e[0m"
 
 clean:
 ifndef NOCLEAN
-	rm -rf $(KERNEL) $(OBJ) $(INITRD) $(ROOTDIR)/iso_root/*
+	rm -rf $(KERNEL) $(OBJ) $(ISO_ROOT)
 endif
 
 run:

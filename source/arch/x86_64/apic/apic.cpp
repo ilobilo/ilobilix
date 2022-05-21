@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/apic/apic.hpp>
 #include <arch/x86_64/misc/io.hpp>
@@ -46,13 +46,13 @@ namespace arch::x86_64::apic
         uint32_t read(uint32_t reg)
         {
             if (x2apic) return cpu::rdmsr(reg2x2apic(reg));
-            return mminl(reinterpret_cast<void*>(acpi::lapic_addr + reg));
+            return mmin<uint32_t>(reinterpret_cast<void*>(acpi::lapic_addr + reg));
         }
 
         void write(uint32_t reg, uint32_t value)
         {
             if (x2apic) cpu::wrmsr(reg2x2apic(reg), value);
-            else mmoutl(reinterpret_cast<void*>(acpi::lapic_addr + reg), value);
+            else mmout<uint32_t>(reinterpret_cast<void*>(acpi::lapic_addr + reg), value);
         }
 
         void init(uint8_t processor_id)
@@ -103,14 +103,14 @@ namespace arch::x86_64::apic
 
         uint32_t read(uintptr_t address, size_t reg)
         {
-            mmoutl(reinterpret_cast<void*>(address), reg & 0xFF);
-            return mminl(reinterpret_cast<void*>(address + 16));
+            mmout<uint32_t>(reinterpret_cast<void*>(address), reg & 0xFF);
+            return mmin<uint32_t>(reinterpret_cast<void*>(address + 16));
         }
 
         void write(uintptr_t address, size_t reg, uint32_t data)
         {
-            mmoutl(reinterpret_cast<void*>(address), reg & 0xFF);
-            mmoutl(reinterpret_cast<void*>(address + 16), data);
+            mmout<uint32_t>(reinterpret_cast<void*>(address), reg & 0xFF);
+            mmout<uint32_t>(reinterpret_cast<void*>(address + 16), data);
         }
 
         void redirect_gsi(uint32_t gsi, uint8_t vec, uint16_t flags)

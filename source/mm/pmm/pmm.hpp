@@ -1,5 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
+#pragma once
+
 #include <cstddef>
 #include <cstdint>
 

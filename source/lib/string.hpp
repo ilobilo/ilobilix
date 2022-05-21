@@ -3,55 +3,13 @@
 #pragma once
 
 #include <lib/alloc.hpp>
+#include <string.h>
 #include <utility>
-#include <cstddef>
 
-unsigned constexpr hash(const char *input)
+uint64_t constexpr hash(const char *input)
 {
-    return *input ? static_cast<unsigned int>(*input) + 33 * hash(input + 1) : 5381;
+    return *input ? static_cast<uint64_t>(*input) + 33 * hash(input + 1) : 5381;
 }
-
-size_t strlen(const char *str);
-
-char *strcpy(char *destination, const char *source);
-char *strncpy(char *destination, const char *source, size_t n);
-
-int strcmp(const char *a, const char *b);
-int strncmp(const char *a, const char *b, size_t n);
-
-void strrev(unsigned char *str);
-
-long strtol(const char *nPtr, char **endPtr, int base);
-long long int strtoll(const char *nPtr, char **endPtr, int base);
-unsigned long strtoul(const char *nPtr, char **endPtr, int base);
-unsigned long long int strtoull(const char *nPtr, char **endPtr, int base);
-
-char *strstr(const char *str, const char *substr);
-
-int isspace(char c);
-
-int isdigit(int c);
-int isalpha(int c);
-int islower(int c);
-
-char tolower(char c);
-char toupper(char c);
-
-int itoa(int num, unsigned char *str, int len, int base);
-int atoi(const char *str);
-
-bool isempty(char *str);
-static inline bool isempty(const char *str)
-{
-    return isempty(const_cast<char*>(str));
-}
-
-int tonum(char c);
-
-extern "C" void *memcpy(void *dest, const void *src, size_t len);
-extern "C" int memcmp(const void *ptr1, const void *ptr2, size_t len);
-extern "C" void *memset(void *dest, int ch, size_t n);
-extern "C" void *memmove(void *dest, const void *src, size_t len);
 
 // Following code is modified version of: https://github.com/managarm/frigg/blob/master/include/frg/string.hpp
 
@@ -137,19 +95,6 @@ class basic_string_view
         return value;
     }
 };
-
-using string_view = basic_string_view<char>;
-using wstring_view = basic_string_view<wchar_t>;
-using u16string_view = basic_string_view<char16_t>;
-using u32string_view = basic_string_view<char32_t>;
-
-namespace std
-{
-    using string_view = ::string_view;
-    using wstring_view = ::wstring_view;
-    using u16string_view = ::u16string_view;
-    using u32string_view = ::u32string_view;
-} // namespace std
 
 template<typename Char>
 class basic_string
@@ -405,6 +350,11 @@ class basic_string
     }
 };
 
+using string_view = basic_string_view<char>;
+using wstring_view = basic_string_view<wchar_t>;
+using u16string_view = basic_string_view<char16_t>;
+using u32string_view = basic_string_view<char32_t>;
+
 using string = basic_string<char>;
 using wstring = basic_string<wchar_t>;
 using u16string = basic_string<char16_t>;
@@ -416,4 +366,9 @@ namespace std
     using wstring = ::wstring;
     using u16string = ::u16string;
     using u32string = ::u32string;
+
+    using string_view = ::string_view;
+    using wstring_view = ::wstring_view;
+    using u16string_view = ::u16string_view;
+    using u32string_view = ::u32string_view;
 } // namespace std

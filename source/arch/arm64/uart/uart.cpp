@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__aarch64__) || defined(_M_ARM64)
+#if defined(__aarch64__)
 
 #include <arch/arm64/uart/uart.hpp>
 #include <drivers/term/term.hpp>

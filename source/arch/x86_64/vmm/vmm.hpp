@@ -2,7 +2,7 @@
 
 #pragma once
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <lib/lock.hpp>
 #include <cstdint>

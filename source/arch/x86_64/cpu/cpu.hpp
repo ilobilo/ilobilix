@@ -2,7 +2,7 @@
 
 #pragma once
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <cstdint>
 
@@ -63,7 +63,7 @@ namespace arch::x86_64::cpu
     #define read_gs(offset) \
     ({ \
         uint64_t value; \
-        asm volatile("movq %%gs:[" #offset "], %0" : "=r"(value) : : "memory"); \
+        asm volatile("movq %%gs:[" #offset "], %0" : "=r"(value) :: "memory"); \
         value; \
     })
 

@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/misc/io.hpp>
 #include <drivers/acpi/acpi.hpp>

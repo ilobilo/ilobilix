@@ -4,6 +4,7 @@
 #include <lib/string.hpp>
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
+#include <lai/host.h>
 
 namespace heap
 {
@@ -230,6 +231,21 @@ void operator delete[](void *ptr)
 }
 
 void operator delete[](void *ptr, std::align_val_t alignment)
+{
+    free(ptr);
+}
+
+void *laihost_malloc(size_t size)
+{
+    return malloc(size);
+}
+
+void *laihost_realloc(void *ptr, size_t size, size_t oldsize)
+{
+    return realloc(ptr, size);
+}
+
+void laihost_free(void *ptr, size_t oldsize)
 {
     free(ptr);
 }

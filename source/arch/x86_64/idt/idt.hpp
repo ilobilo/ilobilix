@@ -2,7 +2,7 @@
 
 #pragma once
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <lib/function.hpp>
@@ -55,7 +55,7 @@ namespace arch::x86_64::idt
         void load()
         {
             asm volatile ("cli");
-            asm volatile ("lidt %0" : : "memory"(*this));
+            asm volatile ("lidt %0" :: "memory"(*this));
             asm volatile ("sti");
         }
     };

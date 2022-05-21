@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__) || defined(_M_X64)
+#if defined(__x86_64__)
 
 #include <arch/x86_64/apic/apic.hpp>
 #include <arch/x86_64/gdt/gdt.hpp>
@@ -10,6 +10,7 @@
 #include <lib/panic.hpp>
 #include <lib/lock.hpp>
 #include <lib/log.hpp>
+#include <smp/smp.hpp>
 #include <main.hpp>
 
 namespace arch::x86_64::idt
@@ -101,8 +102,7 @@ namespace arch::x86_64::idt
 
         log::println();
         log::error("System exception!");
-        // log::error("Exception: %s on CPU %zu", exception_messages[regs->int_no], (smp::initialised ? this_cpu->id : 0));
-        log::error("Exception: %s", exception_messages[regs->int_no]);
+        log::error("Exception: %s on CPU %zu", exception_messages[regs->int_no], (smp::initialised ? this_cpu->id : 0));
         log::error("Address: 0x%lX", regs->rip);
         log::error("Error code: 0x%lX, 0b%b", regs->error_code, regs->error_code);
 
@@ -117,8 +117,7 @@ namespace arch::x86_64::idt
         }
 
         printf("\n\n[\033[31mPANIC\033[0m] System Exception!\n");
-        // printf("[\033[31mPANIC\033[0m] Exception: %s on CPU %zu\n", exception_messages[regs->int_no], (smp::initialised ? this_cpu->id : 0));
-        printf("[\033[31mPANIC\033[0m] Exception: %s\n", exception_messages[regs->int_no]);
+        printf("[\033[31mPANIC\033[0m] Exception: %s on CPU %zu\n", exception_messages[regs->int_no], (smp::initialised ? this_cpu->id : 0));
         printf("[\033[31mPANIC\033[0m] Address: 0x%lX\n", regs->rip);
 
         switch (regs->int_no)

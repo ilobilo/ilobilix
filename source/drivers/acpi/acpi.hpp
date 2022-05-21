@@ -174,7 +174,8 @@ namespace acpi
         uint32_t Flags;
         GenericAddressStructure ResetReg;
         uint8_t ResetValue;
-        uint8_t Reserved3[3];
+        uint16_t ArmBootArchitectureFlags;
+        uint8_t MinorVersion;
         uint64_t X_FirmwareControl;
         uint64_t X_Dsdt;
         GenericAddressStructure X_PM1aEventBlock;
