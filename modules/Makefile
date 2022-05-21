@@ -17,11 +17,11 @@ SUBDIRS := $(patsubst %/., %, $(realpath $(wildcard $(MODSRCDIR)/*/.)))
 
 .PHONY: all
 all: $(SUBDIRS)
+	mv $(shell find $(MODSRCDIR) -type f -name '*.ko') $(INITRDDIR)/lib/modules
 
 .PHONY: $(SUBDIRS)
 $(SUBDIRS):
 	$(MAKE) --no-print-directory -C $@
-	mv $(shell find $(MODSRCDIR) -type f -name '*.ko') $(INITRDDIR)/lib/modules
 
 clean:
 ifndef NOCLEAN

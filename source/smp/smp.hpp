@@ -34,7 +34,7 @@ namespace smp
     #if defined(__x86_64__)
     #define this_cpu ({ &::smp::cpus[read_gs(0)]; })
     #elif defined(__aarch64__)
-    #define this_cpu ({ &::smp::cpus[*reinterpret_cast<uint64_t*>(arch::arm64::cpu::get_base())]; })
+    #define this_cpu ({ &::smp::cpus[*reinterpret_cast<uintptr_t*>(arch::arm64::cpu::get_base())]; })
     #endif
 
     void init();
