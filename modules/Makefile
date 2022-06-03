@@ -1,5 +1,5 @@
 MODULEDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-INITRDDIR := $(MODULEDIR)/../initrd
+INITRDDIR := $(realpath $(MODULEDIR)/../initrd)
 
 ARCH ?= x86_64
 
