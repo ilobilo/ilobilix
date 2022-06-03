@@ -5,12 +5,6 @@ EXTLIBDIR := $(realpath $(ROOTDIR)/extlibs)
 
 MODULE := $(THISDIR)/$(notdir $(THISDIR)).ko
 
-ARCH ?= x86_64
-
-ifneq ($(ARCH), $(filter $(ARCH), arm64 x86_64))
-$(error Please set ARCH to either arm64 or x86_64)
-endif
-
 CC = clang
 CPP = clang++
 LD = ld.lld
@@ -20,32 +14,16 @@ CPPFLAGS = $(CFLAGS)
 LDFLAGS = 
 ASFLAGS = 
 
-INCLUDES :=                                \
-	-I$(SOURCEIR)/cdi/                     \
-	-I$(SOURCEIR)/libc/                    \
-	-I$(EXTLIBDIR)/printf/src/             \
-	-I$(EXTLIBDIR)/cxxshim/stage2/include/ \
+INCLUDES :=            \
+	-I$(SOURCEIR)/cdi  \
+	-I$(SOURCEIR)/libc
 
 override INTERNALLDFLAGS = -nostdlib -static -relocatable
 
-ifeq ($(ARCH), arm64)
 override INTERNALFLAGS :=    \
 	-target aarch64-none-elf \
 	-fno-pic                 \
 	$(INCLUDES)
-else ifeq ($(ARCH), x86_64)
-override INTERNALFLAGS :=      \
-	-target x86_64-pc-none-elf \
-	-fno-pic                   \
-	-mabi=sysv                 \
-	-mno-80387                 \
-	-mno-mmx                   \
-	-mno-3dnow                 \
-	-mno-sse                   \
-	-mno-sse2                  \
-	-mcmodel=large	           \
-	$(INCLUDES)
-endif
 
 override INTERNALCFLAGS :=  \
 	$(INTERNALFLAGS)        \
@@ -67,16 +45,9 @@ override INTERNALCPPFLAGS := \
 	-mno-red-zone            \
 	$(INCLUDES)
 
-ifeq ($(ARCH), arm64)
 override INTERNALASFLAGS := \
 	$(INTERNALFLAGS)        \
 	-mgeneral-regs-only
-else ifeq ($(ARCH), x86_64)
-override INTERNALASFLAGS := \
-	$(INTERNALFLAGS)        \
-	-mgeneral-regs-only     \
-	-masm=intel
-endif
 
 
 override CFILES := $(shell find $(THISDIR)/ -type f -name '*.c')
