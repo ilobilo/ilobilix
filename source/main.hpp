@@ -1,12 +1,13 @@
 // Copyright (C) 2022  ilobilo
 
-#include <limine.h>
-
 #pragma once
+
+#include <limine.h>
 
 static constexpr uint64_t STACK_SIZE = 0x4000;
 extern const char *cmdline;
 extern uint64_t hhdm_offset;
+extern bool bios;
 
 #if LVL5_PAGING
 extern volatile limine_5_level_paging_request _5_level_paging_request;

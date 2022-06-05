@@ -103,6 +103,21 @@ namespace term
             }
         };
 
+        if (frm::frm_count == 0)
+        {
+            log::error("Couldn't get a framebuffer!");
+            assert(bios == true, "Booted in UEFI mode, Can't use textmode!");
+
+            terminal_t *term = new terminal_t;
+
+            term->init(callback, true);
+            term->textmode();
+
+            terms.push_back(term);
+            main_term = term;
+            return;
+        }
+
         auto font_mod = find_module("font");
         if (font_mod == nullptr) panic("Terminal font not found!");
 
@@ -137,7 +152,6 @@ namespace term
         for (size_t i = 0; i < frm::frm_count; i++)
         {
             terminal_t *term = new terminal_t;
-            if (term == nullptr) continue;
 
             framebuffer_t frm
             {
@@ -147,7 +161,7 @@ namespace term
                 frm::frms[i]->pitch
             };
 
-            term->init(callback, false);
+            term->init(callback, bios);
             term->vbe(frm, font, style, back);
 
             terms.push_back(term);

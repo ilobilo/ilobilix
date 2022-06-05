@@ -8,12 +8,7 @@
 
 [[noreturn]] void halt()
 {
-    while (true)
-    {
-        #if defined(__x86_64__)
-        asm volatile ("cli; hlt");
-        #endif
-    }
+    while (true) asm volatile ("cli; hlt");
 }
 
 [[noreturn]] void panic(const char *message, const char *file, const char *func, int line)
@@ -49,10 +44,5 @@
 [[gnu::noreturn]] void laihost_panic(const char *msg)
 {
     log::error("%s", msg);
-    while (true)
-    {
-        #if defined(__x86_64__)
-        asm volatile ("cli; hlt");
-        #endif
-    }
+    while (true) asm volatile ("cli; hlt");
 }
