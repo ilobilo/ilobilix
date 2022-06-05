@@ -1,5 +1,6 @@
 SOURCEDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOTDIR := $(shell dirname $(SOURCEDIR))
+MODULEDIR := $(realpath $(ROOTDIR)/modules)
 
 EXTLIBDIR := $(ROOTDIR)/extlibs
 LIMINEDIR ?= $(EXTLIBDIR)/limine
@@ -21,12 +22,6 @@ VERSION = 0
 NET_DEBUG = 1
 LVL5_PAGING = 0
 
-ARCH ?= x86_64
-
-ifneq ($(ARCH), $(filter $(ARCH), arm64 x86_64))
-$(error Please set ARCH to either arm64 or x86_64)
-endif
-
 CC = clang
 CPP = clang++
 LD = ld.lld
@@ -36,19 +31,11 @@ CXXFILT ?= llvm-cxxfilt
 LIMINE ?= $(LIMINEDIR)/limine-deploy
 XORRISO ?= xorriso
 
-ifeq ($(ARCH), arm64)
-LDSCRIPT = $(SOURCEDIR)/linker_arm64.ld
-QEMU ?= qemu-system-aarch64
-else ifeq ($(ARCH), x86_64)
-LDSCRIPT = $(SOURCEDIR)/linker_x86_64.ld
+LDSCRIPT = $(SOURCEDIR)/linker.ld
 QEMU ?= qemu-system-x86_64
-endif
 
 QEMUFLAGS = -smp 4 -m 512M -serial stdio -boot d -cdrom $(ISO)
 
-ifeq ($(ARCH), arm64)
-QEMUFLAGS += -M virt -cpu cortex-a57
-else ifeq ($(ARCH), x86_64)
 QEMUFLAGS += -cpu max -M q35 -rtc base=localtime    \
 	-audiodev id=audio,driver=alsa                  \
 	-machine pcspk-audiodev=audio                   \
@@ -59,7 +46,6 @@ QEMUFLAGS += -cpu max -M q35 -rtc base=localtime    \
 	-net nic,model=rtl8139                          \
 	-net user,hostfwd=tcp::1234-:1234
 #	-net nic -net tap,ifname=tap0,script=no
-endif
 
 ifdef VNC
 QEMUFLAGS += -vnc 127.0.0.1:1
@@ -69,7 +55,7 @@ ifdef DEBUG
 QEMUFLAGS += -no-reboot -no-shutdown              \
 	-d int -D $(LOGFILE) -M smm=off               \
 	-monitor telnet:127.0.0.1:12345,server,nowait
-else ifeq ($(ARCH), x86_64)
+else
 ifndef NOKVM
 QEMUFLAGS += -enable-kvm
 endif
@@ -91,7 +77,8 @@ ASFLAGS =
 
 INCLUDES :=                                       \
 	-I$(SOURCEDIR)/                               \
-	-I$(SOURCEDIR)/cdi/                           \
+	-I$(MODULEDIR)/cdi/                           \
+	-I$(MODULEDIR)/libc/                          \
 	-I$(SOURCEDIR)/libc/                          \
 	-I$(EXTLIBDIR)/limine/                        \
 	-I$(EXTLIBDIR)/functional/                    \
@@ -109,12 +96,6 @@ override INTERNALLDFLAGS =   \
 	-zmax-page-size=0x1000   \
 	-static
 
-ifeq ($(ARCH), arm64)
-override INTERNALFLAGS :=    \
-	-target aarch64-none-elf \
-	-fno-pic                 \
-	$(INCLUDES)
-else ifeq ($(ARCH), x86_64)
 override INTERNALFLAGS :=      \
 	-target x86_64-pc-none-elf \
 	-fno-pic                   \
@@ -126,7 +107,6 @@ override INTERNALFLAGS :=      \
 	-mno-sse2                  \
 	-mcmodel=kernel	           \
 	$(INCLUDES)
-endif
 
 override INTERNALCFLAGS :=  \
 	$(INTERNALFLAGS)        \
@@ -148,16 +128,10 @@ override INTERNALCPPFLAGS := \
 	-mno-red-zone            \
 	$(INCLUDES)
 
-ifeq ($(ARCH), arm64)
-override INTERNALASFLAGS := \
-	$(INTERNALFLAGS)        \
-	-mgeneral-regs-only
-else ifeq ($(ARCH), x86_64)
 override INTERNALASFLAGS := \
 	$(INTERNALFLAGS)        \
 	-mgeneral-regs-only     \
 	-masm=intel
-endif
 
 override CFILES := $(shell find $(SOURCEDIR)/ -type f -name '*.c') \
 	$(shell find $(EXTLIBDIR)/limine-terminal-port/source/ -type f -name '*.c' 2> /dev/null) \

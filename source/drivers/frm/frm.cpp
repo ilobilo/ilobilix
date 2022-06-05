@@ -16,6 +16,7 @@ namespace frm
 
         auto response = framebuffer_request.response;
         frm_count = response->framebuffer_count;
+
         for (size_t i = 0; i < frm_count; i++)
         {
             frms.push_back(response->framebuffers[i]);

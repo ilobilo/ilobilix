@@ -45,6 +45,5 @@ clean:
 	@$(MAKE) -sC $(SOURCEDIR) clean
 	@rm -f $(ROOTDIR)/log.txt
 
-distclean: clean
+distclean: clean modules-clean
 	@$(MAKE) -sC $(ROOTDIR)/extlibs clean
-	@$(MAKE) -sC $(ROOTDIR)/modules clean

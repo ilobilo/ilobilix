@@ -1,10 +1,10 @@
 // Copyright (C) 2022  ilobilo
 
 #include <drivers/syms/syms.hpp>
+#include <drivers/elf/elf.hpp>
 #include <mm/pmm/pmm.hpp>
 #include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
-#include <lib/vector.hpp>
 #include <lib/errno.hpp>
 #include <lib/misc.hpp>
 #include <lib/lock.hpp>
@@ -12,13 +12,12 @@
 #include <lib/elf.h>
 #include <main.hpp>
 #include <cstddef>
-#include <cdi.h>
 
 namespace elf
 {
     namespace module
     {
-        vector<cdi_driver*> drivers;
+        vector<module_t*> modules;
         static uint64_t base_addr = 0;
         static lock_t lock;
 
@@ -44,11 +43,6 @@ namespace elf
             void *ptr = reinterpret_cast<void*>(mm::vmm::kernel_pagemap->virt2phys(loadaddr));
             mm::pmm::free(ptr, size / mm::pmm::block_size);
             mm::vmm::kernel_pagemap->unmapMemRange(loadaddr, size);
-        }
-
-        extern "C" void print(const char *str)
-        {
-            log::println("%s", str);
         }
 
         [[clang::no_sanitize("alignment")]] bool load(uint64_t address, uint64_t size)
@@ -98,20 +92,6 @@ namespace elf
                 }
             }
 
-            #if defined(__aarch64__)
-            auto aarch64_imm_adr = [](uint32_t val) -> uint32_t
-            {
-                uint32_t low  = (val & 0x03) << 29;
-                uint32_t high = ((val >> 2) & 0x07FFFF) << 5;
-                return low | high;
-            };
-
-            auto aarch64_imm_12 = [](uint32_t val) -> uint32_t
-            {
-                return (val & 0x0FFF) << 10;
-            };
-            #endif
-
             for (size_t i = 0; i < header->e_shnum; i++)
             {
                 auto section = &sections[i];
@@ -145,7 +125,6 @@ namespace elf
 
                         switch (ELF64_R_TYPE(entry->r_info))
                         {
-                            #if defined(__x86_64__)
                             case R_X86_64_NONE:
                                 break;
                             case R_X86_64_64:
@@ -161,24 +140,6 @@ namespace elf
                             case R_X86_64_PLT32:
                                 *static_cast<uint32_t*>(loc) = val - reinterpret_cast<uintptr_t>(loc);
                                 break;
-                            #elif defined(__aarch64__)
-                            case 275:
-                                *static_cast<uint32_t*>(loc) = *static_cast<uint32_t*>(loc) | aarch64_imm_adr(((val) >> 12) - (reinterpret_cast<uintptr_t>(loc) >> 12));
-                                break;
-                            case 286:
-                                *static_cast<uint32_t*>(loc) = *static_cast<uint32_t*>(loc) | aarch64_imm_12(((val) >> 3) & 0x01FF);
-                                break;
-                            case 282:
-                            case 283:
-                                *static_cast<uint32_t*>(loc) = *static_cast<uint32_t*>(loc) | (((val - reinterpret_cast<uintptr_t>(loc)) >> 2) & 0x03FFFFFF);
-                                break;
-                            case 257:
-                                *static_cast<uint64_t*>(loc) = val;
-                                break;
-                            case 258:
-                                *static_cast<uint32_t*>(loc) = val;
-                                break;
-                            #endif
                             default:
                                 log::error("ELF: Unsupported relocation %ld found!", ELF64_R_TYPE(entry->r_info));
                                 unmap(loadaddr, size);
@@ -189,33 +150,34 @@ namespace elf
             }
 
             auto strtable = reinterpret_cast<char*>(loadaddr + sections[header->e_shstrndx].sh_offset);
-            bool found = false;
+            bool drvs_found = false;
+
+            auto mod = new module_t
+            {
+                .addr = loadaddr,
+                .size = size
+            };
 
             for (size_t i = 0; i < header->e_shnum; i++)
             {
                 auto section = &sections[i];
                 if (section->sh_size != 0 && (section->sh_size % sizeof(void*)) == 0 && !strcmp(DRIVER_SECTION, strtable + section->sh_name))
                 {
-                    found = true;
+                    drvs_found = true;
                     uint64_t offset = section->sh_addr;
                     for (size_t d = 0; d < (section->sh_size / sizeof(void*)); d++)
                     {
                         auto driver = reinterpret_cast<cdi_driver*>(*reinterpret_cast<uintptr_t*>(offset));
                         log::info("Found driver: \"%s\", Type: %d", driver->name, driver->type);
-                        drivers.push_back(driver);
+                        mod->drivers.push_back(driver);
                         offset += sizeof(void*);
                     }
                     break;
                 }
             }
 
-            if (found == false)
-            {
-                log::error("ELF: Could not find any drivers in module!");
-                unmap(loadaddr, size);
-                return false;
-            }
-
+            if (drvs_found == false) log::warn("ELF: Could not find any drivers in module!");
+            modules.push_back(mod);
             return true;
         }
     } // namespace module

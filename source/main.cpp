@@ -1,22 +1,31 @@
 // Copyright (C) 2022  ilobilo
 
+#include <drivers/timers/lapic/lapic.hpp>
+#include <drivers/timers/hpet/hpet.hpp>
+#include <drivers/timers/pit/pit.hpp>
+#include <drivers/serial/serial.hpp>
 #include <drivers/syms/syms.hpp>
 #include <drivers/acpi/acpi.hpp>
-#include <drivers/uart/uart.hpp>
 #include <drivers/term/term.hpp>
 #include <drivers/frm/frm.hpp>
 #include <drivers/pci/pci.hpp>
+#include <cpu/apic/apic.hpp>
+#include <cpu/gdt/gdt.hpp>
+#include <cpu/idt/idt.hpp>
+#include <cpu/pic/pic.hpp>
+#include <cpu/smp/smp.hpp>
 #include <mm/pmm/pmm.hpp>
 #include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
 #include <lib/panic.hpp>
-#include <arch/arch.hpp>
 #include <lib/log.hpp>
 #include <main.hpp>
 #include <cstddef>
+#include <cdi.h>
 
 const char *cmdline = nullptr;
 uint64_t hhdm_offset = 0;
+bool bios = false;
 
 #if LVL5_PAGING
 volatile limine_5_level_paging_request _5_level_paging_request
@@ -26,6 +35,13 @@ volatile limine_5_level_paging_request _5_level_paging_request
     .response = nullptr
 };
 #endif
+
+volatile limine_efi_system_table_request efi_system_table_request
+{
+    .id = LIMINE_EFI_SYSTEM_TABLE_REQUEST,
+    .revision = 0,
+    .response = nullptr
+};
 
 volatile limine_framebuffer_request framebuffer_request
 {
@@ -123,6 +139,8 @@ void constructors_init()
 
 extern "C" void _start()
 {
+    if (efi_system_table_request.response != nullptr) bios = true;
+
     assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
     assert(memmap_request.response, "Could not get memmap response!");
@@ -137,7 +155,7 @@ extern "C" void _start()
     cmdline = kernel_file_request.response->kernel_file->cmdline;
     hhdm_offset = hhdm_request.response->offset;
 
-    uart::init();
+    serial::init();
 
     mm::pmm::init();
     mm::vmm::init();
@@ -148,15 +166,24 @@ extern "C" void _start()
     term::init();
 
     acpi::init();
-    arch::init();
     pci::init();
+
+    gdt::init();
+    idt::init();
+    pic::init();
+    apic::init();
+    smp::init();
+
+    timers::pit::init();
+    timers::hpet::init();
+    timers::lapic::init();
+
+    acpi::enable();
 
     constructors_init();
 
-    while (true)
-    {
-        #if defined(__x86_64__)
-        asm volatile ("hlt");
-        #endif
-    }
+    log::info("Initialising drivers...");
+    cdi_init();
+
+    while (true) asm volatile ("hlt");
 }

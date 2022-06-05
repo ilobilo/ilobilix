@@ -139,3 +139,6 @@ enum errno_t
     ERFKILL = 132,
     EHWPOISON = 133
 };
+
+void errno_set(errno_t err);
+errno_t errno_get();

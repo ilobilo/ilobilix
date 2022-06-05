@@ -1,6 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
 #include <drivers/acpi/acpi.hpp>
+#include <lai/helpers/sci.h>
 #include <lai/helpers/pm.h>
 #include <mm/vmm/vmm.hpp>
 #include <lib/string.hpp>
@@ -8,6 +9,7 @@
 #include <lib/alloc.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
+#include <lib/io.hpp>
 #include <lai/host.h>
 #include <lai/core.h>
 #include <main.hpp>
@@ -98,6 +100,18 @@ namespace acpi
     {
         lai_acpi_reset();
         // ps2::reboot();
+    }
+
+    void enable()
+    {
+        // TODO: Temporary
+        // lai_enable_acpi(apic::initialised ? 1  : 0);
+        // temp {
+            outb(acpi::fadthdr->SMI_CommandPort, acpi::fadthdr->AcpiEnable);
+            while ((inw(acpi::fadthdr->PM1aControlBlock) & 0x01) == 0);
+            lai_set_sci_event(ACPI_POWER_BUTTON | ACPI_SLEEP_BUTTON | ACPI_WAKE);
+            lai_get_sci_event();
+        // } temp
     }
 
     void init()

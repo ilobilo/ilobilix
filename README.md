@@ -121,11 +121,10 @@ Make sure you have following programs installed:
 * Wget
 * Tar
 * Qemu x86-64
-* Qemu aarch64 (For arm64)
 <!-- * libboost-iostreams-dev (To ILAR instead of TAR) -->
 
 If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
-```sudo apt install clang lld llvm xorriso wget tar qemu-system-x86 qemu-system-aarch64```
+```sudo apt install clang lld llvm xorriso wget tar qemu-system-x861``
 
 Follow these steps to build and run the os:
 1. Clone this repo with:\

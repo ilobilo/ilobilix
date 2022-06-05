@@ -1,17 +1,12 @@
 // Copyright (C) 2022  ilobilo
 
-#if defined(__x86_64__)
-#include <arch/x86_64/pci/pci.hpp>
-#elif defined(__aarch64__)
-#include <arch/arm64/pci/pci.hpp>
-#endif
 #include <drivers/acpi/acpi.hpp>
 #include <drivers/pci/pci.hpp>
 #include <lai/helpers/pci.h>
-#include <lib/vector.hpp>
 #include <lib/panic.hpp>
 #include <lib/mmio.hpp>
 #include <lib/log.hpp>
+#include <lib/io.hpp>
 #include <lai/host.h>
 
 namespace pci
@@ -41,11 +36,11 @@ namespace pci
         assert(width == 1 || width == 2 || width == 4, "Invalid width!");
         if (legacy)
         {
-            #if defined(__x86_64__)
-            return arch::x86_64::pci::read(seg, bus, dev, func, offset, width);
-            #elif defined(__aarch64__)
-            return arch::arm64::pci::read(seg, bus, dev, func, offset, width);
-            #endif
+            uint32_t address = (bus << 16) | (dev << 11) | (func << 8) | (offset & ~(3)) | 0x80000000;
+            outl(0xCF8, address);
+            if (width == 1) return inb(0xCFC + (offset & 3));
+            else if (width == 2) return inw(0xCFC + (offset & 3));
+            else if (width == 4) return inl(0xCFC + (offset & 3));
         }
         else
         {
@@ -61,11 +56,11 @@ namespace pci
         assert(width == 1 || width == 2 || width == 4, "Invalid width!");
         if (legacy)
         {
-            #if defined(__x86_64__)
-            arch::x86_64::pci::write(seg, bus, dev, func, offset, value, width);
-            #elif defined(__aarch64__)
-            arch::arm64::pci::write(seg, bus, dev, func, offset, value, width);
-            #endif
+            uint32_t address = (bus << 16) | (dev << 11) | (func << 8) | (offset & ~(3)) | 0x80000000;
+            outl(0xCF8, address);
+            if (width == 1) outb(0xCFC + (offset & 3), value);
+            else if (width == 2) outw(0xCFC + (offset & 3), value);
+            else if (width == 4) outl(0xCFC + (offset & 3), value);
         }
         else
         {
@@ -77,12 +72,7 @@ namespace pci
 
     void pcidevice_t::msi_set(uint8_t vector)
     {
-        #if defined(__x86_64__)
         uint16_t flags = acpi::fadthdr->BootArchitectureFlags;
-        #elif defined(__aarch64__)
-        uint16_t flags = acpi::fadthdr->ArmBootArchitectureFlags;
-        #endif
-
         if (this->msi == false || flags & (1 << 3)) return;
 
         uint16_t msg_ctrl = this->read<uint16_t>(this->msi_offset + 2);
@@ -102,23 +92,50 @@ namespace pci
         this->write<uint16_t>(PCI_COMMAND, command);
     }
 
-    std::tuple<uint64_t, bool> pcidevice_t::get_bar(size_t bar)
+    std::tuple<bartype, uint64_t, uint64_t> pcidevice_t::get_bar(size_t num)
     {
-        if (bar > 5) return { 0x00, false };
+        bartype bar_type = PCI_BARTYPE_INVALID;
+        if (num > 5) return std::make_tuple(bar_type, 0, 0);
 
-        uint64_t barl = 0x00;
-        uint64_t barh = 0x00;
+        uint32_t offset = PCI_BAR0 + num * 4;
+        uint32_t bar = this->read<uint32_t>(offset);
 
-        barl = this->read<uint32_t>(PCI_BAR0 + bar * 4);
-        if (barl == 0x00) return { 0x00, false };
+        uint64_t base = 0;
+        uint64_t length = 0;
+        if (bar & 0x01)
+        {
+            bar_type = PCI_BARTYPE_IO;
+            base = (bar & 0xFFFFFFFC) & 0xFFFF;
 
-        bool mmio = !(barl & 0x01);
-        bool _64bit = (mmio && ((barl >> 1) & 0b11) == 0b10);
+            this->write<uint32_t>(offset, 0xFFFFFFFF);
+            length = (~((this->read<uint32_t>(offset) & ~0x03)) + 0x01) & 0xFFFF;
+            this->write<uint32_t>(offset, bar);
+        }
+        else
+        {
+            bar_type = PCI_BARTYPE_MMIO;
 
-        if (_64bit) barh = this->read<uint32_t>(PCI_BAR0 + bar * 4 + 4);
+            switch ((bar >> 1) & 0x03)
+            {
+                case 0x00:
+                    base = (bar & 0xFFFFFFF0);
+                    break;
+                case 0x02:
+                    base = ((bar & 0xFFFFFFF0) | (static_cast<uint64_t>(this->read<uint32_t>(offset + 0x04)) << 32));
+                    break;
+                default:
+                    log::warn("PCI: Unknown MMIO bar type 0x%X", (bar >> 1) & 0x03);
+                    break;
+            }
 
-        uint64_t address = ((barh << 32) | barl) & ~(mmio ? 0b1111 : 0b11);
-        return std::make_tuple(address, mmio);
+            this->write<uint32_t>(offset, 0xFFFFFFFF);
+            length = ~((this->read<uint32_t>(offset) & ~(0x0F))) + 0x01;
+            this->write<uint32_t>(offset, bar);
+
+            if (base == 0 && length == 0) bar_type = PCI_BARTYPE_INVALID;
+        }
+
+        return std::make_tuple(bar_type, base, length);
     }
 
 
@@ -227,9 +244,9 @@ namespace pci
 
     static pcidevice_t *get_root_bus(uint16_t seg, uint8_t bus)
     {
-        for(auto it : root_buses)
+        for (auto it : root_buses)
         {
-            if(seg == it->seg && bus == it->bus) return it;
+            if (seg == it->seg && bus == it->bus) return it;
         }
         return nullptr;
     }
@@ -256,18 +273,18 @@ namespace pci
         LAI_CLEANUP_STATE lai_state_t state;
         lai_init_state(&state);
 
-        for(auto dev : devices)
+        for (auto dev : devices)
         {
-            if(dev->bridge) find_node(dev, &state);
+            if (dev->bridge) find_node(dev, &state);
 
-            if(dev->node)
+            if (dev->node)
             {
                 if (!lai_obj_get_type(&dev->prt))
                 {
                     lai_nsnode_t *prt_handle = lai_resolve_path(dev->node, "_PRT");
-                    if(prt_handle)
+                    if (prt_handle)
                     {
-                        if(lai_eval(&dev->prt, prt_handle, &state))
+                        if (lai_eval(&dev->prt, prt_handle, &state))
                         {
                             log::error("PCI: Failed to evaluate PRT for %d:%d:%d:%d", dev->seg, dev->bus, dev->dev, dev->func);
                         }
@@ -276,19 +293,19 @@ namespace pci
             }
         }
 
-        for(auto dev : devices)
+        for (auto dev : devices)
         {
             uint8_t irq_pin = dev->read<uint8_t>(PCI_INTERRUPT_PIN);
-            if (irq_pin == 0) continue;
+            if (irq_pin == 0 || irq_pin > 4) continue;
 
             pcidevice_t *tmp = dev;
             lai_variable_t* prt = nullptr;
 
             while (true)
             {
-                if(tmp->parent)
+                if (tmp->parent)
                 {
-                    if(!lai_obj_get_type(&tmp->parent->prt)) irq_pin = (((irq_pin - 1) + (tmp->dev % 4)) % 4) + 1;
+                    if (!lai_obj_get_type(&tmp->parent->prt)) irq_pin = (((irq_pin - 1) + (tmp->dev % 4)) % 4) + 1;
                     else
                     {
                         prt = &tmp->parent->prt;
@@ -307,15 +324,14 @@ namespace pci
 
             assert(prt, "Failed to find PRT");
 
-            lai_prt_iterator iter = {};
-            iter.prt = prt;
+            lai_prt_iterator iter = LAI_PRT_ITERATOR_INITIALIZER(prt);
             lai_api_error_t err;
 
             bool found = false;
 
             while (!(err = lai_pci_parse_prt(&iter)))
             {
-                if(iter.slot == tmp->dev && (iter.function == tmp->func || iter.function == -1) && iter.pin == (irq_pin - 1))
+                if (iter.slot == tmp->dev && (iter.function == tmp->func || iter.function == -1) && iter.pin == (irq_pin - 1))
                 {
                     dev->gsi = iter.gsi;
                     dev->has_irq = true;
@@ -324,10 +340,7 @@ namespace pci
                 }
             }
 
-            if(found == false)
-            {
-                log::error("PCI: Routing failed for %d:%d:%d:%d\n", dev->seg, dev->bus, dev->dev, dev->func);
-            }
+            if (found == false) log::error("PCI: Routing failed for %d:%d:%d:%d", dev->seg, dev->bus, dev->dev, dev->func);
         }
     }
 
@@ -368,7 +381,7 @@ namespace pci
         assert(_SB_ != nullptr, "Couldn't resolve path \"_SB_\"!");
 
         lai_ns_child_iterator it = LAI_NS_CHILD_ITERATOR_INITIALIZER(_SB_);
-        lai_nsnode_t* node = nullptr;
+        lai_nsnode_t *node = nullptr;
         while ((node = lai_ns_child_iterate(&it)))
         {
             if (lai_check_device_pnp_id(node, &pci_pnp_id, &state) && lai_check_device_pnp_id(node, &pcie_pnp_id, &state)) continue;
@@ -390,10 +403,8 @@ namespace pci
             auto prt_handle = lai_resolve_path(node, "_PRT");
             if (prt_handle != nullptr)
             {
-                if (auto e = lai_eval(&bus->prt, prt_handle, &state); e != LAI_ERROR_NONE)
-                {
-                    log::warn("PCI: Couldn't evaluate Root Bus _PRT, assuming none\n");
-                }
+                auto e = lai_eval(&bus->prt, prt_handle, &state);
+                if (e != LAI_ERROR_NONE) log::warn("PCI: Couldn't evaluate Root Bus _PRT, assuming none\n");
             }
             else log::warn("PCI: Root bus doesn't have _PRT, assuming none\n");
 

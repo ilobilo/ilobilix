@@ -102,7 +102,7 @@ class vector
         }
     }
 
-    void copyfrom(vector<type> old)
+    void copyfrom(vector<type> &old)
     {
         memset(this->storage, 0, this->num - 1);
         this->num = 0;

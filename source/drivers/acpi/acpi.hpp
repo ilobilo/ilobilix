@@ -209,5 +209,6 @@ namespace acpi
     void shutdown();
     void reboot();
 
+    void enable();
     void init();
 } // namespace acpi

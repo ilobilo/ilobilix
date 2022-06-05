@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <lib/vector.hpp>
 #include <lib/tuple.hpp>
 #include <type_traits>
 #include <lai/core.h>
@@ -49,8 +50,15 @@ namespace pci
         PCI_INTERRUPT_PIN = 0x3D
     };
 
-    uint32_t read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width = 8);
-    void write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value, size_t width = 8);
+    enum bartype
+    {
+        PCI_BARTYPE_INVALID,
+        PCI_BARTYPE_MMIO,
+        PCI_BARTYPE_IO
+    };
+
+    uint32_t read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width = 1);
+    void write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value, size_t width = 1);
 
     template<typename type>
     concept valuetype = (std::is_same<type, uint8_t>() || std::is_same<type, uint16_t>() || std::is_same<type, uint32_t>());
@@ -96,8 +104,10 @@ namespace pci
         void msi_set(uint8_t vector);
 
         void command(uint16_t cmd, bool enable = true);
-        std::tuple<uint64_t, bool> get_bar(size_t bar);
+        std::tuple<bartype, uint64_t, uint64_t> get_bar(size_t num);
     };
+
+    extern vector<pcidevice_t*> devices;
 
     void init();
 } // namespace pci

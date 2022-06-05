@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#include <drivers/uart/uart.hpp>
+#include <drivers/serial/serial.hpp>
 #include <drivers/term/term.hpp>
 #include <lib/lock.hpp>
 #include <lib/log.hpp>
@@ -18,7 +18,7 @@ namespace log
         va_list arg;
         va_start(arg, fmt);
 
-        int ret = vfctprintf(uart::printc, nullptr, fmt, arg);
+        int ret = vfctprintf(serial::printc, nullptr, fmt, arg);
 
         va_end(arg);
         return ret;
@@ -31,8 +31,8 @@ namespace log
         va_list arg;
         va_start(arg, fmt);
 
-        int ret = vfctprintf(uart::printc, nullptr, fmt, arg);
-        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
+        int ret = vfctprintf(serial::printc, nullptr, fmt, arg);
+        ret += vfctprintf(serial::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;
@@ -45,9 +45,9 @@ namespace log
         va_list arg;
         va_start(arg, fmt);
 
-        int ret = vfctprintf(uart::printc, nullptr, info_prefix, arg);
-        ret += vfctprintf(uart::printc, nullptr, fmt, arg);
-        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
+        int ret = vfctprintf(serial::printc, nullptr, info_prefix, arg);
+        ret += vfctprintf(serial::printc, nullptr, fmt, arg);
+        ret += vfctprintf(serial::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;
@@ -60,9 +60,9 @@ namespace log
         va_list arg;
         va_start(arg, fmt);
 
-        int ret = vfctprintf(uart::printc, nullptr, warn_prefix, arg);
-        ret += vfctprintf(uart::printc, nullptr, fmt, arg);
-        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
+        int ret = vfctprintf(serial::printc, nullptr, warn_prefix, arg);
+        ret += vfctprintf(serial::printc, nullptr, fmt, arg);
+        ret += vfctprintf(serial::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;
@@ -75,9 +75,9 @@ namespace log
         va_list arg;
         va_start(arg, fmt);
 
-        int ret = vfctprintf(uart::printc, nullptr, error_prefix, arg);
-        ret += vfctprintf(uart::printc, nullptr, fmt, arg);
-        ret += vfctprintf(uart::printc, nullptr, "\n", arg);
+        int ret = vfctprintf(serial::printc, nullptr, error_prefix, arg);
+        ret += vfctprintf(serial::printc, nullptr, fmt, arg);
+        ret += vfctprintf(serial::printc, nullptr, "\n", arg);
 
         va_end(arg);
         return ret;
