@@ -124,7 +124,7 @@ Make sure you have following programs installed:
 <!-- * libboost-iostreams-dev (To ILAR instead of TAR) -->
 
 If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
-```sudo apt install clang lld llvm xorriso wget tar qemu-system-x861``
+```sudo apt install clang lld llvm xorriso wget tar qemu-system-x86```
 
 Follow these steps to build and run the os:
 1. Clone this repo with:\
