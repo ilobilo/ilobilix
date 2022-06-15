@@ -23,9 +23,9 @@
 #include <cstddef>
 #include <cdi.h>
 
-const char *cmdline = nullptr;
-uint64_t hhdm_offset = 0;
-bool bios = false;
+const char *cmdline;
+uint64_t hhdm_offset;
+bool bios;
 
 #if LVL5_PAGING
 volatile limine_5_level_paging_request _5_level_paging_request
