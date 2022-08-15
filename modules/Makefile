@@ -1,19 +1,11 @@
-MODULEDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-INITRDDIR := $(realpath $(MODULEDIR)/../initrd)
-
-MODSRCDIR := $(realpath $(MODULEDIR)/src/)
-MODDESTDIR := $(realpath $(INITRDDIR)/lib/modules)
-
-SUBDIRS := $(patsubst %/., %, $(realpath $(wildcard $(MODSRCDIR)/*/.)))
-
 .PHONY: all
-all: $(SUBDIRS)
+all: $(MODULES)
 
-.PHONY: $(SUBDIRS)
-$(SUBDIRS):
-	$(MAKE) --no-print-directory -f$(MODSRCDIR)/Makefile -C $@
+$(MODULES):
+	$(MAKE) -f$(MODSRCDIR)/Makefile.mk -C $(shell dirname $@)
 
+.PHONY: clean
 clean:
 ifndef NOCLEAN
-	rm -rf $(shell find $(MODDESTDIR) -type f -name "*.ko")
+	rm -rf $(MODULES)
 endif

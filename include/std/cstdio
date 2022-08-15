@@ -1,0 +1,23 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <stdio.h>
+
+namespace std
+{
+    extern "C"
+    {
+        int printf(const char *format, ...);
+        int vprintf(const char *format, va_list arg);
+
+        int sprintf(char *str, const char *format, ...);
+        int vsprintf(char *str, const char *format, va_list arg);
+
+        int snprintf(char *str, size_t count, const char *format, ...);
+        int vsnprintf(char *str, size_t count, const char *format, va_list arg);
+
+        int vasprintf(char **str, const char *format, va_list args);
+        int asprintf(char **str, const char *format, ...);
+    }
+} // namespace std

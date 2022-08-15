@@ -1,0 +1,28 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include_next <memory>
+
+#include <enable_shared_from_this.hpp>
+#include <owner_less.hpp>
+#include <unique_ptr.hpp>
+
+namespace std
+{
+    template<typename Type>
+    struct frigg_allocator : std::allocator<Type>
+    {
+        [[nodiscard]] constexpr Type *allocate(size_t size)
+        {
+            return static_cast<Type*>(::operator new(size));
+        }
+
+        constexpr void free(Type *ptr, size_t = 0)
+        {
+            ::operator delete(ptr);
+        }
+    };
+
+    using namespace smart_ptr;
+} // namespace std

@@ -1,1 +1,3 @@
 .vscode
+initrd.img.gz
+**/*.ko

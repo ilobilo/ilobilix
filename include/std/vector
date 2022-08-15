@@ -1,0 +1,13 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <frg/vector.hpp>
+#include <memory>
+#include <new>
+
+namespace std
+{
+    template<typename Type>
+    using vector = frg::vector<Type, frigg_allocator<Type>>;
+} // namespace std
