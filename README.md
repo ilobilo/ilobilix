@@ -70,8 +70,6 @@ Second attempt at making an OS
 ### Tasking
 - [x] SMP
 - [ ] Scheduler
-- [ ] IPC
-- [ ] SHM
 - [ ] Signals
 
 <!-- ### Partition tables
@@ -79,12 +77,13 @@ Second attempt at making an OS
 - [ ] GPT -->
 
 ### Filesystems
-- [ ] VFS
-- [ ] TMPFS
-- [ ] DEVTMPFS
+- [x] VFS
+- [x] TMPFS
+- [x] DEVTMPFS
 - [ ] PROCFS
 - [ ] SYSFS
-- [ ] USTAR
+- [x] USTAR
+- [x] ILAR
 <!-- - [ ] Ext2
 - [ ] Fat32
 - [ ] ISO9660
@@ -171,4 +170,5 @@ https://discord.gg/fM5GK3RpS7
 * CWalk: https://github.com/likle/cwalk
 * Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
 * Terminal: https://github.com/V01D-NULL/limine-terminal-port
+* ILAR: https://github.com/ilobilo/ilar
 * OVMF: https://efi.akeo.ie/
