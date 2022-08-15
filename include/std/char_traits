@@ -1,0 +1,148 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <cassert>
+#include <cstdlib>
+
+namespace std
+{
+    template<typename Char>
+    class char_traits
+    {
+        public:
+        using char_type = Char;
+        using int_type = int;
+
+        static constexpr void assign(char_type &r, const char_type &a) { r = a; }
+        static constexpr char_type *assign(char_type *p, size_t count, char_type a)
+        {
+            auto ret = p;
+            while (count-- != 0) assign(*p++, a);
+            return ret;
+        }
+
+        static constexpr bool eq(char_type a, char_type b) { return a == b; }
+        static constexpr bool lt(char_type a, char_type b) { return a < b; }
+
+        static constexpr char_type *move(char_type *dest, const char_type *src, size_t count)
+        {
+            auto ret = dest;
+            if (dest < src)
+                while (count-- != 0)
+                    assign(*dest++, *src++);
+            else if (src < dest)
+            {
+                dest += count;
+                src += count;
+                while (count-- != 0)
+                    assign(*--dest, *--src);
+            }
+            return ret;
+        }
+
+        static constexpr char_type *copy(char_type *dest, const char_type *src, size_t count)
+        {
+            assert(src < dest || src >= dest + count);
+            auto ret = dest;
+            while (count-- != 0)
+                assign(*dest++, *src++);
+            return ret;
+        }
+
+        static constexpr int compare(const char_type *s1, const char_type *s2, size_t count)
+        {
+            while (count-- != 0)
+            {
+                if (lt(*s1, *s2)) return -1;
+                if (lt(*s2++, *s1++)) return 1;
+            }
+            return 0;
+        }
+
+        static constexpr size_t length(const char_type *s)
+        {
+            size_t len = 0;
+            while (eq(*s++, char_type(0)) == false)
+                len++;
+            return len;
+        }
+
+        static constexpr const char_type *find(const char_type *p, size_t count, const char_type &ch)
+        {
+            while (count-- != 0)
+                if (eq(*p++, ch) == true)
+                    return p - 1;
+
+            return nullptr;
+        }
+
+        static constexpr char_type to_char_type(int_type c) { return char_type(c); }
+        static constexpr int_type to_int_type(char_type c) { return int_type(c); }
+        static constexpr bool eq_int_type(int_type c1, int_type c2) { return c1 == c2; }
+        static constexpr int_type eof() { return int_type(-1); }
+        static constexpr int_type not_eof(int_type e) { return eq_int_type(e, eof()) ? ~eof() : e; }
+    };
+
+    template<>
+    class char_traits<char>
+    {
+        public:
+        using char_type = char;
+        using int_type = int;
+
+        static constexpr void assign(char_type &r, const char_type &a) { r = a; }
+        static constexpr char_type *assign(char_type *p, size_t count, char_type a)
+        {
+            auto ret = p;
+            while (count-- != 0)
+                assign(*p++, a);
+            return ret;
+        }
+
+        static constexpr bool eq(char_type a, char_type b) { return a == b; }
+        static constexpr bool lt(char_type a, char_type b) { return static_cast<unsigned char>(a) < static_cast<unsigned char>(b); }
+
+        static constexpr char_type *move(char_type *dest, const char_type *src, size_t count)
+        {
+            if (count == 0)
+                return nullptr;
+            __builtin_memmove(dest, src, count * sizeof(char_type));
+            return dest;
+        }
+
+        static constexpr char_type *copy(char_type *dest, const char_type *src, size_t count)
+        {
+            if (count == 0)
+                return nullptr;
+            assert(src < dest || src >= dest + count);
+            __builtin_memcpy(dest, src, count);
+            return dest;
+        }
+
+        static constexpr int compare(const char_type *s1, const char_type *s2, size_t count)
+        {
+            if (count == 0)
+                return 0;
+            return __builtin_memcmp(s1, s2, count);
+        }
+
+        static constexpr size_t length(const char_type *s)
+        {
+            return __builtin_strlen(s);
+        }
+
+        static constexpr const char_type *find(const char_type *p, size_t count, const char_type &ch)
+        {
+            if (count == 0)
+                return nullptr;
+            return __builtin_char_memchr(p, to_int_type(ch), count);
+        }
+
+        static constexpr char_type to_char_type(int_type c) { return char_type(c); }
+        static constexpr int_type to_int_type(char_type c) { return int_type(c); }
+        static constexpr bool eq_int_type(int_type c1, int_type c2) { return c1 == c2; }
+        static constexpr int_type eof() { return int_type(-1); }
+        static constexpr int_type not_eof(int_type e) { return eq_int_type(e, eof()) ? ~eof() : e; }
+    };
+} // namespace std

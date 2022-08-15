@@ -1,0 +1,612 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <initializer_list>
+#include <cassert>
+#include <utility>
+#include <new>
+
+namespace std
+{
+    struct nullopt_t
+    {
+        enum class args { arg };
+        explicit constexpr nullopt_t(args) { }
+    };
+
+    inline constexpr nullopt_t nullopt { nullopt_t::args::arg };
+
+    template<typename Type>
+    class optional
+    {
+        private:
+        aligned_storage_t<sizeof(Type), alignof(Type)> _storage;
+        bool _non_null = false;
+
+        public:
+        using value_type = Type;
+
+        constexpr optional() : _storage(), _non_null(false) { }
+        constexpr optional(nullopt_t) : _storage(), _non_null(false) { }
+
+        constexpr optional(const optional &other) requires (!is_copy_constructible_v<Type>) = delete;
+        constexpr optional(const optional &other) requires is_trivially_copy_constructible_v<Type> = default;
+
+        constexpr optional(const optional &other) : _non_null(other._non_null)
+        {
+            if (this->_non_null)
+                new(this->_storage) Type(*other);
+        }
+
+        constexpr optional(optional &&other) requires is_trivially_move_constructible_v<Type> = default;
+        constexpr optional(optional &&other) requires is_move_constructible_v<Type> : _non_null(other._non_null)
+        {
+            if (this->_non_null)
+                new(this->_storage) Type(move(*other));
+        }
+
+        template<typename U>
+        constexpr explicit(!is_constructible_v<const U&, Type>) optional(const optional<U> &other) requires (
+            is_convertible_v<Type, const U&> &&
+            !(
+                is_constructible_v<Type, optional<U>&> ||
+                is_constructible_v<Type, const optional<U>&> ||
+                is_constructible_v<Type, optional<U>&&> ||
+                is_constructible_v<Type, const optional<U>&&> ||
+                is_convertible_v<optional<U>&, Type> ||
+                is_convertible_v<const optional<U>&, Type> ||
+                is_convertible_v<optional<U>&&, Type> ||
+                is_convertible_v<const optional<U>&&, Type>
+            )
+        ) : _non_null(other._non_null)
+        {
+            if (this->_non_null)
+                new(this->_storage) Type(*other);
+        }
+
+        template<typename U>
+        constexpr explicit(!is_constructible_v<U&&, Type>) optional(optional<U> &&other) requires (
+            is_convertible_v<Type, U&&> &&
+            !(
+                is_constructible_v<Type, optional<U>&> ||
+                is_constructible_v<Type, const optional<U>&> ||
+                is_constructible_v<Type, optional<U>&&> ||
+                is_constructible_v<Type, const optional<U>&&> ||
+                is_convertible_v<optional<U>&, Type> ||
+                is_convertible_v<const optional<U>&, Type> ||
+                is_convertible_v<optional<U>&&, Type> ||
+                is_convertible_v<const optional<U>&&, Type>
+            )
+        ) : _non_null(other._non_null)
+        {
+            if (this->_non_null)
+                new(this->_storage) Type(move(*other));
+        }
+
+        template<typename ...Args>
+        constexpr optional(in_place_t, Args &&...args) requires is_constructible_v<Type, Args...> : _non_null(true)
+        {
+            new(this->_storage.data) Type(forward<Args>(args)...);
+        }
+
+        template<typename U, typename ...Args>
+        constexpr optional(in_place_t, initializer_list<U> il, Args &&...args) requires is_constructible_v<Type, initializer_list<U>&, Args&&...> : _non_null(true)
+        {
+            new(this->_storage.data) Type(il, forward<Args>(args)...);
+        }
+
+        template<typename U = Type>
+        constexpr optional(U &&value) requires (is_constructible_v<Type, U&&> && (!is_same_v<remove_cvref_t<U>, in_place_t> && !is_same_v<remove_cvref_t<U>, optional>)) : _non_null(true)
+        {
+            new(this->_storage.data) Type(forward<U>(value));
+        }
+
+        constexpr ~optional()
+        {
+            if constexpr (!is_trivially_destructible_v<Type>)
+                this->reset();
+        }
+        constexpr ~optional() requires is_trivially_destructible_v<Type> = default;
+
+        constexpr optional &operator=(nullopt_t)
+        {
+            if (this->_non_null)
+                this->reset();
+
+            return *this;
+        }
+
+        constexpr optional &operator=(const optional &other) requires (
+            is_trivially_copy_constructible_v<Type> &&
+            is_trivially_copy_assignable_v<Type> &&
+            is_trivially_destructible_v<Type>
+        ) = default;
+
+        constexpr optional &operator=(const optional &other) requires (
+            !(
+                is_trivially_copy_constructible_v<Type> &&
+                is_trivially_copy_assignable_v<Type> &&
+                is_trivially_destructible_v<Type>
+            ) &&
+            is_copy_constructible_v<Type> &&
+            is_copy_assignable_v<Type>
+        )
+        {
+            if (!other->_non_null)
+            {
+                if (!this->_non_null)
+                    return *this;
+
+                this->reset();
+            }
+            else
+            {
+                if (!this->_non_null)
+                {
+                    new(this->_storage.data) Type(*other);
+                    this->_non_null = true;
+                }
+                else this->value() = *other;
+            }
+
+            return *this;
+        }
+
+        constexpr optional &operator=(const optional &other) = delete;
+
+        constexpr optional &operator=(optional &&other) requires (
+            is_trivially_move_constructible_v<Type> &&
+            is_trivially_move_assignable_v<Type> &&
+            is_trivially_destructible_v<Type>
+        ) = default;
+
+        constexpr optional &operator=(optional &&other) requires (
+            !(
+                is_trivially_move_constructible_v<Type> &&
+                is_trivially_move_assignable_v<Type> &&
+                is_trivially_destructible_v<Type>
+            ) &&
+            is_move_constructible_v<Type> &&
+            is_move_assignable_v<Type>
+        )
+        {
+            if (!other._non_null)
+            {
+                if (!this->_non_null)
+                    return *this;
+
+                this->reset();
+            }
+            else
+            {
+                if (!this->_non_null)
+                {
+                    new(this->_storage.data) Type(move(*other));
+                    this->_non_null = true;
+                }
+                else this->value() = move(*other);
+            }
+
+            return *this;
+        }
+
+        template<typename U = Type>
+        constexpr optional &operator=(U &&value) requires (
+            !is_same_v<remove_cvref_t<U>, optional> &&
+            is_constructible_v<Type, U> &&
+            is_assignable_v<Type&, U> &&
+            (
+                !is_scalar_v<Type> ||
+                !is_same_v<decay_t<U>, Type>
+            )
+        )
+        {
+            if (!this->_non_null)
+            {
+                new(this->_storage.data) Type(forward<U>(value));
+                this->_non_null = true;
+            }
+            else this->value() = forward<U>(value);
+
+            return *this;
+        }
+
+        template<typename U>
+        constexpr optional &operator=(const optional<U> &other) requires (
+            !(
+                is_constructible_v<Type, optional<U>&> ||
+                is_constructible_v<Type, const optional<U>&> ||
+                is_constructible_v<Type, optional<U>&&> ||
+                is_constructible_v<Type, const optional<U>&&> ||
+                is_convertible_v<optional<U>&, Type> ||
+                is_convertible_v<const optional<U>&, Type> ||
+                is_convertible_v<optional<U>&&, Type> ||
+                is_convertible_v<const optional<U>&&, Type> ||
+                is_assignable_v<Type&, optional<U>&> ||
+                is_assignable_v<Type&, const optional<U>&> ||
+                is_assignable_v<Type&, optional<U>&&> ||
+                is_assignable_v<Type&, const optional<U>&&>
+            ) &&
+            is_constructible_v<Type, const U&> &&
+            is_assignable_v<Type&, const U&>
+        )
+        {
+            if (!other._non_null)
+            {
+                if (!this->_non_null)
+                    return *this;
+
+                this->reset();
+            }
+            else
+            {
+                if (!this->_non_null)
+                {
+                    new(this->_storage.data) Type(*other);
+                    this->_non_null = true;
+                }
+                else this->value() = *other;
+            }
+
+            return *this;
+        }
+
+        template<typename U>
+        constexpr optional &operator=(optional<U> &&other) requires (
+            !(
+                is_constructible_v<Type, optional<U>&> ||
+                is_constructible_v<Type, const optional<U>&> ||
+                is_constructible_v<Type, optional<U>&&> ||
+                is_constructible_v<Type, const optional<U>&&> ||
+                is_convertible_v<optional<U>&, Type> ||
+                is_convertible_v<const optional<U>&, Type> ||
+                is_convertible_v<optional<U>&&, Type> ||
+                is_convertible_v<const optional<U>&&, Type> ||
+                is_assignable_v<Type&, optional<U>&> ||
+                is_assignable_v<Type&, const optional<U>&> ||
+                is_assignable_v<Type&, optional<U>&&> ||
+                is_assignable_v<Type&, const optional<U>&&>
+            ) &&
+            is_constructible_v<Type, U> &&
+            is_assignable_v<Type&, U>
+        )
+        {
+            if (!other._non_null)
+            {
+                if (!this->_non_null)
+                    return *this;
+
+                this->reset();
+            }
+            else
+            {
+                if (!this->_non_null)
+                {
+                    new(this->_storage.data) Type(move(*other));
+                    this->_non_null = true;
+                }
+                else this->value() = move(*other);
+            }
+
+            return *this;
+        }
+
+        constexpr const Type *operator->() const
+        {
+            return reinterpret_cast<const Type*>(this->_storage.data);
+        }
+
+        constexpr Type *operator->()
+        {
+            return reinterpret_cast<Type*>(this->_storage.data);
+        }
+
+        constexpr const Type &operator*() const &
+        {
+            return *reinterpret_cast<const Type*>(this->_storage.data);
+        }
+
+        constexpr Type &operator*() &
+        {
+            return *reinterpret_cast<Type*>(this->_storage.data);
+        }
+
+        constexpr const Type &&operator*() const &&
+        {
+            return *reinterpret_cast<const Type*>(this->_storage.data);
+        }
+
+        constexpr Type &&operator*() &&
+        {
+            return *reinterpret_cast<Type*>(this->_storage.data);
+        }
+
+        constexpr explicit operator bool() const
+        {
+            return this->_non_null;
+        }
+
+        constexpr bool has_value() const
+        {
+            return this->_non_null;
+        }
+
+        constexpr Type &value() &
+        {
+            assert(this->_non_null);
+            return *reinterpret_cast<Type*>(this->_storage.data);
+        }
+
+        constexpr const Type &value() const &
+        {
+            assert(this->_non_null);
+            return *reinterpret_cast<const Type*>(this->_storage.data);
+        }
+
+        constexpr Type &&value() &&
+        {
+            assert(this->_non_null);
+            return *reinterpret_cast<Type*>(this->_storage.data);
+        }
+
+        constexpr const Type &&value() const &&
+        {
+            assert(this->_non_null);
+            return *reinterpret_cast<const Type*>(this->_storage.data);
+        }
+
+        template<typename U>
+        constexpr Type value_or(U &&default_value) const &
+        {
+            return bool(*this) ? **this : static_cast<Type>(forward<U>(default_value));
+        }
+
+        template<typename U>
+        constexpr Type value_or(U &&default_value) &&
+        {
+            return bool(*this) ? move(**this) : static_cast<Type>(forward<U>(default_value));
+        }
+
+        constexpr void swap(optional &other) requires is_move_constructible_v<Type>
+        {
+            if (!this->_non_null)
+            {
+                if (!other._non_null)
+                    return;
+
+                new(this->_storage.data) Type(move(*other));
+                this->_non_null = true;
+
+                other.reset();
+            }
+            else if (!other._non_null)
+            {
+                new(other._storage.data) Type(move(**this));
+                other._non_null = true;
+
+                this->reset();
+            }
+            else
+            {
+                using std::swap;
+                swap(**this, *other);
+            }
+        }
+
+        constexpr void reset()
+        {
+            if (this->_non_null)
+            {
+                this->value().Type::~Type();
+                this->_non_null = false;
+            }
+        }
+
+        template<typename ...Args>
+        constexpr Type &emplace(Args &&...args)
+        {
+            this->reset();
+            new(this->_storage.data) Type(forward<Args>(args)...);
+        }
+
+        template<typename  U, typename  ...Args>
+        constexpr Type &emplace(initializer_list<U> il, Args &&...args) requires is_constructible_v<Type, initializer_list<U>&, Args&&...>
+        {
+            this->reset();
+            new(this->_storage.data) Type(il, forward<Args>(args)...);
+        }
+
+        template<typename U>
+        friend constexpr bool operator==(const optional &lhs, const optional<U> &rhs)
+        {
+            if (!lhs._non_null)
+            {
+                if (!rhs._non_null)
+                    return true;
+                else
+                    return false;
+            }
+
+            return *lhs == *rhs;
+        }
+
+        template<typename U>
+        friend constexpr bool operator!=(const optional &lhs, const optional<U> &rhs)
+        {
+            return !(lhs == rhs);
+        }
+
+        template<typename U>
+        friend constexpr bool operator<(const optional &lhs, const optional<U> &rhs)
+        {
+            if (!lhs._non_null)
+            {
+                if (!rhs._non_null)
+                    return false;
+                else
+                    return true;
+            }
+
+            return *lhs < *rhs;
+        }
+
+        template<typename U>
+        friend constexpr bool operator<=(const optional &lhs, const optional<U> &rhs)
+        {
+            if (!lhs._non_null)
+                return true;
+
+            return *lhs <= *rhs;
+        }
+
+        template<typename U>
+        friend constexpr bool operator>(const optional &lhs, const optional<U> &rhs)
+        {
+            if (!lhs._non_null)
+                return true;
+
+            return *lhs > *rhs;
+        }
+
+        template<typename U>
+        friend constexpr bool operator>=(const optional &lhs, const optional<U> &rhs)
+        {
+            if (!lhs._non_null)
+            {
+                if (!rhs._non_null)
+                    return true;
+                else
+                    return false;
+            }
+
+            return *lhs >= *rhs;
+        }
+
+        friend constexpr bool operator==(const optional &opt, nullopt_t)
+        {
+            if (!opt._non_null)
+                return true;
+
+            return false;
+        }
+
+        friend constexpr auto operator<=>(const optional &opt, nullopt_t)
+        {
+            return opt._non_null <=> false;
+        }
+
+        template<typename U>
+        friend constexpr bool operator==(const optional &opt, const U &value)
+        {
+            if (!opt._non_null)
+                return false;
+
+            return *opt == value;
+        }
+
+        template<typename U>
+        friend constexpr bool operator==(const Type &value, const optional<U> &opt)
+        {
+            if (!opt._non_null)
+                return false;
+
+            return *opt == value;
+        }
+
+        template<typename U>
+        friend constexpr bool operator!=(const optional &opt, const U &value)
+        {
+            return !(opt == value);
+        }
+
+        template<typename U>
+        friend constexpr bool operator!=(const Type &value, const optional<U> &opt)
+        {
+            return !(opt == value);
+        }
+
+        template<typename U>
+        friend constexpr bool operator<(const optional &opt, const U &value)
+        {
+            if (!opt._non_null)
+                return true;
+
+            return *opt < value;
+        }
+
+        template<typename U>
+        friend constexpr bool operator<(const Type &value, const optional<U> &opt)
+        {
+            if (!opt._non_null)
+                return false;
+
+            return value < *opt;
+        }
+
+        template<typename U>
+        friend constexpr bool operator<=(const optional &opt, const U &value)
+        {
+            return (opt == value) || (opt < value);
+        }
+
+        template<typename U>
+        friend constexpr bool operator<=(const Type& value, const optional<U> &opt)
+        {
+            return (opt == value) || (value < opt);
+        }
+
+        template<typename U>
+        friend constexpr bool operator>(const optional &opt, const U &value)
+        {
+            if (!opt._non_null)
+                return false;
+
+            return *opt > value;
+        }
+
+        template<typename U>
+        friend constexpr bool operator>(const Type& value, const optional<U> &opt)
+        {
+            if (!opt._non_null)
+                return true;
+
+            return value > *opt;
+        }
+
+        template<typename U>
+        friend constexpr bool operator>=(const optional &opt, const U &value)
+        {
+            return (opt == value) || (opt > value);
+        }
+
+        template<typename U>
+        friend constexpr bool operator>=(const Type& value, const optional<U> &opt)
+        {
+            return (opt == value) || (value > opt);
+        }
+
+        friend constexpr void swap(optional &lhs, optional &rhs) requires is_move_constructible_v<Type>
+        {
+            lhs.swap(rhs);
+        }
+    };
+
+    template<typename Type>
+    constexpr optional<decay_t<Type>> make_optional(Type &&value)
+    {
+        return optional<decay_t<Type>>(forward<Type>(value));
+    }
+
+    template<typename Type, typename ...Args>
+    constexpr optional<Type> make_optional(Args &&...args)
+    {
+        return optional<Type>(in_place, forward<Args>(args)...);
+    }
+
+    template<typename Type, typename U, typename ...Args>
+    constexpr optional<Type> make_optional(initializer_list<U> il, Args &&...args)
+    {
+        return optional<Type>(in_place, il, forward<Args>(args)...);
+    }
+} // namespace std

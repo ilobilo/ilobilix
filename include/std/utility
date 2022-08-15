@@ -1,0 +1,310 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include_next <utility>
+#include <cstring>
+#include <cstdint>
+
+namespace std
+{
+    template<typename ...Types>
+    class tuple;
+
+    namespace detail
+    {
+        template<size_t...> struct __tupleIndices { };
+
+        template<size_t S, class _IntTuple, size_t E>
+        struct __makeIndices_imp;
+
+        template<size_t S, size_t ...Indices, size_t E>
+        struct __makeIndices_imp<S, __tupleIndices<Indices...>, E>
+        {
+            using type = typename __makeIndices_imp<S + 1, __tupleIndices<Indices..., S>, E>::type;
+        };
+
+        template<size_t E, size_t ...Indices>
+        struct __makeIndices_imp<E, __tupleIndices<Indices...>, E>
+        {
+            using type = __tupleIndices<Indices...>;
+        };
+
+        template<size_t E, size_t S = 0>
+        struct __make_tupleIndices
+        {
+            static_assert(S <= E, "__make_tupleIndices input error");
+            using type = typename __makeIndices_imp<S, __tupleIndices<>, E>::type;
+        };
+
+    } // namespace detail
+
+    template<typename Type1, typename Type2>
+    struct pair
+    {
+        using first_type = Type1;
+        using second_type = Type1;
+
+        Type1 first;
+        Type2 second;
+
+        constexpr pair() requires (is_default_constructible_v<Type1> && is_default_constructible_v<Type2>) : first(Type1()), second(Type2()) { }
+        constexpr explicit(!is_convertible_v<const Type1&, Type1> || !is_convertible_v<const Type2&, Type2>) pair(const Type1 &x, const Type2 &y) requires (is_copy_constructible_v<Type1> && is_copy_constructible_v<Type2>) : first(x), second(y) { }
+
+        template<typename U1 = Type1, typename U2 = Type2>
+        constexpr explicit(!is_convertible_v<U1, Type1> || !is_convertible_v<U2, Type2>) pair(U1 &&x, U2 &&y) requires (is_constructible_v<Type1, U1> && is_constructible_v<Type2, U2>) : first(forward<U1>(x)), second(forward<U2>(y)) { }
+
+        template<typename U1, typename U2>
+        constexpr explicit(!is_convertible_v<U1&, Type1> || !is_convertible_v<U2&, Type2>) pair(pair<U1, U2> &p) requires (is_constructible_v<Type1, U1&> && is_constructible_v<Type2, U2&>) : first(p.first), second(p.second) { }
+
+        template<typename U1, typename U2>
+        constexpr explicit(!is_convertible_v<const U1&, Type1> || !is_convertible_v<const U2&, Type2>) pair(const pair<U1, U2> &p) requires (is_constructible_v<Type1, const U1&> && is_constructible_v<Type2, const U2&>) : first(p.first), second(p.second) { }
+
+        template<typename U1, typename U2>
+        constexpr explicit(!is_convertible_v<U1, Type1> || !is_convertible_v<U2, Type2>) pair(pair<U1, U2> &&p) requires (is_constructible_v<Type1, U1> && is_constructible_v<Type2, U2>) : first(forward<U1>(p.first)), second(forward<U2>(p.second)) { }
+
+        template<typename U1, typename U2>
+        constexpr explicit(!is_convertible_v<const U1, Type1> || !is_convertible_v<const U2, Type2>) pair(const pair<U1, U2> &&p) requires (is_constructible_v<Type1, U1> && is_constructible_v<Type2, U2>) : first(forward<const U1>(p.first)), second(forward<const U2>(p.second)) { }
+
+        private:
+        template<typename ...Args1, typename ...Args2, size_t ...I1, size_t ...I2>
+        constexpr pair(piecewise_construct_t, tuple<Args1...> &first_args, tuple<Args2...> &second_args, detail::__tupleIndices<I1...>, detail::__tupleIndices<I2...>) : first(forward<Args1>(get<I1>(first_args))...), second(forward<Args2>(get<I2>(second_args))...) { }
+
+        public:
+        template<typename ...Args1, typename ...Args2>
+        constexpr pair(piecewise_construct_t pc, tuple<Args1...> first_args, tuple<Args2...> second_args) : pair(pc, first_args, second_args, typename detail::__make_tupleIndices<sizeof...(Args1)>::type(), typename detail::__make_tupleIndices<sizeof...(Args2)>::type()) { }
+
+        constexpr pair(const pair &other) = default;
+        constexpr pair(pair &&other) = default;
+
+        constexpr pair &operator=(const pair &other) = delete;
+
+        template<typename U1, typename U2>
+        constexpr pair &operator=(const pair<U1, U2> &other) requires ( is_assignable<Type1&, const U1&>::value && is_assignable<Type2&, const U2&>::value)
+        {
+            this->first = other.first;
+            this->second = other.second;
+            return *this;
+        }
+
+        template<typename U1, typename U2>
+        constexpr const pair &operator=(const pair<U1, U2> &other) const requires (is_assignable_v<const Type1&, const U1&> && is_assignable_v<const Type2&, const U2&>)
+        {
+            this->first = other.first;
+            this->second = other.second;
+            return *this;
+        }
+
+        constexpr pair &operator=(pair &&other) requires (is_move_assignable<Type1>::value && is_move_assignable<Type2>::value)
+        {
+            this->first = move(other.first);
+            this->second = move(other.second);
+            return *this;
+        }
+
+        constexpr const pair &operator=(pair &&other) const
+        {
+            this->first = move(other.first);
+            this->second = move(other.second);
+            return *this;
+        }
+
+        template<typename U1, typename U2>
+        constexpr pair &operator=(pair<U1, U2> &&other) requires (is_assignable<Type1&, U1>::value && is_assignable<Type2&, U2>::value)
+        {
+            this->first = forward<U1>(other.first);
+            this->second = forward<U1>(other.second);
+            return *this;
+        }
+
+        template<typename U1, typename U2>
+        constexpr const pair &operator=(pair<U1, U2> &&other) const requires (is_assignable<const Type1&, U1>::value && is_assignable<const Type2&, U2>::value)
+        {
+            this->first = forward<U1>(other.first);
+            this->second = forward<U1>(other.second);
+            return *this;
+        }
+
+        constexpr void swap(pair &other)
+        {
+            using std::swap;
+            swap(this->first, other.first);
+            swap(this->second, other.second);
+        }
+
+        constexpr void swap(const pair &other)
+        {
+            using std::swap;
+            swap(this->first, other.first);
+            swap(this->second, other.second);
+        }
+
+        friend constexpr bool operator==(const pair &lhs, const pair &rhs)
+        {
+            return (lhs.first == rhs.first) && (lhs.second == rhs.second);
+        }
+
+        friend constexpr bool operator!=(const pair &lhs, const pair &rhs)
+        {
+            return (lhs.first != rhs.first) && (lhs.second != rhs.second);
+        }
+
+        friend constexpr bool operator<(const pair &lhs, const pair &rhs)
+        {
+            return (lhs.first < rhs.first) && (lhs.second < rhs.second);
+        }
+
+        friend constexpr bool operator<=(const pair &lhs, const pair &rhs)
+        {
+            return (lhs.first <= rhs.first) && (lhs.second <= rhs.second);
+        }
+
+        friend constexpr bool operator>(const pair &lhs, const pair &rhs)
+        {
+            return (lhs.first > rhs.first) && (lhs.second > rhs.second);
+        }
+
+        friend constexpr bool operator>=(const pair &lhs, const pair &rhs)
+        {
+            return (lhs.first >= rhs.first) && (lhs.second >= rhs.second);
+        }
+
+        // friend constexpr auto operator<=>(const pair &lhs, const pair &rhs)
+        // {
+        //     // TODO
+        // }
+
+        constexpr void swap(pair &x, pair &y)
+        {
+            x.swap(y);
+        }
+
+        constexpr void swap(const pair &x, const pair &y)
+        {
+            x.swap(y);
+        }
+    };
+
+    template<typename Type>
+    struct tuple_size;
+
+    template<typename Type1, typename Type2>
+    struct tuple_size<pair<Type1, Type2>> : integral_constant<size_t, 2> { };
+
+    template<size_t I, typename Type>
+    struct tuple_element;
+
+    template<size_t I, typename Type>
+    using tuple_element_t = typename tuple_element<I, Type>::type;
+
+    template<size_t I, typename Type1, typename Type2>
+    struct tuple_element<I, pair<Type1, Type2>>
+    {
+        static_assert(I < 2, "pair has only 2 elements!");
+    };
+
+    template<typename Type1, typename Type2>
+    struct tuple_element<0, pair<Type1, Type2>>
+    {
+        using type = Type1;
+    };
+
+    template<typename Type1, typename Type2>
+    struct tuple_element<1, pair<Type1, Type2>>
+    {
+        using type = Type2;
+    };
+
+    template<typename Type1, typename Type2, typename U1, typename U2>
+    requires requires
+    {
+        typename pair<common_type_t<Type1, U1>, common_type_t<Type2, U2>>;
+    }
+    struct common_type<pair<Type1, Type2>, pair<U1, U2>>;
+
+    template<size_t I, typename Type1, typename Type2>
+    constexpr tuple_element_t<I, pair<Type1, Type2>> &get(pair<Type1, Type2> &p)
+    {
+        static_assert(I < 2, "pair has only 2 elements!");
+        if constexpr (I == 0) return p.first;
+        if constexpr (I == 1) return p.second;
+    }
+
+    template<size_t I, typename Type1, typename Type2>
+    constexpr const tuple_element_t<I, pair<Type1, Type2>> &get(const pair<Type1, Type2> &p)
+    {
+        static_assert(I < 2, "pair has only 2 elements!");
+        if constexpr (I == 0) return p.first;
+        if constexpr (I == 1) return p.second;
+    }
+
+    template<size_t I, typename Type1, typename Type2>
+    constexpr tuple_element_t<I, pair<Type1, Type2>> &&get(pair<Type1, Type2> &&p)
+    {
+        static_assert(I < 2, "pair has only 2 elements!");
+        if constexpr (I == 0) return std::forward<tuple_element_t<I, pair<Type1, Type2>>>(p.first);
+        if constexpr (I == 1) return std::forward<tuple_element_t<I, pair<Type1, Type2>>>(p.second);
+    }
+
+    template<size_t I, typename Type1, typename Type2>
+    constexpr const tuple_element_t<I, pair<Type1, Type2>> &&get(const pair<Type1, Type2> &&p)
+    {
+        static_assert(I < 2, "pair has only 2 elements!");
+        if constexpr (I == 0) return std::forward<const tuple_element_t<I, pair<Type1, Type2>>>(p.first);
+        if constexpr (I == 1) return std::forward<const tuple_element_t<I, pair<Type1, Type2>>>(p.second);
+    }
+
+    template<typename Type1, typename Type2>
+    constexpr pair<decay_t<Type1>, decay_t<Type2>> make_pair(Type1 &&t, Type2 &&u)
+    {
+        return pair<decay_t<Type1>, decay_t<Type2>>(t, u);
+    }
+
+    template<typename Type, typename U>
+    constexpr Type &get(pair<Type, U> &p)
+    {
+        return p.first;
+    }
+
+    template<typename Type, typename U>
+    constexpr const Type &get(const pair<Type, U> &p)
+    {
+        return p.first;
+    }
+
+    template<typename Type, typename U>
+    constexpr Type &&get(pair<Type, U> &&p)
+    {
+        return std::forward<Type>(p.first);
+    }
+
+    template<typename Type, typename U>
+    constexpr const Type &&get(const pair<Type, U> &&p)
+    {
+        return std::forward<const Type>(p.first);
+    }
+
+    template<typename Type, typename U>
+    constexpr Type &get(pair<U, Type> &p)
+    {
+        return p.second;
+    }
+
+    template<typename Type, typename U>
+    constexpr const Type &get(const pair<U, Type> &p)
+    {
+        return p.second;
+    }
+
+    template<typename Type, typename U>
+    constexpr Type &&get(pair<U, Type> &&p)
+    {
+        return std::forward<Type>(p.second);
+    }
+
+    template<typename Type, typename U>
+    constexpr const Type &&get(const pair<U, Type> &&p)
+    {
+        return std::forward<Type>(p.second);
+    }
+} // namespace std

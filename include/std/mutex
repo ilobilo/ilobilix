@@ -1,0 +1,57 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <frg/mutex.hpp>
+
+namespace std
+{
+    class mutex
+    {
+        private:
+        uint64_t _next_ticket;
+        uint64_t _serving_ticket;
+
+        public:
+        constexpr mutex() : _next_ticket(0), _serving_ticket(0) { }
+
+        mutex(const mutex &) = delete;
+        mutex &operator=(const mutex &) = delete;
+
+        void lock()
+        {
+            auto ticket = __atomic_fetch_add(&this->_next_ticket, 1, __ATOMIC_RELAXED);
+            while(__atomic_load_n(&this->_serving_ticket, __ATOMIC_ACQUIRE) != ticket)
+                arch::pause();
+        }
+
+        void unlock()
+        {
+            auto current = __atomic_load_n(&this->_serving_ticket, __ATOMIC_RELAXED);
+            __atomic_store_n(&this->_serving_ticket, current + 1, __ATOMIC_RELEASE);
+        }
+
+        bool is_locked()
+        {
+            return __atomic_load_n(&this->_serving_ticket, __ATOMIC_ACQUIRE) == __atomic_load_n(&this->_next_ticket, __ATOMIC_RELAXED);
+        }
+
+        bool try_lock()
+        {
+            if (this->is_locked())
+                return false;
+
+            this->lock();
+            return true;
+        }
+    };
+
+    using frg::unique_lock;
+    using frg::shared_lock;
+
+    using frg::dont_lock_t;
+    using frg::adopt_lock_t;
+
+    inline constexpr auto dont_lock = dont_lock_t{};
+    inline constexpr auto adopt_lock = adopt_lock_t{};
+} // namespace std
