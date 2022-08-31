@@ -5,7 +5,7 @@
 #include <lib/lock.hpp>
 #include <cstdint>
 
-namespace mm::vmm
+namespace vmm
 {
     enum flags
     {
@@ -36,7 +36,7 @@ namespace mm::vmm
     static constexpr caching default_caching = WRITE_BACK;
     static constexpr uint64_t default_flags = RWX;
 
-    struct Pagemap
+    struct pagemap
     {
         void *toplvl = nullptr;
         uint64_t large_page_size = 0;
@@ -78,14 +78,16 @@ namespace mm::vmm
             return true;
         }
 
-        void switchTo();
+        void load();
         void save();
 
-        Pagemap(bool user = false);
+        pagemap(bool user = false);
     };
 
-    extern Pagemap *kernel_pagemap;
+    extern pagemap *kernel_pagemap;
+
     bool is_canonical(uintptr_t addr);
 
     void init();
-} // namespace mm::vmm
+    [[gnu::weak]] void arch_init();
+} // namespace vmm

@@ -5,7 +5,7 @@ endef
 
 define git_clone
 	echo "Downloading $(2)"
-	git clone --single-branch --branch=$(if $(3),$(3),master) --depth=1 https://github.com/$(1)/$(2) || $(call err,$(2))
+	git clone --single-branch --branch=$(if $(3),$(3),master) --depth=2 https://github.com/$(1)/$(2) || $(call err,$(2))
 endef
 
 define wget_down
@@ -15,18 +15,18 @@ endef
 
 override DEPS :=                              \
 	$(EXTDEPDIR)/lai $(EXTDEPDIR)/cxxshim     \
-	$(EXTDEPDIR)/frigg $(EXTDEPDIR)/smart_ptr \
+	$(EXTDEPDIR)/frigg $(EXTDEPDIR)/ovmf      \
+	$(EXTDEPDIR)/smart_ptr $(EXTDEPDIR)/veque \
 	$(EXTDEPDIR)/cwalk $(EXTDEPDIR)/printf    \
 	$(EXTDEPDIR)/limine-terminal-port         \
 	$(EXTDEPDIR)/libgcc-binaries              \
-	$(EXTDEPDIR)/limine $(EXTDEPDIR)/ovmf
+	$(EXTDEPDIR)/limine
 
 .PHONY: all
 all: $(DEPS)
 
 $(EXTDEPDIR)/lai:
-	$(call git_clone,thomtl,lai)
-#	$(call git_clone,managarm,lai)
+	$(call git_clone,managarm,lai)
 
 $(EXTDEPDIR)/cxxshim:
 	$(call git_clone,ilobilo,cxxshim)
@@ -34,8 +34,20 @@ $(EXTDEPDIR)/cxxshim:
 $(EXTDEPDIR)/frigg:
 	$(call git_clone,managarm,frigg)
 
+override OVMF_ZIP := $(EXTDEPDIR)/OVMF-$(EFI_ARCH).zip
+$(EXTDEPDIR)/ovmf:
+	$(call wget_down,ovmf,$(OVMF_ZIP),https://efi.akeo.ie/OVMF/OVMF-$(EFI_ARCH).zip)
+	unzip $(OVMF_ZIP) -d $(EXTDEPDIR)/ovmf
+	rm -f $(OVMF_ZIP)
+
 $(EXTDEPDIR)/smart_ptr:
 	$(call git_clone,ilobilo,smart_ptr)
+
+$(EXTDEPDIR)/veque:
+	$(call git_clone,ilobilo,veque)
+
+$(EXTDEPDIR)/Deque:
+	$(call git_clone,vstanka,Deque)
 
 $(EXTDEPDIR)/cwalk:
 	$(call git_clone,likle,cwalk)
@@ -52,12 +64,6 @@ $(EXTDEPDIR)/libgcc-binaries:
 $(EXTDEPDIR)/limine:
 	$(call git_clone,limine-bootloader,limine,v3.0-branch-binary)
 	$(MAKE) -sC $(EXTDEPDIR)/limine
-
-override OVMF_ZIP := $(EXTDEPDIR)/OVMF-$(EFI_ARCH).zip
-$(EXTDEPDIR)/ovmf:
-	$(call wget_down,ovmf,$(OVMF_ZIP),https://efi.akeo.ie/OVMF/OVMF-$(EFI_ARCH).zip)
-	unzip $(OVMF_ZIP) -d $(EXTDEPDIR)/ovmf
-	rm -f $(OVMF_ZIP)
 
 .PHONY: clean
 clean:

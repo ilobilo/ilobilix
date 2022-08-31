@@ -253,4 +253,5 @@ namespace pci
     void addrootbus(bus_t *bus);
 
     void init();
+    [[gnu::weak]] void arch_init();
 } // namespace pci

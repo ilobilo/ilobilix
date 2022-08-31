@@ -10,11 +10,11 @@
 #include <algorithm>
 #include <cstring>
 
-namespace mm::pmm
+namespace pmm
 {
     static uintptr_t mem_usable_top = 0;
     static size_t lastindex = 0;
-    static Bitmap bitmap;
+    static bitmap_t bitmap;
     static lock_t lock;
 
     size_t usablemem = 0;
@@ -52,13 +52,13 @@ namespace mm::pmm
             size_t p = 0;
             while (lastindex < limit)
             {
-                if (!bitmap[lastindex++])
+                if (bitmap[lastindex++] == false)
                 {
                     if (++p == count)
                     {
                         size_t page = lastindex - count;
                         for (size_t i = page; i < lastindex; i++)
-                            bitmap.set(i, true);
+                            bitmap[i] = true;
                         return reinterpret_cast<void*>(page * page_size);
                     }
                 }
@@ -86,12 +86,13 @@ namespace mm::pmm
     {
         if (ptr == nullptr)
             return;
-        lockit(lock);
 
+        lockit(lock);
         size_t page = reinterpret_cast<size_t>(ptr) / page_size;
         for (size_t i = page; i < page + count; i++)
-            bitmap.set(i, false);
+            bitmap[i] = false;
 
+        // TODO: Does this improve performace when reallocating same amount or fewer pages?
         // lastindex = std::min(lastindex, page);
 
         usedmem -= count * page_size;
@@ -132,8 +133,9 @@ namespace mm::pmm
 
             if (memmaps[i]->length >= bitmapSize)
             {
-                bitmap.setbuffer(reinterpret_cast<uint8_t*>(tohh(memmaps[i]->base)), bitmapSize);
-                bitmap.clear(0xFF);
+                bitmap.buffer = reinterpret_cast<uint8_t*>(tohh(memmaps[i]->base));
+                bitmap.size = bitmapSize;
+                memset(bitmap.buffer, 0xFF, bitmap.size);
 
                 memmaps[i]->length -= bitmapSize;
                 memmaps[i]->base += bitmapSize;
@@ -149,7 +151,7 @@ namespace mm::pmm
                 continue;
 
             for (uintptr_t t = 0; t < memmaps[i]->length; t += page_size)
-                bitmap.set((memmaps[i]->base + t) / page_size, false);
+                bitmap[(memmaps[i]->base + t) / page_size] = false;
         }
     }
-} // namespace mm::pmm
+} // namespace pmm

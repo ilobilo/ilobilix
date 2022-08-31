@@ -4,7 +4,7 @@
 
 #include <mm/vmm.hpp>
 
-namespace mm::vmm
+namespace vmm
 {
     enum x86_64_flags
     {
@@ -62,4 +62,4 @@ namespace mm::vmm
         PDEntry entries[512];
     };
 
-} // namespace mm::vmm
+} // namespace vmm

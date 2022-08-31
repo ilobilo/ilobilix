@@ -12,16 +12,25 @@ namespace log
     static lock_t lock;
     bool toterm = true;
 
-    void printc(char c, void* = nullptr)
+    void prints(const char *str)
+    {
+        auto sptr = str;
+        while (*sptr)
+            serial::printc(*sptr++);
+        if (toterm == true)
+            term::print(str);
+    }
+
+    void printc(char c)
     {
         serial::printc(c);
         if (toterm == true)
-            term::printf(term::main_term, "%c", c);
+            term::printc(c);
     }
 
     int vprint(const char *fmt, va_list arg)
     {
-        return vfctprintf(printc, nullptr, fmt, arg);
+        return vfctprintf([](char c, auto) { printc(c); }, nullptr, fmt, arg);
     }
 
     int print(const char *fmt, ...)

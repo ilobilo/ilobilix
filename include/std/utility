@@ -169,9 +169,9 @@ namespace std
             return (lhs.first >= rhs.first) && (lhs.second >= rhs.second);
         }
 
+        // TODO
         // friend constexpr auto operator<=>(const pair &lhs, const pair &rhs)
         // {
-        //     // TODO
         // }
 
         constexpr void swap(pair &x, pair &y)
@@ -226,32 +226,40 @@ namespace std
     constexpr tuple_element_t<I, pair<Type1, Type2>> &get(pair<Type1, Type2> &p)
     {
         static_assert(I < 2, "pair has only 2 elements!");
-        if constexpr (I == 0) return p.first;
-        if constexpr (I == 1) return p.second;
+        if constexpr (I == 0)
+            return p.first;
+        if constexpr (I == 1)
+            return p.second;
     }
 
     template<size_t I, typename Type1, typename Type2>
     constexpr const tuple_element_t<I, pair<Type1, Type2>> &get(const pair<Type1, Type2> &p)
     {
         static_assert(I < 2, "pair has only 2 elements!");
-        if constexpr (I == 0) return p.first;
-        if constexpr (I == 1) return p.second;
+        if constexpr (I == 0)
+            return p.first;
+        if constexpr (I == 1)
+            return p.second;
     }
 
     template<size_t I, typename Type1, typename Type2>
     constexpr tuple_element_t<I, pair<Type1, Type2>> &&get(pair<Type1, Type2> &&p)
     {
         static_assert(I < 2, "pair has only 2 elements!");
-        if constexpr (I == 0) return std::forward<tuple_element_t<I, pair<Type1, Type2>>>(p.first);
-        if constexpr (I == 1) return std::forward<tuple_element_t<I, pair<Type1, Type2>>>(p.second);
+        if constexpr (I == 0)
+            return std::forward<tuple_element_t<I, pair<Type1, Type2>>>(p.first);
+        if constexpr (I == 1)
+            return std::forward<tuple_element_t<I, pair<Type1, Type2>>>(p.second);
     }
 
     template<size_t I, typename Type1, typename Type2>
     constexpr const tuple_element_t<I, pair<Type1, Type2>> &&get(const pair<Type1, Type2> &&p)
     {
         static_assert(I < 2, "pair has only 2 elements!");
-        if constexpr (I == 0) return std::forward<const tuple_element_t<I, pair<Type1, Type2>>>(p.first);
-        if constexpr (I == 1) return std::forward<const tuple_element_t<I, pair<Type1, Type2>>>(p.second);
+        if constexpr (I == 0)
+            return std::forward<const tuple_element_t<I, pair<Type1, Type2>>>(p.first);
+        if constexpr (I == 1)
+            return std::forward<const tuple_element_t<I, pair<Type1, Type2>>>(p.second);
     }
 
     template<typename Type1, typename Type2>

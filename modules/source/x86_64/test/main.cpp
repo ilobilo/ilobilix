@@ -3,16 +3,17 @@
 #include <modules/module.hpp>
 #include <cstdio>
 
-bool test_init()
+// Always put DRIVER() until init and fini functions
+DRIVER(test, init, fini)
+
+__init bool init()
 {
     printf("Hello from x86_64 test driver!\n");
     return true;
 }
 
-bool test_fini()
+__fini bool fini()
 {
     printf("Goodbye from x86_64 test driver!\n");
     return true;
 }
-
-DRIVER("test1", test_init, test_fini);

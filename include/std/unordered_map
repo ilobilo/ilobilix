@@ -81,7 +81,7 @@ namespace std
         hash_node *construct(const value_type &val)
         {
             auto ret = this->_node_allocator.allocate(1);
-	        return new(ret) hash_node(val);
+            return new(ret) hash_node(val);
         }
 
         hash_node *construct(value_type &&val)
@@ -473,19 +473,19 @@ namespace std
             return this->_insert(value_type(piecewise_construct, forward_as_tuple(move(k)), forward_as_tuple(forward<Args>(args)...)));
         }
 
+        // TODO
         // iterator erase(iterator pos)
         // {
-        //     // TODO
         // }
 
+        // TODO
         // iterator erase(const_iterator pos)
         // {
-        //     // TODO
         // }
 
+        // TODO
         // iterator erase(const_iterator first, const_iterator last)
         // {
-        //     // TODO
         // }
 
         size_type erase(const Key &key)
@@ -517,10 +517,10 @@ namespace std
             return 0;
         }
 
+        // TODO
         // template<typename K>
         // size_type erase(K &&x)
         // {
-        //     // TODO
         // }
 
         void swap(unordered_map &other)
@@ -586,19 +586,19 @@ namespace std
             return this->find(key);
         }
 
+        // TODO
         // size_type bucket_count() const
         // {
-        //     // TODO
         // }
 
+        // TODO
         // size_type bucket_size(size_type n) const
         // {
-        //     // TODO
         // }
 
+        // TODO
         // size_type bucket(const Key &key) const
         // {
-        //     // TODO
         // }
 
         void rehash(size_type count)
@@ -636,7 +636,7 @@ namespace std
         }
 
         key_equal key_eq() const
-		{
+        {
             return this->_keyequal;
         }
 

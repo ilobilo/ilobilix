@@ -70,7 +70,7 @@ namespace lapic
         // this->mmio_base = malloc<uintptr_t>(0x1000);
 
         // if (this->x2apic == false)
-        //     mm::vmm::kernel_pagemap->mapMem(this->mmio_base, phys_mmio_base, mm::vmm::RW);
+        //     vmm::kernel_pagemap->mapMem(this->mmio_base, phys_mmio_base, vmm::RW);
 
         this->id = (this->x2apic ? this->read(0x20) : (this->read(0x20) >> 24) & 0xFF);
 

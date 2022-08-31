@@ -7,7 +7,7 @@
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
 
-namespace mm::vmm
+namespace vmm
 {
     static constexpr uint64_t psize_4kb = 0x1000;
     static constexpr uint64_t psize_2mb = 0x200000;
@@ -103,7 +103,7 @@ namespace mm::vmm
         return ret;
     }
 
-    uint64_t Pagemap::virt2phys(uint64_t vaddr, bool largepages)
+    uint64_t pagemap::virt2phys(uint64_t vaddr, bool largepages)
     {
         PDEntry *pml_entry = virt2pte(reinterpret_cast<PTable*>(this->toplvl), vaddr, false, largepages ? this->large_page_size : this->page_size);
         if (pml_entry == nullptr || !pml_entry->getflags(Present)) return 0;
@@ -111,7 +111,7 @@ namespace mm::vmm
         return pml_entry->getAddr() << 12;
     }
 
-    bool Pagemap::mapMem(uint64_t vaddr, uint64_t paddr, uint64_t flags, caching cache)
+    bool pagemap::mapMem(uint64_t vaddr, uint64_t paddr, uint64_t flags, caching cache)
     {
         lockit(this->lock);
 
@@ -140,7 +140,7 @@ namespace mm::vmm
         return true;
     }
 
-    bool Pagemap::remapMem(uint64_t vaddr_old, uint64_t vaddr_new, uint64_t flags, caching cache)
+    bool pagemap::remapMem(uint64_t vaddr_old, uint64_t vaddr_new, uint64_t flags, caching cache)
     {
         uint64_t paddr = this->virt2phys(vaddr_old);
         this->unmapMem(vaddr_old);
@@ -149,7 +149,7 @@ namespace mm::vmm
         return true;
     }
 
-    bool Pagemap::unmapMem(uint64_t vaddr, bool largepages)
+    bool pagemap::unmapMem(uint64_t vaddr, bool largepages)
     {
         lockit(this->lock);
 
@@ -165,25 +165,24 @@ namespace mm::vmm
         return true;
     }
 
-    void Pagemap::switchTo()
+    void pagemap::load()
     {
-        write_cr(3, reinterpret_cast<uint64_t>(reinterpret_cast<PTable*>(this->toplvl)));
+        write_cr(3, fromhh(reinterpret_cast<uint64_t>(reinterpret_cast<PTable*>(this->toplvl))));
     }
 
-    void Pagemap::save()
+    void pagemap::save()
     {
-        this->toplvl = reinterpret_cast<PTable*>(read_cr(3));
+        this->toplvl = reinterpret_cast<PTable*>(tohh(read_cr(3)));
     }
 
-    Pagemap::Pagemap(bool user)
+    pagemap::pagemap(bool user)
     {
         uint32_t a, b, c, d;
-        bool gib1_pages = cpu::id(0x80000001, 0, a, b, c, d) && ((d & 1 << 26) == 1 << 26);
+        static bool gib1_pages = cpu::id(0x80000001, 0, a, b, c, d) && ((d & 1 << 26) == 1 << 26);
 
         this->large_page_size = gib1_pages ? psize_1gb : psize_2mb;
         this->page_size = psize_4kb;
-
-        this->toplvl = pmm::alloc<PTable*>();
+        this->toplvl = new PTable;
 
         if (user == false)
         {
@@ -217,14 +216,19 @@ namespace mm::vmm
                     this->mapMem(tohh(t), t, RWX, cache);
                 }
             }
-        }
 
-        for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += this->page_size)
-        {
-            uint64_t paddr = kernel_address_request.response->physical_base + i;
-            uint64_t vaddr = kernel_address_request.response->virtual_base + i;
-            this->mapMem(vaddr, paddr, RWX);
+            for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += this->page_size)
+            {
+                uint64_t paddr = kernel_address_request.response->physical_base + i;
+                uint64_t vaddr = kernel_address_request.response->virtual_base + i;
+                this->mapMem(vaddr, paddr, RWX);
+            }
         }
+        else for (size_t i = 256; i < 512; i++)
+            reinterpret_cast<PTable*>(this->toplvl)->entries[i] = reinterpret_cast<PTable*>(kernel_pagemap->toplvl)->entries[i];
+
+        if (kernel_pagemap == nullptr)
+            cpu::enablePAT();
     }
 
     bool is_canonical(uintptr_t addr)
@@ -234,4 +238,4 @@ namespace mm::vmm
         else
             return (addr <= 0x00007FFFFFFFFFFFULL) || (addr >= 0xFFFF800000000000ULL);
     }
-} // namespace mm::vmm
+} // namespace vmm

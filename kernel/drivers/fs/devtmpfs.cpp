@@ -8,7 +8,7 @@
 
 namespace devtmpfs
 {
-    static constexpr size_t default_size = mm::pmm::page_size;
+    static constexpr size_t default_size = pmm::page_size;
     vfs::filesystem *dev_fs = nullptr;
     vfs::node_t *dev_root = nullptr;
 

@@ -7,7 +7,7 @@
 
 namespace tmpfs
 {
-    static constexpr size_t default_size = mm::pmm::page_size;
+    static constexpr size_t default_size = pmm::page_size;
     struct resource : vfs::resource
     {
         size_t cap;
@@ -108,7 +108,7 @@ namespace tmpfs
                     count *= 1024 * 1024 * 1024;
                     break;
                 case '%':
-                    count *= mm::pmm::total() / 100;
+                    count *= pmm::total() / 100;
                     break;
             }
             this->max_size = count;
@@ -128,9 +128,9 @@ namespace tmpfs
                     count *= 1024 * 1024 * 1024;
                     break;
             }
-            this->max_size = count * mm::pmm::page_size;
+            this->max_size = count * pmm::page_size;
         }
-        else this->max_size = mm::pmm::total() / 100 * 50;
+        else this->max_size = pmm::total() / 100 * 50;
 
         if (auto inodes = this->get_value("nr_inodes"); inodes.has_value())
         {
@@ -148,7 +148,7 @@ namespace tmpfs
             }
             this->max_inodes = count;
         }
-        else this->max_inodes = mm::pmm::total() / mm::pmm::page_size / 2;
+        else this->max_inodes = pmm::total() / pmm::page_size / 2;
 
         if (auto mode = this->get_value("mode"); mode.has_value())
         {

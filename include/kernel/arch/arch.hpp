@@ -11,7 +11,7 @@ namespace arch
     void wfi();
     void pause();
 
-    void int_switch(bool on);
+    void int_toggle(bool on);
     bool int_status();
 
     std::optional<uint64_t> time_ns();
@@ -21,7 +21,4 @@ namespace arch
     void reboot(bool now);
 
     void init();
-
-    [[gnu::weak]] void pci_init();
-    [[gnu::weak]] void vmm_init();
 } // namespace arch

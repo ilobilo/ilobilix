@@ -43,7 +43,7 @@ namespace gdt
             } // Tss
         };
 
-        tss[num].RSP[0] = tohh(mm::pmm::alloc<uint64_t>(STACK_SIZE / mm::pmm::page_size));
+        tss[num].RSP[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size));
 
         GDTR gdtr
         {

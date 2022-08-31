@@ -150,7 +150,7 @@ namespace vfs
             if (current_node == get_root()->reduce(false))
                 parent = current_node;
             else if (current_node == current_node->fs->root)
-                parent = current_node->fs->mounted_on;
+                parent = current_node->fs->mounted_on->parent; // TODO: ->parent?
 
             return parent;
         };

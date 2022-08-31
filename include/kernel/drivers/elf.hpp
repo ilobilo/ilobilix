@@ -48,14 +48,14 @@ namespace elf
         extern std::unordered_map<std::string_view, driver_t*> drivers;
         extern std::vector<module_t*> modules;
 
-        bool load(uint64_t address, uint64_t size);
-        static inline bool load(auto address, uint64_t size)
+        std::optional<std::vector<driver_t*>> load(uint64_t address, uint64_t size);
+        static inline std::optional<std::vector<driver_t*>> load(auto address, uint64_t size)
         {
             return load(reinterpret_cast<uint64_t>(address), size);
         }
 
-        bool load(vfs::node_t *node);
-        bool load(vfs::node_t *parent, path_view_t directory);
+        std::optional<std::vector<driver_t*>> load(vfs::node_t *node);
+        std::optional<std::vector<driver_t*>> load(vfs::node_t *parent, path_view_t directory);
 
         bool run(driver_t *drv, bool deps = true);
         bool run_all(bool deps = true);
@@ -63,7 +63,7 @@ namespace elf
         void destroy(driver_t *entry);
         void destroy_all();
 
-        void init();
+        std::vector<driver_t*> init();
     } // namespace module
 
     namespace exec

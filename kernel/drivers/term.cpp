@@ -12,49 +12,40 @@ namespace term
     terminal_t *main_term = nullptr;
     size_t term_count = 0;
 
-    int printf(terminal_t *term, const char *fmt, ...)
+    limine_terminal *early_term = nullptr;
+    static lock_t early_lock;
+
+    void print(const char *str, terminal_t *term)
     {
-        if (term == nullptr) return -1;
-        lockit(term->lock);
-
-        auto printc = [](char c, void *arg)
+        if (term == nullptr)
         {
-            auto str = reinterpret_cast<uint64_t>(&c);
-            reinterpret_cast<terminal_t*>(arg)->write(str, 1);
-        };
-
-        va_list arg;
-        va_start(arg, fmt);
-        int ret = vfctprintf(printc, term, fmt, arg);
-        va_end(arg);
-
-        return ret;
+            if (early_term != nullptr)
+            {
+                lockit(early_lock);
+                terminal_request.response->write(early_term, str, strlen(str));
+            }
+        }
+        else term->print(str);
     }
 
-    int vprintf(terminal_t *term, const char *fmt, va_list arg)
+    void printc(char c, terminal_t *term)
     {
-        if (term == nullptr) return -1;
-        lockit(term->lock);
-
-        auto printc = [](char c, void *arg)
+        if (term == nullptr)
         {
-            auto str = reinterpret_cast<uint64_t>(&c);
-            reinterpret_cast<terminal_t*>(arg)->write(str, 1);
-        };
-
-        int ret = vfctprintf(printc, term, fmt, arg);
-
-        return ret;
+            if (early_term != nullptr)
+            {
+                lockit(early_lock);
+                terminal_request.response->write(early_term, &c, 1);
+            }
+        }
+        else term->write(reinterpret_cast<uint64_t>(&c), 1);
     }
 
     extern "C"
     {
         void putchar_(char c)
         {
-            if (main_term == nullptr) return;
-            lockit(main_term->lock);
-
-            main_term->write(reinterpret_cast<uint64_t>(&c), 1);
+            printc(c);
         }
 
         void *alloc_mem(size_t size)
@@ -94,10 +85,17 @@ namespace term
         }
     }
 
+    void early_init()
+    {
+        if (terminal_request.response != nullptr)
+            early_term = terminal_request.response->terminals[0];
+    }
+
     void init()
     {
         log::info("Initialising Terminals...");
 
+        #if defined(__x86_64__)
         if (frm::frm_count == 0)
         {
             log::error("Couldn't get a framebuffer!");
@@ -110,8 +108,10 @@ namespace term
 
             terms.push_back(term);
             main_term = term;
+
             return;
         }
+        #endif
 
         auto font_mod = find_module("font");
         if (font_mod == nullptr)

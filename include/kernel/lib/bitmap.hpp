@@ -6,47 +6,52 @@
 #include <cstdint>
 #include <cstring>
 
-struct Bitmap
+struct bitmap_t
 {
     uint8_t *buffer = nullptr;
     size_t size = 0;
 
-    void setbuffer(uint8_t *buffer, size_t size)
+    constexpr bitmap_t() = default;
+    constexpr bitmap_t(uint8_t *buffer, size_t size) : buffer(buffer), size(size) { };
+
+    struct bit
     {
-        this->buffer = buffer;
-        this->size = size;
+        bitmap_t &parent;
+        size_t index;
+
+        constexpr bit(bitmap_t &parent, size_t index) : parent(parent), index(index) { }
+
+        constexpr void operator=(bool value)
+        {
+            this->parent.set(this->index, value);
+        }
+
+        constexpr operator bool() const
+        {
+            return this->parent.get(this->index);
+        }
+    };
+
+    constexpr bit operator[](size_t index)
+    {
+        return bit(*this, index);
     }
 
-    void clear(uint8_t value)
+    constexpr bool get(size_t index)
     {
-        memset(this->buffer, value, this->size);
+        return this->buffer[index / 8] & (1 << (index % 8));
     }
 
-    bool operator[](size_t index)
+    constexpr bool set(size_t index, bool value)
     {
-        return this->get(index);
-    }
+        bool ret = this->get(index);
 
-    bool get(size_t index)
-    {
-        uint64_t bytei = index / 8;
-        uint8_t biti = index % 8;
-        uint8_t bitindexer = 0b10000000 >> biti;
-        if (buffer[bytei] & bitindexer) return true;
-        return false;
-    }
-    bool set(size_t index, bool value)
-    {
-        uint64_t bytei = index / 8;
-        uint8_t biti = index % 8;
-        uint8_t bitindexer = 0b10000000 >> biti;
+        if (value == true)
+            this->buffer[index / 8] |= (1 << (index % 8));
+        else
+            this->buffer[index / 8] &= ~(1 << (index % 8));
 
-        bool oldval = buffer[bytei] & bitindexer;
-
-        buffer[bytei] &= ~bitindexer;
-        if (value) buffer[bytei] |= bitindexer;
-
-        return oldval;
+        return ret;
     }
 };
 

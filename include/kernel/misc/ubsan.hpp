@@ -99,7 +99,7 @@ struct missing_return_data
 
 struct alignment_assumption_data
 {
-	source_location location;
-	source_location assumption_location;
-	type_descriptor *type;
+    source_location location;
+    source_location assumption_location;
+    type_descriptor *type;
 };

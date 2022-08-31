@@ -2,19 +2,19 @@
 
 #pragma once
 
+#include <lib/types.hpp>
+#include <cstddef>
 #include <cstdint>
 
 #if defined(__x86_64__)
 #include <arch/x86_64/cpu/lapic.hpp>
-#else
-#error Unknown architecture
 #endif
 
 namespace smp
 {
     struct cpu_t
     {
-        uint64_t id = 0;
+        size_t id = 0;
 
         #if defined(__x86_64__)
 
@@ -29,11 +29,9 @@ namespace smp
         void (*fpu_save)(uint8_t*);
         void (*fpu_restore)(uint8_t*);
 
-        #else
-        #error Unknown architecture
         #endif
 
-        int err;
+        errno_t err;
         volatile bool is_up = false;
     };
 
@@ -43,8 +41,6 @@ namespace smp
 
     void init();
     void late_init();
-
-    void cpu_early_init();
 } // namespace smp
 
 extern "C" smp::cpu_t *this_cpu();

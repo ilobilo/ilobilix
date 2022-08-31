@@ -37,10 +37,12 @@ namespace arch
         asm volatile ("pause");
     }
 
-    void int_switch(bool on)
+    void int_toggle(bool on)
     {
-        if (on) asm volatile ("sti");
-        else asm volatile ("cli");
+        if (on == true)
+            asm volatile ("sti");
+        else
+            asm volatile ("cli");
     }
 
     bool int_status()

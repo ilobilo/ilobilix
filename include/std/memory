@@ -7,9 +7,64 @@
 #include <enable_shared_from_this.hpp>
 #include <owner_less.hpp>
 #include <unique_ptr.hpp>
+#include <new>
 
 namespace std
 {
+    template<typename Allocator>
+    struct allocator_traits
+    {
+        using allocator_type = Allocator;
+        using value_type = typename Allocator::value_type;
+        using pointer = value_type*;
+        using const_pointer = const value_type*;
+        using void_pointer = void*;
+        using const_void_pointer = const void*;
+        using size_type = size_t;
+        using difference_type = ptrdiff_t;
+        using propagate_on_container_copy_assignment = std::false_type;
+        using propagate_on_container_move_assignment = std::false_type;
+        using propagate_on_container_swap = std::false_type;
+        using is_alway_equal = typename std::is_empty<Allocator>::type;
+
+        [[nodiscard]] static constexpr pointer allocate(Allocator &a, size_type n)
+        {
+            return a.allocate(n);
+        }
+
+        [[nodiscard]] static constexpr pointer allocate(Allocator &a, size_type n, const_void_pointer)
+        {
+            return a.allocate(n);
+        }
+
+        static constexpr void deallocate(Allocator &a, pointer p, size_type n)
+        {
+            a.deallocate(p, n);
+        }
+
+        template<typename Type, typename...Args>
+        static constexpr void construct(Allocator &a, Type* p, Args &&...args)
+        {
+            ::new (static_cast<void*>(p)) Type(forward<Args>(args)...);
+        }
+
+        template<typename Type>
+        static constexpr void destroy(Allocator &, Type *p)
+        {
+            p->~Type();
+        }
+
+        static constexpr size_type max_size(const Allocator &)
+        {
+            return SIZE_MAX / sizeof(value_type);
+        }
+
+        static constexpr Allocator select_on_container_copy_construction(const Allocator &a)
+        {
+            return a;
+        }
+    };
+
     template<typename Type>
     struct frigg_allocator : std::allocator<Type>
     {

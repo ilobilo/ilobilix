@@ -2,12 +2,10 @@
 
 #pragma once
 
-#include <frg/vector.hpp>
-#include <memory>
-#include <new>
+#include <veque.hpp>
 
 namespace std
 {
-    template<typename Type>
-    using vector = frg::vector<Type, frigg_allocator<Type>>;
+    template<typename Type, typename Allocator = allocator<Type>>
+    using vector = veque::veque<Type, veque::std_vector_traits, Allocator>;
 } // namespace std

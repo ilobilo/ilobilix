@@ -1,3 +1,5 @@
 .vscode
+serial.txt
+log.txt
 initrd.img.gz
 **/*.ko
