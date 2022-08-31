@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace mm::pmm
+namespace pmm
 {
     static constexpr size_t page_size = 0x1000;
     extern uint64_t mem_top;
@@ -26,4 +26,4 @@ namespace mm::pmm
     void free(void *ptr, size_t count = 1);
 
     void init();
-} // namespace mm::pmm
+} // namespace pmm

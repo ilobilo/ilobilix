@@ -158,7 +158,6 @@ https://discord.gg/fM5GK3RpS7
 * Lai: https://github.com/managarm/lai
 * Frigg: https://github.com/managarm/frigg
 * MLibc: https://github.com/managarm/mlibc
-* Libsmarter: https://github.com/managarm/libsmarter
 * Managarm: https://github.com/managarm/managarm
 * ToaruOS: https://github.com/klange/toaruos
 * LemonOS: https://github.com/LemonOSProject/LemonOS
@@ -167,6 +166,8 @@ https://discord.gg/fM5GK3RpS7
 * Vinix: https://github.com/vlang/vinix
 * Lyre: https://github.com/lyre-os/lyre
 * Printf: https://github.com/eyalroz/printf
+* Smart_ptr: https://github.com/X-czh/smart_ptr
+* Veque: https://github.com/Shmoopty/veque
 * CWalk: https://github.com/likle/cwalk
 * Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
 * Terminal: https://github.com/V01D-NULL/limine-terminal-port

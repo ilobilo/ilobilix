@@ -5,9 +5,9 @@
 #include <kernel/kernel.hpp>
 #include <type_traits>
 #include <concepts>
-#include <climits>
 #include <cstdint>
 #include <cctype>
+#include <limits>
 
 struct point
 {
@@ -117,51 +117,6 @@ inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t 
     return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
 }
 
-template<std::integral>
-struct int_limits { };
-
-template<>
-struct int_limits<int>
-{
-    static long max() { return LONG_MAX; }
-    static long min() { return LONG_MIN; }
-};
-
-template<>
-struct int_limits<unsigned int>
-{
-    static unsigned long max() { return ULONG_MAX; }
-    static unsigned long min() { return 0; }
-};
-
-template<>
-struct int_limits<long>
-{
-    static long max() { return LONG_MAX; }
-    static long min() { return LONG_MIN; }
-};
-
-template<>
-struct int_limits<unsigned long>
-{
-    static unsigned long max() { return ULONG_MAX; }
-    static unsigned long min() { return 0; }
-};
-
-template<>
-struct int_limits<long long>
-{
-    static long long max() { return LLONG_MAX; }
-    static long long min() { return LLONG_MIN; }
-};
-
-template<>
-struct int_limits<unsigned long long>
-{
-    static unsigned long long max() { return ULLONG_MAX; }
-    static unsigned long long min() { return 0; }
-};
-
 extern "C" int *__errno_location();
 template<typename Ret, typename URet = std::make_unsigned_t<Ret>>
 static Ret str2int(const char *nptr, char **endptr, int _base)
@@ -204,12 +159,12 @@ static Ret str2int(const char *nptr, char **endptr, int _base)
     URet cutlim = 0;
     if constexpr (std::is_unsigned_v<Ret>)
     {
-        cutoff = int_limits<Ret>::max() / base;
-        cutoff = int_limits<Ret>::max() % base;
+        cutoff = std::numeric_limits<Ret>::max() / base;
+        cutoff = std::numeric_limits<Ret>::max() % base;
     }
     else
     {
-        Ret co = negative ? int_limits<Ret>::min() : int_limits<Ret>::max();
+        Ret co = negative ? std::numeric_limits<Ret>::min() : std::numeric_limits<Ret>::max();
         cutlim = negative ? -(co % base) : co % base;
         co /= negative ? -base : base;
         cutoff = co;
@@ -252,10 +207,39 @@ static Ret str2int(const char *nptr, char **endptr, int _base)
     {
         *__errno_location() = 34;
         if constexpr (std::is_unsigned_v<Ret>)
-            return int_limits<Ret>::max();
+            return std::numeric_limits<Ret>::max();
         else
-            return negative ? int_limits<Ret>::min() : int_limits<Ret>::max();
+            return negative ? std::numeric_limits<Ret>::min() : std::numeric_limits<Ret>::max();
     }
 
     return negative ? -total : total;
 }
+
+// https://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Member_Detector
+
+#define GENERATE_HAS_MEMBER_TYPE(type)                                                                            \
+    template<typename Type>                                                                                       \
+    class _HasMemberType_##type                                                                                   \
+    {                                                                                                             \
+        private:                                                                                                  \
+        using Yes = char[2];                                                                                      \
+        using No = char[1];                                                                                       \
+                                                                                                                  \
+        struct Fallback                                                                                           \
+        {                                                                                                         \
+            struct type { };                                                                                      \
+        };                                                                                                        \
+        struct Derived : Type, Fallback { };                                                                      \
+                                                                                                                  \
+        template<typename U>                                                                                      \
+        static No &test(typename U::type *);                                                                      \
+                                                                                                                  \
+        template<typename U>                                                                                      \
+        static Yes &test(U *);                                                                                    \
+                                                                                                                  \
+        public:                                                                                                   \
+        static constexpr bool RESULT = sizeof(test<Derived>(nullptr)) == sizeof(Yes);                             \
+    };                                                                                                            \
+                                                                                                                  \
+    template<typename Type>                                                                                       \
+    struct has_member_type_##type : public std::integral_constant<bool, _HasMemberType_##type<Type>::RESULT> { };

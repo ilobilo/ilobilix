@@ -1,8 +1,13 @@
 // Copyright (C) 2022  ilobilo
 
-#include <kernel/kernel.hpp>
+
+#include <drivers/serial.hpp>
+#include <drivers/term.hpp>
 #include <drivers/smp.hpp>
+
+#include <kernel/kernel.hpp>
 #include <kernel/main.hpp>
+
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <string.h>
@@ -33,6 +38,14 @@ volatile limine_framebuffer_request framebuffer_request
     .id = LIMINE_FRAMEBUFFER_REQUEST,
     .revision = 0,
     .response = nullptr
+};
+
+volatile limine_terminal_request terminal_request
+{
+    .id = LIMINE_TERMINAL_REQUEST,
+    .revision = 0,
+    .response = nullptr,
+    .callback = nullptr
 };
 
 volatile limine_smp_request smp_request
@@ -97,7 +110,7 @@ volatile limine_stack_size_request stack_size_request
     .id = LIMINE_STACK_SIZE_REQUEST,
     .revision = 0,
     .response = nullptr,
-    .stack_size = STACK_SIZE
+    .stack_size = default_stack_size
 };
 
 limine_file *find_module(const char *name)
@@ -114,14 +127,17 @@ limine_file *find_module(const char *name)
 
 extern "C" void _start()
 {
-    smp::cpu_early_init();
+    serial::early_init();
+    term::early_init();
 
     uefi = efi_system_table_request.response != nullptr;
 #if LVL5_PAGING
     lvl5 = _5_level_paging_request.response != nullptr;
 #endif
 
-    // assert(framebuffer_request.response, "Could not get framebuffer response!");
+    #if !defined(__x86_64__)
+    assert(framebuffer_request.response, "Could not get framebuffer response!");
+    #endif
     assert(smp_request.response, "Could not get smp response!");
     assert(memmap_request.response, "Could not get memmap response!");
     assert(rsdp_request.response, "Could not get rsdp response!");

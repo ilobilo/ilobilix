@@ -4,20 +4,37 @@
 #include <arch/x86_64/drivers/pci/pci_acpi.hpp>
 #include <drivers/pci/pci.hpp>
 
-namespace arch
+namespace pci
 {
-    static void addlegacyio()
+    static void add_legacyio()
     {
-        auto io = new pci::legacy_configio;
+        auto io = new legacy_configio;
         for (size_t i = 0; i < 256; i++)
-            pci::addconfigio(0, i, io);
+            addconfigio(0, i, io);
     }
 
-    void pci_init()
+    static void add_legacy_rootbusses()
     {
-        if (pci::add_acpi_configio() == false)
-            addlegacyio();
+        auto io = getconfigio(0, 0);
+        if (io->read<uint8_t>(0, 0, 0, 0, PCI_HEADER_TYPE) & 0x80)
+        {
+            for (size_t i = 0; i < 8; i++)
+            {
+                if (io->read<uint16_t>(0, 0, 0, i, PCI_VENDOR_ID) == 0xFFFF)
+                    continue;
 
-        pci::add_acpi_rootbusses();
+                addrootbus(new bus_t(nullptr, getconfigio(0, i), 0, i));
+            }
+        }
+        else addrootbus(new bus_t(nullptr, getconfigio(0, 0), 0, 0));
     }
-} // namespace arch
+
+    void arch_init()
+    {
+        if (add_acpi_configio() == false)
+            add_legacyio();
+
+        if (add_acpi_rootbusses() == false)
+            add_legacy_rootbusses();
+    }
+} // namespace pci

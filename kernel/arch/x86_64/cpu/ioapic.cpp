@@ -42,7 +42,7 @@ namespace ioapic
     {
         this->mmio_base = tohh(phys_mmio_base);
         // this->mmio_base = malloc<uintptr_t>(0x1000);
-        // mm::vmm::kernel_pagemap->mapMem(this->mmio_base, phys_mmio_base, mm::vmm::RW);
+        // vmm::kernel_pagemap->mapMem(this->mmio_base, phys_mmio_base, vmm::RW);
 
         this->redirs = ((this->read(0x01) >> 16) & 0xFF) + 1;
 

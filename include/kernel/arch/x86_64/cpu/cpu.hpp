@@ -85,19 +85,19 @@ namespace cpu
     #define read_gs(offset)                                                    \
     ({                                                                         \
         uint64_t value;                                                        \
-        asm volatile("movq %%gs:" #offset ", %0" : "=r"(value) :: "memory"); \
+        asm volatile ("movq %%gs:" #offset ", %0" : "=r"(value) :: "memory");  \
         value;                                                                 \
     })
 
     #define read_cr(num)                                                  \
     ({                                                                    \
         uint64_t value;                                                   \
-        asm volatile("movq %%cr" #num ", %0" : "=r" (value) :: "memory"); \
+        asm volatile ("movq %%cr" #num ", %0" : "=r"(value) :: "memory"); \
         value;                                                            \
     })
 
     #define write_cr(num, value)                                      \
     {                                                                 \
-        asm volatile("movq %0, %%cr" #num :: "r" (value) : "memory"); \
+        asm volatile ("movq %0, %%cr" #num :: "r"(value) : "memory"); \
     }
 } // namespace cpu

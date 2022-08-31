@@ -97,16 +97,14 @@ namespace elf
         static uint64_t base_addr = 0;
         static lock_t lock;
 
-        static bool get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
+        static std::vector<driver_t*> get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
         {
-            bool found = false;
+            std::vector<driver_t*> ret;
             for (size_t i = 0; i < header->e_shnum; i++)
             {
                 auto section = &sections[i];
                 if (section->sh_size != 0 && section->sh_size >= sizeof(driver_t) && !strcmp(DRIVER_SECTION, strtable + section->sh_name))
                 {
-                    found = true;
-
                     uint64_t offset = section->sh_addr;
                     while (offset < section->sh_addr + section->sh_size)
                     {
@@ -128,6 +126,7 @@ namespace elf
                         }
 
                         drivers[driver->name] = driver;
+                        ret.push_back(driver);
 
                         next:
                         offset += sizeof(driver_t);
@@ -135,52 +134,53 @@ namespace elf
                     break;
                 }
             }
-            return found;
+            return ret;
         }
 
         uint64_t map(uint64_t size)
         {
             if (base_addr == 0)
-                base_addr = align_up(tohh(mm::pmm::mem_top), mm::pmm::page_size);
-            size = align_up(size, mm::pmm::page_size);
+                base_addr = align_up(tohh(pmm::mem_top), pmm::page_size);
+            size = align_up(size, pmm::page_size);
 
             uint64_t loadaddr = base_addr;
             base_addr += size;
 
-            uint64_t paddr = mm::pmm::alloc<uint64_t>(size / mm::pmm::page_size);
-            mm::vmm::kernel_pagemap->mapMemRange(loadaddr, paddr, size, mm::vmm::RWX);
+            uint64_t paddr = pmm::alloc<uint64_t>(size / pmm::page_size);
+            vmm::kernel_pagemap->mapMemRange(loadaddr, paddr, size, vmm::RWX);
 
             return loadaddr;
         }
 
         void unmap(uint64_t loadaddr, uint64_t size)
         {
-            size = align_up(size, mm::pmm::page_size);
+            size = align_up(size, pmm::page_size);
             if (loadaddr == base_addr - size)
                 base_addr = loadaddr;
 
-            void *ptr = reinterpret_cast<void*>(mm::vmm::kernel_pagemap->virt2phys(loadaddr));
-            mm::pmm::free(ptr, size / mm::pmm::page_size);
-            mm::vmm::kernel_pagemap->unmapMemRange(loadaddr, size);
+            void *ptr = reinterpret_cast<void*>(vmm::kernel_pagemap->virt2phys(loadaddr));
+            pmm::free(ptr, size / pmm::page_size);
+            vmm::kernel_pagemap->unmapMemRange(loadaddr, size);
         }
 
-        [[clang::no_sanitize("alignment")]] bool load(uint64_t address, uint64_t size)
+        [[clang::no_sanitize("alignment")]]
+        std::optional<std::vector<driver_t*>> load(uint64_t address, uint64_t size)
         {
             auto header = reinterpret_cast<Elf64_Ehdr*>(address);
             if (memcmp(header->e_ident, ELFMAG, 4))
             {
                 log::error("ELF: Invalid magic!");
-                return false;
+                return std::nullopt;
             }
             if (header->e_ident[EI_CLASS] != ELFCLASS64)
             {
                 log::error("ELF: Invalid class!");
-                return false;
+                return std::nullopt;
             }
             if (header->e_type != ET_REL)
             {
                 log::error("ELF: Not a relocatable object!");
-                return false;
+                return std::nullopt;
             }
 
             lockit(lock);
@@ -236,7 +236,7 @@ namespace elf
                             {
                                 log::error("ELF: Could not find kernel symbol \"%s\"", name);
                                 unmap(loadaddr, size);
-                                return false;
+                                return std::nullopt;
                             }
                             val = entry.addr;
                         }
@@ -265,7 +265,7 @@ namespace elf
                             default:
                                 log::error("ELF: Unsupported relocation %lu found!", ELF64_R_TYPE(entry->r_info));
                                 unmap(loadaddr, size);
-                                return false;
+                                return std::nullopt;
                         }
                     }
                 }
@@ -279,24 +279,25 @@ namespace elf
             };
 
             auto strtable = reinterpret_cast<char*>(loadaddr + sections[header->e_shstrndx].sh_offset);
-            mod->has_drivers = get_drivers(header, sections, strtable);
+            auto drvs = get_drivers(header, sections, strtable);
+            mod->has_drivers = drvs.empty() == false;
 
             if (mod->has_drivers == false)
                 log::warn("ELF: Could not find any drivers in the module!");
 
             modules.push_back(mod);
-            return true;
+            return drvs;
         }
 
-        bool load(vfs::node_t *node)
+        std::optional<std::vector<driver_t*>> load(vfs::node_t *node)
         {
             auto size = node->res->stat.st_size;
-            std::unique_ptr<uint8_t[]> buffer = std::make_unique<uint8_t[]>(size);
+            auto buffer = std::make_unique<uint8_t[]>(size);
             node->res->read(buffer.get(), 0, size);
             return load(buffer.get(), size);
         }
 
-        bool load(vfs::node_t *parent, path_view_t directory)
+        std::optional<std::vector<driver_t*>> load(vfs::node_t *parent, path_view_t directory)
         {
             auto node = std::get<1>(vfs::path2node(parent, directory));
             if (node == nullptr)
@@ -305,7 +306,7 @@ namespace elf
             log::info("ELF: Loading modules from \"%.*s\"", directory.length(), directory.data());
 
             node->fs->populate(node);
-            bool found = false;
+            std::vector<driver_t*> ret;
 
             for (auto [name, child] : node->children)
             {
@@ -315,16 +316,23 @@ namespace elf
                 if (child->type() != s_ifreg)
                     continue;
 
-                found = true;
+                auto drvs = load(child);
 
-                if (load(child) == false)
-                    return false;
+                // if (drvs.has_value())
+                //     ret.insert(ret.end(), drvs.value().begin(), drvs.value().end());
+
+                if (drvs.has_value())
+                    for (const auto &drv : drvs.value())
+                        ret.push_back(drv);
             }
 
-            if (found == false)
+            if (ret.empty())
+            {
                 log::error("ELF: Could not find any modules in \"%.*s\"", directory.length(), directory.data());
+                return std::nullopt;
+            }
 
-            return found;
+            return ret;
         }
 
         bool run(driver_t *driver, bool deps)
@@ -396,7 +404,7 @@ namespace elf
                 destroy(driver);
         }
 
-        void init()
+        std::vector<driver_t*> init()
         {
             log::info("Initialising builtin drivers...");
 
@@ -405,8 +413,11 @@ namespace elf
             auto sections = reinterpret_cast<Elf64_Shdr*>(kfile + header->e_shoff);
             auto strtable = reinterpret_cast<char*>(kfile + sections[header->e_shstrndx].sh_offset);
 
-            if (get_drivers(header, sections, strtable) == false)
+            auto drvs = get_drivers(header, sections, strtable);
+            if (drvs.empty())
                 log::error("Could not find any builtin drivers!");
+
+            return drvs;
         }
     } // namespace module
 

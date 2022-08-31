@@ -163,7 +163,8 @@ namespace pci
     bool device_t::msi_set(uint64_t cpuid, uint16_t vector, uint16_t index)
     {
         uint16_t flags = acpi::fadthdr->BootArchitectureFlags;
-        if (this->msi == 0 || flags & (1 << 3)) return false;
+        if (this->msi == 0 || flags & (1 << 3))
+            return false;
 
         msi::control control { .raw = this->read<uint16_t>(this->msi + 0x02) };
         msi::address address { .raw = this->read<uint16_t>(this->msi + 0x04) };
@@ -176,7 +177,7 @@ namespace pci
         address.destination_id = cpuid;
 
         this->write<uint16_t>(this->msi + 0x04, address.raw);
-        this->write<uint16_t>(this->msi + (control.c64 ? 0xC0 : 0x08), data.raw);
+        this->write<uint16_t>(this->msi + (control.c64 ? 0x0C : 0x08), data.raw);
 
         control.msie = 1;
         control.mme = 0b000;
@@ -241,7 +242,8 @@ namespace pci
     {
         uint16_t vendorid = bus->read<uint16_t>(dev, func, PCI_VENDOR_ID);
         uint16_t deviceid = bus->read<uint16_t>(dev, func, PCI_DEVICE_ID);
-        if (vendorid == 0xFFFF || deviceid == 0xFFFF) return;
+        if (vendorid == 0xFFFF || deviceid == 0xFFFF)
+            return;
 
         uint8_t header_type = bus->read<uint8_t>(dev, func, PCI_HEADER_TYPE) & 0x7F;
         if (header_type == 0x00)
@@ -300,7 +302,8 @@ namespace pci
     static void enumdev(bus_t *bus, uint8_t dev)
     {
         uint16_t vendorid = bus->read<uint16_t>(dev, 0, PCI_VENDOR_ID);
-        if (vendorid == 0xFFFF) return;
+        if (vendorid == 0xFFFF)
+            return;
 
         uint8_t header_type = bus->read<uint8_t>(dev, 0, PCI_HEADER_TYPE);
         if (header_type & (1 << 7))
@@ -321,8 +324,8 @@ namespace pci
     {
         log::info("Initialising PCI...");
 
-        if (arch::pci_init)
-            arch::pci_init();
+        if (pci::arch_init)
+            pci::arch_init();
 
         assert(configspaces.size() != 0, "PCI: No config spaces found!");
         assert(root_buses.size() != 0, "PCI: No root buses found!");

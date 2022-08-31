@@ -4,7 +4,6 @@
 #include <lib/panic.hpp>
 #include <lib/misc.hpp>
 #include <lib/mmio.hpp>
-#include <lib/log.hpp>
 #include <mm/vmm.hpp>
 
 namespace pci
@@ -14,17 +13,17 @@ namespace pci
         assert(bus >= this->bus_start && bus <= this->bus_end);
         uintptr_t phys_addr = (this->base + ((bus - this->bus_start) << 20) | (dev << 15) | (func << 12));
 
-        // Figure out why this dowsn't work on vmware and real hw (gpf)
+        // Figure out why this dowsn't work on vmware and real hw (causes gpf)
         // if (this->mappings.contains(phys_addr))
         //     return this->mappings[phys_addr] + offset;
 
         // uintptr_t virt_addr = tohh(phys_addr);
-        // mm::vmm::kernel_pagemap->mapMe(mvirt_addr, phys_addr, mm::vmm::RW, mm::vmm::MMIO);
+        // vmm::kernel_pagemap->mapMem(virt_addr, phys_addr, vmm::RW, vmm::MMIO);
         // this->mappings[phys_addr] = virt_addr;
 
         // return virt_addr + offset;
 
-        return phys_addr;
+        return phys_addr + offset;
     }
 
     uint32_t ecam_configio::read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width)

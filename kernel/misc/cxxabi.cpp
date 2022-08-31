@@ -57,15 +57,20 @@ extern "C"
     {
         int __cxa_guard_acquire(uint64_t *guard)
         {
-            if ((*guard) & 0x0001) return 0;
-            if ((*guard) & 0x0100) abort();
+            if ((*guard) & 0x0001)
+                return 0;
+            if ((*guard) & 0x0100)
+                abort();
+
             *guard |= 0x0100;
             return 1;
         }
+
         void __cxa_guard_release(uint64_t *guard)
         {
             *guard |= 0x01;
         }
+
         void __cxa_guard_abort(uint64_t *guard)
         {
             PANIC("__cxa_guard_abort was called!");

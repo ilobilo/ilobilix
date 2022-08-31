@@ -18,12 +18,6 @@ namespace smp
         return &cpus[read_gs(0)];
     }
 
-    void cpu_early_init()
-    {
-        cpu::enableSSE();
-        cpu::enablePAT();
-    }
-
     void cpu_bsp_init(limine_smp_info *cpu)
     {
         auto cpuptr = reinterpret_cast<::smp::cpu_t*>(cpu->extra_argument);
@@ -45,13 +39,12 @@ namespace smp
 
     void cpu_init(limine_smp_info *cpu)
     {
-        cpu_early_init();
-
         auto cpuptr = reinterpret_cast<::smp::cpu_t*>(cpu->extra_argument);
 
         if (cpuptr->arch_id != bsp_id)
         {
-            mm::vmm::kernel_pagemap->switchTo();
+            cpu::enablePAT();
+            vmm::kernel_pagemap->load();
 
             gdt::init(cpuptr->id);
             idt::idtr.load();
@@ -60,6 +53,7 @@ namespace smp
             cpu::set_gs(cpu->extra_argument);
         }
 
+        cpu::enableSSE();
         cpu::enableSMEP();
         cpu::enableSMAP();
         cpu::enableUMIP();

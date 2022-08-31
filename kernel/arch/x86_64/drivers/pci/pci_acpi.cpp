@@ -67,7 +67,7 @@ namespace pci
         return true;
     }
 
-    void add_acpi_rootbusses()
+    bool add_acpi_rootbusses()
     {
         LAI_CLEANUP_STATE lai_state_t state;
         lai_init_state(&state);
@@ -83,15 +83,21 @@ namespace pci
         lai_ns_child_iterator it = LAI_NS_CHILD_ITERATOR_INITIALIZER(sb_handle);
         lai_nsnode_t *handle = nullptr;
 
+        bool found = false;
+
         while ((handle = lai_ns_child_iterate(&it)))
         {
             if (lai_check_device_pnp_id(handle, &pci_pnp_id, &state) && lai_check_device_pnp_id(handle, &pcie_pnp_id, &state))
                 continue;
+
+            found = true;
 
             auto seg = eval_aml_method(&state, handle, "_SEG");
             auto bbn = eval_aml_method(&state, handle, "_BBN");
 
             addrootbus(new bus_t(nullptr, getconfigio(seg, bbn), seg, bbn));
         }
+
+        return found;
     }
 } // namespace pci

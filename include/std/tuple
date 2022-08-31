@@ -17,7 +17,7 @@ namespace std
         {
             storage() = default;
 
-            storage(Type item, Types ...tail) : item(move(item)), tail(move(tail)...) { }
+            storage(Type item, Types ...tail) : item(forward<Type>(item)), tail(forward<Types>(tail)...) { }
 
             template<typename ...UTypes>
             storage(const storage<UTypes...> &other) : item(other.item), tail(other.tail) { }
@@ -87,7 +87,7 @@ namespace std
         public:
         tuple() = default;
 
-        tuple(Types ...args) : _stor(move(args)...) { }
+        tuple(Types ...args) : _stor(forward<Types>(args)...) { }
 
         template<typename ...UTypes>
         friend class tuple;

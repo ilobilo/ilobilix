@@ -32,7 +32,9 @@ struct lock_t
 
     bool is_locked()
     {
-        return __atomic_load_n(&this->_serving_ticket, __ATOMIC_ACQUIRE) == __atomic_load_n(&this->_next_ticket, __ATOMIC_RELAXED);
+        auto current = __atomic_load_n(&this->_serving_ticket, __ATOMIC_RELAXED);
+        auto next = __atomic_load_n(&this->_next_ticket, __ATOMIC_RELAXED);
+        return current != next;
     }
 
     bool try_lock()
@@ -44,6 +46,43 @@ struct lock_t
         return true;
     }
 };
+
+// struct lock_t
+// {
+//     private:
+//     std::atomic_flag _locked;
+
+//     public:
+//     constexpr lock_t() : _locked() { }
+
+//     lock_t(const lock_t &) = delete;
+//     lock_t &operator=(const lock_t &) = delete;
+
+//     void lock()
+//     {
+//         while(this->_locked.test_and_set(std::memory_order_acquire) == false)
+//             arch::pause();
+//     }
+
+//     void unlock()
+//     {
+//         this->_locked.clear(std::memory_order_release);
+//     }
+
+//     bool is_locked()
+//     {
+//         return this->_locked.test(std::memory_order_release);
+//     }
+
+//     bool try_lock()
+//     {
+//         if (this->is_locked())
+//             return false;
+
+//         this->lock();
+//         return true;
+//     }
+// };
 
 struct irq_lock_t
 {
@@ -60,7 +99,7 @@ struct irq_lock_t
     void lock()
     {
         bool irqs = arch::int_status();
-        arch::int_switch(false);
+        arch::int_toggle(false);
 
         this->_lock.lock();
         this->_irqs = irqs;
@@ -72,9 +111,9 @@ struct irq_lock_t
         this->_lock.unlock();
 
         if (irqs == true)
-            arch::int_switch(true);
+            arch::int_toggle(true);
         else
-            arch::int_switch(false);
+            arch::int_toggle(false);
     }
 
     bool is_locked()

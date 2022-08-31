@@ -18,7 +18,7 @@ namespace cpu
     uint64_t rdmsr(uint32_t msr)
     {
         uint32_t edx, eax;
-        asm volatile("rdmsr" : "=a"(eax), "=d"(edx) : "c"(msr) : "memory");
+        asm volatile ("rdmsr" : "=a"(eax), "=d"(edx) : "c"(msr) : "memory");
         return (static_cast<uint64_t>(edx) << 32) | eax;
     }
 
@@ -26,7 +26,7 @@ namespace cpu
     {
         uint32_t edx = value >> 32;
         uint32_t eax = static_cast<uint32_t>(value);
-        asm volatile("wrmsr" :: "a"(eax), "d"(edx), "c"(msr) : "memory");
+        asm volatile ("wrmsr" :: "a"(eax), "d"(edx), "c"(msr) : "memory");
     }
 
     void set_kernel_gs(uint64_t addr)

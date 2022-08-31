@@ -12,6 +12,9 @@ namespace log
 
     extern bool toterm;
 
+    void prints(const char *str);
+    void printc(char c);
+
     int vprint(const char *fmt, va_list arg);
 
     int print(const char *fmt, ...);

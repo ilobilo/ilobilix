@@ -48,7 +48,7 @@ namespace ilar
             current = reinterpret_cast<header*>(reinterpret_cast<uintptr_t>(current) + sizeof(header) + size);
         }
 
-        // mm::pmm::free(reinterpret_cast<void*>(align_down(fromhh(address), mm::pmm::page_size)), div_roundup(reinterpret_cast<uintptr_t>(current), mm::pmm::page_size));
+        // pmm::free(reinterpret_cast<void*>(align_down(fromhh(address), pmm::page_size)), div_roundup(reinterpret_cast<uintptr_t>(current), pmm::page_size));
 
     }
 } // namespace ilar

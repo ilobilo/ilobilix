@@ -5,5 +5,5 @@
 namespace pci
 {
     bool add_acpi_configio();
-    void add_acpi_rootbusses();
+    bool add_acpi_rootbusses();
 } // namespace pci

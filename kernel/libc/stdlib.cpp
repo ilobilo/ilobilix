@@ -25,6 +25,11 @@ extern "C"
         return free(ptr, false);
     }
 
+    size_t allocsize(void *ptr)
+    {
+        return allocsize(ptr, false);
+    }
+
     int atoi(const char *str)
     {
         return str2int<long>(str, nullptr, 10);

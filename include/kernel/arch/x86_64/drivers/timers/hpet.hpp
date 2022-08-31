@@ -136,7 +136,7 @@ namespace timers::hpet
     static irq_lock_t lock;
 
     template<typename Func, typename ...Args>
-    comparator *start_timer(uint64_t ns, modes mode, Func &&func, Args &&...args)
+    static comparator *start_timer(uint64_t ns, modes mode, Func &&func, Args &&...args)
     {
         lockit(lock);
 

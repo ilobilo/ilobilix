@@ -7,7 +7,6 @@
 #include <drivers/fs/tmpfs.hpp>
 #include <drivers/vfs.hpp>
 
-#include <drivers/serial.hpp>
 #include <drivers/acpi.hpp>
 #include <drivers/term.hpp>
 #include <drivers/frm.hpp>
@@ -19,14 +18,10 @@
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 
-#include <lib/log.hpp>
-
 void main()
 {
-    serial::early_init();
-
-    mm::pmm::init();
-    mm::vmm::init();
+    pmm::init();
+    vmm::init();
 
     frm::init();
     term::init();

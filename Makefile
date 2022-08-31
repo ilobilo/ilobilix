@@ -6,8 +6,9 @@ ifeq (,$(findstring $(ARCH),$(SUPARCHS)))
 endif
 
 ifeq ($(ARCH),x86_64)
-    EFI_ARCH = X64
-    LIBGCC = libgcc-x86_64-no-red-zone.a
+    override EFI_ARCH := X64
+    override LIBGCC := libgcc-x86_64-no-red-zone.a
+    override TARGET := x86_64-pc-none-elf
 else
 endif
 
@@ -51,21 +52,8 @@ LD = ld.lld
 
 CFLAGS ?= 
 CXXFLAGS ?= 
-LDFLAGS ?= 
 ASFLAGS ?= 
-
-override INTERNALCFLAGS := \
-	-Ofast -pipe           \
-	-Werror -Wall -Wextra  \
-	-Wno-error=\#warnings  \
- 	-Wno-unused-parameter # TODO: Remove this
-
-override INTERNALCXXFLAGS :=   \
-	$(INTERNALCFLAGS)          \
-	-Wno-user-defined-literals
-
-CFLAGS += $(INTERNALCFLAGS)
-CXXFLAGS += $(INTERNALCXXFLAGS)
+LDFLAGS ?= 
 
 CVERSION = gnu1x
 CXXVERSION = gnu++2b
@@ -85,14 +73,14 @@ override QEMUFLAGS := -cpu max -smp 4 -m 512M \
 
 ifeq ($(ARCH),x86_64)
     override QEMUFLAGS += -M q35                        \
-		-audiodev id=audio,driver=alsa                  \
-		-machine pcspk-audiodev=audio                   \
-		-device piix3-ide,id=ide                        \
-		-drive id=disk,file=$(DISK1),format=raw,if=none \
-		-device ide-hd,drive=disk,bus=ide.0             \
-		-drive format=raw,file=$(DISK0)                 \
-		-net nic,model=rtl8139                          \
-		-net user,hostfwd=tcp::4321-:4321
+        -audiodev id=audio,driver=alsa                  \
+        -machine pcspk-audiodev=audio                   \
+        -device piix3-ide,id=ide                        \
+        -drive id=disk,file=$(DISK1),format=raw,if=none \
+        -device ide-hd,drive=disk,bus=ide.0             \
+        -drive format=raw,file=$(DISK0)                 \
+        -net nic,model=rtl8139                          \
+        -net user,hostfwd=tcp::4321-:4321
 else
 endif
 
@@ -128,11 +116,14 @@ override INCLUDES :=                            \
 	-I$(ROOTDIR)/include/std/                   \
 	-I$(ROOTDIR)/include/libc/                  \
 	-I$(ROOTDIR)/include/kernel/                \
+	-I$(ROOTDIR)/include/kernel/arch/$(ARCH)/   \
+	-I$(EXTDEPDIR)/tlsf/                        \
 	-I$(EXTDEPDIR)/limine/                      \
 	-I$(EXTDEPDIR)/printf/src/                  \
 	-I$(EXTDEPDIR)/lai/include/                 \
 	-I$(EXTDEPDIR)/cwalk/include/               \
 	-I$(EXTDEPDIR)/frigg/include/               \
+	-I$(EXTDEPDIR)/veque/include/               \
 	-I$(EXTDEPDIR)/smart_ptr/include/           \
 	-I$(EXTDEPDIR)/cxxshim/stage2/include/      \
 	-I$(EXTDEPDIR)/limine-terminal-port/source/
@@ -175,7 +166,7 @@ extdeps-clean:
 modules:
 	@$(MAKE) -sC $(ROOTDIR)/modules
 	@mkdir -p $(MODDESTDIR)
-	@$(if $(EXTERN_MODULES),cp $(EXTERN_MODULES) $(MODDESTDIR))
+	@$(if $(strip $(EXTERN_MODULES)),cp $(EXTERN_MODULES) $(MODDESTDIR))
 
 .PHONY: modules-clean
 modules-clean: initrd-clean
