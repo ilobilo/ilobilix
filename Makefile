@@ -83,7 +83,8 @@ ifeq ($(ARCH),x86_64)
         -net nic,model=rtl8139                          \
         -net user,hostfwd=tcp::4321-:4321
 else ifeq ($(ARCH),aarch64)
-    override QEMUFLAGS += -M virt -device ramfb
+#    override QEMUFLAGS += -M virt -device ramfb
+    override QEMUFLAGS += -cpu cortex-a72 -M virt -device ramfb
 endif
 
 ifdef VNC
