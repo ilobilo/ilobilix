@@ -6,6 +6,8 @@
 
 namespace std
 {
+    using vector_traits = veque::std_vector_traits;
+
     template<typename Type, typename Allocator = allocator<Type>>
-    using vector = veque::veque<Type, veque::std_vector_traits, Allocator>;
+    using vector = veque::veque<Type, vector_traits, Allocator>;
 } // namespace std

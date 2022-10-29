@@ -5,7 +5,7 @@
 .extern int_handler
 int_common_stub:
     test qword ptr [rsp + 24], 0x03
-    jz 1f
+    je 1f
     swapgs
 1:
 
@@ -16,7 +16,7 @@ int_common_stub:
     add rsp, 16
 
     test qword ptr [rsp + 8], 0x03
-    jz 1f
+    je 1f
     swapgs
 1:
 

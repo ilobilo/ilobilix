@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <climits>
+#include <limits.h>
 
 namespace std
 {
@@ -827,6 +827,102 @@ namespace std
         static constexpr int max_exponent10 = 0;
 
         static constexpr bool traps = true;
+        static constexpr bool tinyness_before = false;
+
+        static constexpr unsigned long long min() noexcept { return 0; }
+        static constexpr unsigned long long lowest() noexcept { return 0; }
+        static constexpr unsigned long long max() noexcept { return ULLONG_MAX; }
+
+        static constexpr unsigned long long epsilon() noexcept { return 0; }
+        static constexpr unsigned long long round_error() noexcept { return 0; }
+
+        static constexpr unsigned long long infinity() noexcept { return 0; }
+        static constexpr unsigned long long quiet_NaN() noexcept { return 0; }
+        static constexpr unsigned long long signaling_NaN() noexcept { return 0; }
+        static constexpr unsigned long long denorm_min() noexcept { return 0; }
+    };
+
+    template<>
+    class numeric_limits<float>
+    {
+        public:
+        static constexpr bool is_specialized = true;
+        static constexpr bool is_signed = true;
+        static constexpr bool is_integer = false;
+        static constexpr bool is_exact = false;
+
+        static constexpr bool has_infinity = __FLT_HAS_INFINITY__;
+        static constexpr bool has_quiet_NaN = __FLT_HAS_QUIET_NAN__;
+        static constexpr bool has_signaling_NaN = has_quiet_NaN;
+        static constexpr float_denorm_style has_denorm = bool(__FLT_HAS_DENORM__) ? denorm_present : denorm_absent;;
+        static constexpr bool has_denorm_loss = false;
+
+        static constexpr float_round_style round_style = round_to_nearest;
+
+        static constexpr bool is_iec559 = has_infinity && has_quiet_NaN && has_denorm == denorm_present;
+        static constexpr bool is_bounded = true;
+        static constexpr bool is_modulo = false;
+
+        static constexpr int digits = __FLT_MANT_DIG__;
+        static constexpr int digits10 = __FLT_DIG__;
+        static constexpr int max_digits10 = (2 + (__FLT_MANT_DIG__) * 643L / 2136);
+
+        static constexpr int radix = __FLT_RADIX__;
+
+        static constexpr int min_exponent = __FLT_MIN_EXP__;
+        static constexpr int min_exponent10 = __FLT_MIN_10_EXP__;
+        static constexpr int max_exponent = __FLT_MAX_EXP__;
+        static constexpr int max_exponent10 = __FLT_MAX_10_EXP__;
+
+        static constexpr bool traps = false;
+        static constexpr bool tinyness_before = false;
+
+        static constexpr unsigned long long min() noexcept { return 0; }
+        static constexpr unsigned long long lowest() noexcept { return 0; }
+        static constexpr unsigned long long max() noexcept { return ULLONG_MAX; }
+
+        static constexpr unsigned long long epsilon() noexcept { return 0; }
+        static constexpr unsigned long long round_error() noexcept { return 0; }
+
+        static constexpr unsigned long long infinity() noexcept { return 0; }
+        static constexpr unsigned long long quiet_NaN() noexcept { return 0; }
+        static constexpr unsigned long long signaling_NaN() noexcept { return 0; }
+        static constexpr unsigned long long denorm_min() noexcept { return 0; }
+    };
+
+    template<>
+    class numeric_limits<double>
+    {
+        public:
+        static constexpr bool is_specialized = true;
+        static constexpr bool is_signed = true;
+        static constexpr bool is_integer = false;
+        static constexpr bool is_exact = false;
+
+        static constexpr bool has_infinity = __DBL_HAS_INFINITY__;
+        static constexpr bool has_quiet_NaN = __DBL_HAS_QUIET_NAN__;
+        static constexpr bool has_signaling_NaN = has_quiet_NaN;
+        static constexpr float_denorm_style has_denorm = bool(__DBL_HAS_DENORM__) ? denorm_present : denorm_absent;;
+        static constexpr bool has_denorm_loss = false;
+
+        static constexpr float_round_style round_style = round_to_nearest;
+
+        static constexpr bool is_iec559 = has_infinity && has_quiet_NaN && has_denorm == denorm_present;
+        static constexpr bool is_bounded = true;
+        static constexpr bool is_modulo = false;
+
+        static constexpr int digits = __DBL_MANT_DIG__;
+        static constexpr int digits10 = __DBL_DIG__;
+        static constexpr int max_digits10 = (2 + (__DBL_MANT_DIG__) * 643L / 2136);
+
+        static constexpr int radix = __FLT_RADIX__;
+
+        static constexpr int min_exponent = __DBL_MIN_EXP__;
+        static constexpr int min_exponent10 = __DBL_MIN_10_EXP__;
+        static constexpr int max_exponent = __DBL_MAX_EXP__;
+        static constexpr int max_exponent10 = __DBL_MAX_10_EXP__;
+
+        static constexpr bool traps = false;
         static constexpr bool tinyness_before = false;
 
         static constexpr unsigned long long min() noexcept { return 0; }

@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#include <kernel/kernel.hpp>
+#include <init/kernel.hpp>
 #include <lib/bitmap.hpp>
 #include <lib/panic.hpp>
 #include <lib/lock.hpp>
@@ -100,7 +100,7 @@ namespace pmm
 
     void init()
     {
-        log::info("Initialising PMM...");
+        log::infoln("Initialising PMM...");
 
         limine_memmap_entry **memmaps = memmap_request.response->entries;
         size_t memmap_count = memmap_request.response->entry_count;

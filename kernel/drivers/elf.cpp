@@ -1,12 +1,13 @@
 // Copyright (C) 2022  ilobilo
 
-#include <kernel/kernel.hpp>
 #include <drivers/elf.hpp>
+#include <init/kernel.hpp>
 #include <lib/misc.hpp>
 #include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
+#include <smart_ptr>
 #include <errno.h>
 #include <cstddef>
 #include <cstring>
@@ -42,7 +43,7 @@ namespace elf
 
         void init()
         {
-            log::info("Initialising kernel symbol table...");
+            log::infoln("Initialising kernel symbol table...");
 
             auto kfile = reinterpret_cast<uintptr_t>(kernel_file_request.response->kernel_file->address);
             auto header = reinterpret_cast<Elf64_Ehdr*>(kfile);
@@ -68,11 +69,19 @@ namespace elf
 
             for (size_t i = 0; i < entries; i++)
             {
+                auto name = std::string_view(&strtab[symtab[i].st_name]);
+
+                // Remove aarch64 mapping symbols
+                #if defined(__aarch64__)
+                if (name.starts_with("$x") || name.starts_with("$d"))
+                    continue;
+                #endif
+
                 symbol_table.push_back({
-                    std::string_view(&strtab[symtab[i].st_name]),
+                    name,
                     symtab[i].st_value,
                     symtab[i].st_size,
-                    ELF64_ST_TYPE(symtab[i].st_info)
+                    uint8_t(ELF64_ST_TYPE(symtab[i].st_info))
                 });
             }
 
@@ -83,9 +92,7 @@ namespace elf
                     if (symbol_table[t].addr < symbol_table[mi].addr)
                         mi = t;
 
-                symentry_t temp = symbol_table[mi];
-                symbol_table[mi] = symbol_table[i];
-                symbol_table[i] = temp;
+                std::swap(symbol_table[i], symbol_table[mi]);
             }
         }
     } // namespace syms
@@ -94,7 +101,7 @@ namespace elf
     {
         std::unordered_map<std::string_view, driver_t*> drivers;
         std::vector<module_t*> modules;
-        static uint64_t base_addr = 0;
+        // static uint64_t base_addr = 0;
         static lock_t lock;
 
         static std::vector<driver_t*> get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
@@ -109,20 +116,21 @@ namespace elf
                     while (offset < section->sh_addr + section->sh_size)
                     {
                         auto driver = reinterpret_cast<driver_t*>(offset);
+                        std::string_view name(driver->name);
 
-                        if (drivers.contains(driver->name))
+                        if (drivers.contains(name))
                         {
-                            log::info("ELF: Driver with name \"%s\" already exists!", driver->name);
+                            log::infoln("ELF: Driver with name \"{}\" already exists!", name);
                             goto next;
                         }
 
-                        log::info("ELF: Found driver: \"%s\"", driver->name);
+                        log::infoln("ELF: Found driver: \"{}\"", name);
 
                         if (driver->depcount > 0)
                         {
-                            log::info(" Dependencies: ");
+                            log::infoln(" Dependencies: ");
                             for (size_t d = 0; d < driver->depcount; d++)
-                                log::info("  - \"%s\"", driver->deps[d]);
+                                log::infoln("  - \"{}\"", driver->deps[d]);
                         }
 
                         drivers[driver->name] = driver;
@@ -139,28 +147,34 @@ namespace elf
 
         uint64_t map(uint64_t size)
         {
-            if (base_addr == 0)
-                base_addr = align_up(tohh(pmm::mem_top), pmm::page_size);
-            size = align_up(size, pmm::page_size);
+            // Align to 1mib because on x86_64 OVMF aligning to 4kib causes #GPF
+            // if (base_addr == 0)
+            //     base_addr = align_up(tohh(pmm::mem_top), 0x40000000);
 
-            uint64_t loadaddr = base_addr;
-            base_addr += size;
+            // size = align_up(size, pmm::page_size);
 
-            uint64_t paddr = pmm::alloc<uint64_t>(size / pmm::page_size);
-            vmm::kernel_pagemap->mapMemRange(loadaddr, paddr, size, vmm::RWX);
+            // uint64_t loadaddr = base_addr;
+            // base_addr += size;
 
-            return loadaddr;
+            // uint64_t paddr = pmm::alloc<uint64_t>(size / pmm::page_size);
+            // vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);
+
+            // return loadaddr;
+
+            return malloc<uint64_t>(size);
         }
 
         void unmap(uint64_t loadaddr, uint64_t size)
         {
-            size = align_up(size, pmm::page_size);
-            if (loadaddr == base_addr - size)
-                base_addr = loadaddr;
+            // size = align_up(size, pmm::page_size);
+            // if (loadaddr == base_addr - size)
+            //     base_addr = loadaddr;
 
-            void *ptr = reinterpret_cast<void*>(vmm::kernel_pagemap->virt2phys(loadaddr));
-            pmm::free(ptr, size / pmm::page_size);
-            vmm::kernel_pagemap->unmapMemRange(loadaddr, size);
+            // void *ptr = reinterpret_cast<void*>(vmm::kernel_pagemap->virt2phys(loadaddr));
+            // pmm::free(ptr, size / pmm::page_size);
+            // vmm::kernel_pagemap->unmap_range(loadaddr, size);
+
+            free(loadaddr);
         }
 
         [[clang::no_sanitize("alignment")]]
@@ -169,17 +183,17 @@ namespace elf
             auto header = reinterpret_cast<Elf64_Ehdr*>(address);
             if (memcmp(header->e_ident, ELFMAG, 4))
             {
-                log::error("ELF: Invalid magic!");
+                log::errorln("ELF: Invalid magic!");
                 return std::nullopt;
             }
             if (header->e_ident[EI_CLASS] != ELFCLASS64)
             {
-                log::error("ELF: Invalid class!");
+                log::errorln("ELF: Invalid class!");
                 return std::nullopt;
             }
             if (header->e_type != ET_REL)
             {
-                log::error("ELF: Not a relocatable object!");
+                log::errorln("ELF: Not a relocatable object!");
                 return std::nullopt;
             }
 
@@ -206,9 +220,23 @@ namespace elf
                 {
                     section->sh_addr = loadaddr + section->sh_offset;
                     if (section->sh_addralign && (section->sh_addr & (section->sh_addralign - 1)))
-                        log::warn("ELF: Module not aligned correctly! 0x%lX %lu", section->sh_addr, section->sh_addralign);
+                        log::warnln("ELF: Module not aligned correctly! 0x{:X} {}", section->sh_addr, section->sh_addralign);
                 }
             }
+
+            // #if defined(__aarch64__)
+            // auto aarch64_imm_adr = [](uint32_t val) -> uint32_t
+            // {
+            //     uint32_t low  = (val & 0x03) << 29;
+            //     uint32_t high = ((val >> 2) & 0x07FFFF) << 5;
+            //     return low | high;
+            // };
+
+            // auto aarch64_imm_12 = [](uint32_t val) -> uint32_t
+            // {
+            //     return (val & 0x0FFF) << 10;
+            // };
+            // #endif
 
             for (size_t i = 0; i < header->e_shnum; i++)
             {
@@ -227,6 +255,7 @@ namespace elf
                         auto name = strtable + sym->st_name;
 
                         void *loc = reinterpret_cast<void*>(tgtsect->sh_addr + entry->r_offset);
+                        auto locaddr = reinterpret_cast<uintptr_t>(loc);
                         uintptr_t val = 0;
 
                         if (sym->st_shndx == SHN_UNDEF)
@@ -234,7 +263,7 @@ namespace elf
                             auto entry = syms::lookup(name);
                             if (entry == syms::empty_sym)
                             {
-                                log::error("ELF: Could not find kernel symbol \"%s\"", name);
+                                log::errorln("ELF: Could not find kernel symbol \"{}\"", name);
                                 unmap(loadaddr, size);
                                 return std::nullopt;
                             }
@@ -251,19 +280,93 @@ namespace elf
                                 *static_cast<uint64_t*>(loc) = val;
                                 break;
                             case R_X86_64_PC64:
-                                *static_cast<uint64_t*>(loc) = val - reinterpret_cast<uintptr_t>(loc);
+                                *static_cast<uint64_t*>(loc) = val - locaddr;
                                 break;
                             case R_X86_64_32:
                                 *static_cast<uint32_t*>(loc) = val;
                                 break;
                             case R_X86_64_PC32:
                             case R_X86_64_PLT32:
-                                *static_cast<uint32_t*>(loc) = val - reinterpret_cast<uintptr_t>(loc);
+                                *static_cast<uint32_t*>(loc) = val - locaddr;
                                 break;
-                            #elif
+                            #elif defined(__aarch64__)
+                            case R_AARCH64_NONE:
+                                break;
+                            case R_AARCH64_ABS64:
+                                *static_cast<uint64_t*>(loc) = val;
+                                break;
+                            case R_AARCH64_ABS32:
+                                *static_cast<uint32_t*>(loc) = val;
+                                break;
+                            case R_AARCH64_ABS16:
+                                *static_cast<uint16_t*>(loc) = val;
+                                break;
+                            case R_AARCH64_PREL64:
+                                *static_cast<uint64_t*>(loc) = val - locaddr;
+                                break;
+                            case R_AARCH64_PREL32:
+                                *static_cast<uint32_t*>(loc) = val - locaddr;
+                                break;
+                            case R_AARCH64_PREL16:
+                                *static_cast<uint16_t*>(loc) = val - locaddr;
+                                break;
+                            // case R_AARCH64_MOVW_UABS_G0_NC:
+                            // case R_AARCH64_MOVW_UABS_G0:
+                            // {
+                            //     uint32_t mask = ((1 << 16) - 1);
+                            //     size_t shift = 5;
+
+                            //     uint32_t insn = *static_cast<uint32_t*>(loc);
+                            //     int64_t imm = val >> 0;
+                            //     *static_cast<uint64_t*>(loc) = (insn & ~(mask << shift)) | ((imm & mask) << shift);
+                            //     break;
+                            // }
+                            // case R_AARCH64_MOVW_UABS_G1_NC:
+                            // case R_AARCH64_MOVW_UABS_G1:
+                            // {
+                            //     uint32_t mask = ((1 << 16) - 1);
+                            //     size_t shift = 5;
+
+                            //     uint32_t insn = *static_cast<uint32_t*>(loc);
+                            //     int64_t imm = val >> 16;
+                            //     *static_cast<uint64_t*>(loc) = (insn & ~(mask << shift)) | ((imm & mask) << shift);
+                            //     break;
+                            // }
+                            // case R_AARCH64_MOVW_UABS_G2_NC:
+                            // case R_AARCH64_MOVW_UABS_G2:
+                            // {
+                            //     uint32_t mask = ((1 << 16) - 1);
+                            //     size_t shift = 5;
+
+                            //     uint32_t insn = *static_cast<uint32_t*>(loc);
+                            //     int64_t imm = val >> 32;
+                            //     *static_cast<uint64_t*>(loc) = (insn & ~(mask << shift)) | ((imm & mask) << shift);
+                            //     break;
+                            // }
+                            // case R_AARCH64_MOVW_UABS_G3:
+                            // {
+                            //     uint32_t mask = ((1 << 16) - 1);
+                            //     size_t shift = 5;
+
+                            //     uint32_t insn = *static_cast<uint32_t*>(loc);
+                            //     int64_t imm = val >> 48;
+                            //     *static_cast<uint64_t*>(loc) = (insn & ~(mask << shift)) | ((imm & mask) << shift);
+                            //     break;
+                            // }
+                            // case R_AARCH64_JUMP26:
+                            // case R_AARCH64_CALL26:
+                            // {
+                            //     uint32_t mask = ((1 << 26) - 1);
+                            //     size_t shift = 0;
+
+                            //     uint32_t insn = *static_cast<uint32_t*>(loc);
+                            //     int64_t imm = ((val - reinterpret_cast<uintptr_t>(loc)) >> 2) & (((1 << (2 + 26)) - 1) >> 2);
+                            //     *static_cast<uint64_t*>(loc) = (insn & ~(mask << shift)) | ((imm & mask) << shift);
+                            //     break;
+                            // }
                             #endif
                             default:
-                                log::error("ELF: Unsupported relocation %lu found!", ELF64_R_TYPE(entry->r_info));
+                                log::errorln("ELF: Unsupported relocation {} found!", ELF64_R_TYPE(entry->r_info));
                                 unmap(loadaddr, size);
                                 return std::nullopt;
                         }
@@ -283,7 +386,7 @@ namespace elf
             mod->has_drivers = drvs.empty() == false;
 
             if (mod->has_drivers == false)
-                log::warn("ELF: Could not find any drivers in the module!");
+                log::warnln("ELF: Could not find any drivers in the module!");
 
             modules.push_back(mod);
             return drvs;
@@ -303,7 +406,7 @@ namespace elf
             if (node == nullptr)
                 return false;
 
-            log::info("ELF: Loading modules from \"%.*s\"", directory.length(), directory.data());
+            log::infoln("ELF: Loading modules from \"{}\"", directory);
 
             node->fs->populate(node);
             std::vector<driver_t*> ret;
@@ -318,17 +421,13 @@ namespace elf
 
                 auto drvs = load(child);
 
-                // if (drvs.has_value())
-                //     ret.insert(ret.end(), drvs.value().begin(), drvs.value().end());
-
                 if (drvs.has_value())
-                    for (const auto &drv : drvs.value())
-                        ret.push_back(drv);
+                    ret.insert(ret.end(), drvs.value().begin(), drvs.value().end());
             }
 
             if (ret.empty())
             {
-                log::error("ELF: Could not find any modules in \"%.*s\"", directory.length(), directory.data());
+                log::errorln("ELF: Could not find any modules in \"{}\"", directory);
                 return std::nullopt;
             }
 
@@ -340,7 +439,7 @@ namespace elf
             if (driver->initialised == true)
                 return true;
 
-            log::info("ELF: Running driver \"%s\"", driver->name);
+            log::infoln("ELF: Running driver \"{}\"", std::string_view(driver->name));
             for (size_t i = 0; i < driver->depcount; i++)
             {
                 const auto &dep = driver->deps[i];
@@ -349,7 +448,7 @@ namespace elf
 
                 if (drivers.contains(dep) == false)
                 {
-                    log::error("ELF: Dependency \"%s\" of driver \"%s\" not found!", dep, driver->name);
+                    log::errorln("ELF: Dependency \"{}\" of driver \"{}\" not found!", dep, driver->name);
                     return false;
                 }
 
@@ -358,7 +457,7 @@ namespace elf
                 {
                     if (deps == false)
                     {
-                        log::error("ELF: Dependency \"%s\" of driver \"%s\" unresolved!", dep, driver->name);
+                        log::errorln("ELF: Dependency \"{}\" of driver \"{}\" unresolved!", dep, driver->name);
                         return false;
                     }
                     run(depdriver, deps);
@@ -369,7 +468,7 @@ namespace elf
             if (driver->init)
                 ret = driver->init();
             else
-                log::error("ELF: Driver \"%s\" does not have init() function!", driver->name);
+                log::errorln("ELF: Driver \"{}\" does not have init() function!", driver->name);
 
             return driver->initialised = ret;
         }
@@ -388,12 +487,12 @@ namespace elf
             if (driver->initialised == false)
                 return;
 
-            log::info("ELF: Destroying driver \"%s\"", driver->name);
+            log::infoln("ELF: Destroying driver \"{}\"", driver->name);
 
             if (driver->fini)
                 driver->fini();
             else
-                log::warn("ELF: Driver \"%s\" does not have fini() function!", driver->name);
+                log::warnln("ELF: Driver \"{}\" does not have fini() function!", driver->name);
 
             driver->initialised = false;
         }
@@ -404,9 +503,9 @@ namespace elf
                 destroy(driver);
         }
 
-        std::vector<driver_t*> init()
+        void init()
         {
-            log::info("Initialising builtin drivers...");
+            log::infoln("Initialising builtin drivers...");
 
             auto kfile = reinterpret_cast<uintptr_t>(kernel_file_request.response->kernel_file->address);
             auto header = reinterpret_cast<Elf64_Ehdr*>(kfile);
@@ -415,9 +514,10 @@ namespace elf
 
             auto drvs = get_drivers(header, sections, strtable);
             if (drvs.empty())
-                log::error("Could not find any builtin drivers!");
+                log::errorln("Could not find any builtin drivers!");
 
-            return drvs;
+            elf::module::load(nullptr, "/lib/modules/");
+            elf::module::run_all();
         }
     } // namespace module
 

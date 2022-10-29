@@ -404,6 +404,7 @@ namespace std
     };
 
     using string_view = basic_string_view<char>;
+    using wstring_view = basic_string_view<wchar_t>;
 
     template<typename Char, typename Traits>
     struct hash<basic_string_view<Char, Traits>>

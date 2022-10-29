@@ -4,9 +4,9 @@
 
 #include <drivers/pci/pci.hpp>
 
-namespace pci
+namespace pci::ecam
 {
-    struct ecam_configio final : configio
+    struct configio final : pci::configio
     {
         private:
         uintptr_t base;
@@ -23,6 +23,6 @@ namespace pci
         void write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value, size_t width);
 
         public:
-        ecam_configio(uintptr_t base, uint16_t seg, uint8_t bus_start, uint8_t bus_end) : base(base), seg(seg), bus_start(bus_start), bus_end(bus_end) { }
+        configio(uintptr_t base, uint16_t seg, uint8_t bus_start, uint8_t bus_end) : base(base), seg(seg), bus_start(bus_start), bus_end(bus_end) { }
     };
-} // namespace pci
+} // namespace pci::ecam

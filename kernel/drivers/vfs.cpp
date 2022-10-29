@@ -1,6 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
 #include <drivers/fs/devtmpfs.hpp>
+#include <drivers/proc.hpp>
 #include <drivers/vfs.hpp>
 #include <lib/log.hpp>
 #include <climits>
@@ -13,8 +14,8 @@ namespace vfs
 
     node_t *get_root()
     {
-        // TODO: Separate root node for each process
-        return root_node;
+        auto thread = this_thread();
+        return thread ? thread->parent->root : root_node;
     }
 
     node_t *node_t::internal_reduce(bool symlinks, bool automount, size_t cnt)
@@ -79,18 +80,10 @@ namespace vfs
         return mode_t(this->res->stat.st_mode & ~s_ifmt);
     }
 
-    bool node_t::dotentries()
+    bool node_t::empty()
     {
-        if (this->res == nullptr || this->type() != s_ifdir)
-            return false;
-
-        auto dot = new node_t(".", this, this->fs);
-        auto dotdot = new node_t("..", this, this->fs);
-
-        this->children[dot->name] = dot;
-        this->children[dotdot->name] = dotdot;
-
-        return true;
+        this->fs->populate(this);
+        return this->children.empty();
     }
 
     std::optional<std::string> filesystem::get_value(std::string_view key)
@@ -131,6 +124,21 @@ namespace vfs
         return nullptr;
     }
 
+    void recursive_delete(node_t *node, bool resources)
+    {
+        if (node == nullptr)
+            return;
+
+        if (node->type() == s_ifdir)
+            for (auto [name, child] : node->children)
+                recursive_delete(child, resources);
+
+        if (resources == true)
+            delete node->res;
+
+        delete node;
+    }
+
     std::tuple<node_t*, node_t*, std::string> path2node(node_t *parent, path_t path, bool automount)
     {
         if (parent == nullptr || path.is_absolute())
@@ -150,7 +158,7 @@ namespace vfs
             if (current_node == get_root()->reduce(false))
                 parent = current_node;
             else if (current_node == current_node->fs->root)
-                parent = current_node->fs->mounted_on->parent; // TODO: ->parent?
+                parent = current_node->fs->mounted_on->parent;
 
             return parent;
         };
@@ -199,6 +207,7 @@ namespace vfs
             errno = ENOENT;
             if (is_last == true)
                 return { current_node, nullptr, { segment.data(), segment.length() } };
+
             return { nullptr, nullptr, "" };
         }
 
@@ -253,11 +262,10 @@ namespace vfs
         node->mountgate = mountgate;
         fs->mounted_on = node;
 
-        mountgate->dotentries();
         if (source.empty())
-            log::info("VFS: Mounted filesystem \"%.*s\" on \"%.*s\"", fs_name.size(), fs_name.data(), target.size(), target.data());
+            log::infoln("VFS: Mounted filesystem \"{}\" on \"{}\"", fs_name, target);
         else
-            log::info("VFS: Mounted  \"%.*s\" on \"%.*s\" with filesystem \"%.*s\"", source.size(), source.data(), target.size(), target.data(), fs_name.size(), fs_name.data());
+            log::infoln("VFS: Mounted  \"{}\" on \"{}\" with filesystem \"{}\"", source, target, fs_name);
 
         return true;
     }
@@ -285,7 +293,6 @@ namespace vfs
 
         if (node != nullptr)
         {
-            node->dotentries();
             lockit(nparent->lock);
             nparent->children[node->name] = node;
         }
@@ -367,21 +374,28 @@ namespace vfs
         if (node == nullptr)
             return false;
 
-        if (node->type() == s_ifdir && not (flags & at_removedir))
+        if (node->type() == s_ifdir)
         {
-            errno = EISDIR;
-            return false;
+            if (not (flags & at_removedir))
+            {
+                errno = EISDIR;
+                return false;
+            }
+
+            if (node->empty() == false)
+            {
+                errno = ENOTEMPTY;
+                return false;
+            }
         }
 
         bool ret = nparent->fs->unlink(node);
         if (ret == true)
         {
             lockit(node->lock);
-            if (--node->res->refcount == 0)
-            {
-                delete node->res;
-                delete node;
-            }
+
+            node->res->refcount--;
+            delete node;
 
             nparent->children.erase(basename);
         }

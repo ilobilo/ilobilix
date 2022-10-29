@@ -1,7 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
 #include <arch/x86_64/cpu/gdt.hpp>
-#include <kernel/kernel.hpp>
+#include <init/kernel.hpp>
 #include <lib/lock.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
@@ -17,7 +17,7 @@ namespace gdt
         lockit(lock);
         if (tss == nullptr)
         {
-            log::info("Initialising GDT...");
+            log::infoln("Initialising GDT...");
             tss = new TSS[smp_request.response->cpu_count];
         }
 
@@ -43,7 +43,7 @@ namespace gdt
             } // Tss
         };
 
-        tss[num].RSP[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size));
+        tss[num].RSP[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size)) + default_stack_size;
 
         GDTR gdtr
         {

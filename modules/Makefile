@@ -2,7 +2,7 @@
 all: $(MODULES)
 
 $(MODULES):
-	$(MAKE) -f$(MODSRCDIR)/Makefile.mk -C $(shell dirname $@)
+	$(MAKE) -f$(MODULEDIR)/Makefile.mk -C $(shell dirname $@)
 
 .PHONY: clean
 clean:

@@ -20,30 +20,32 @@ override LDFLAGS += \
 
 override CCFLAGS :=         \
 	$(INCLUDES)             \
+	-target $(TARGET)       \
 	-ffreestanding          \
 	-fno-stack-protector    \
 	-fno-omit-frame-pointer \
-	-fno-pic                \
-	-fno-pie                \
+	-fno-pic -fno-pie       \
 	-Werror -Wall -Wextra   \
 	-Wno-error=\#warnings   \
-	-Ofast -pipe -MMD       \
+	-Ofast -pipe -MMD
 
 ifeq ($(ARCH),x86_64)
     override CCFLAGS +=   \
-        -target $(TARGET) \
         -march=x86-64     \
         -mabi=sysv        \
         -mno-80387        \
         -mno-mmx          \
         -mno-sse          \
         -mno-sse2         \
-		-mno-red-zone     \
+        -mno-red-zone     \
         -mcmodel=large
 
     override ASFLAGS += \
         -masm=intel
-else
+else ifeq ($(ARCH),aarch64)
+    override CCFLAGS +=     \
+        -mgeneral-regs-only \
+        -mcmodel=small
 endif
 
 ifdef MODUBSAN
@@ -54,11 +56,12 @@ override CFLAGS += \
 	$(CCFLAGS)     \
 	-std=$(CVERSION)
 
-override CXXFLAGS +=   \
-	$(CCFLAGS)         \
-	-std=$(CXXVERSION) \
-	-fno-exceptions    \
-	-fno-rtti
+override CXXFLAGS +=           \
+	$(CCFLAGS)                 \
+	-std=$(CXXVERSION)         \
+	-fno-exceptions            \
+	-fno-rtti                  \
+	-Wno-user-defined-literals
 
 override ASFLAGS += \
 	$(CCFLAGS)
@@ -84,12 +87,12 @@ $(MODULE): $(OBJ)
 
 %.c.o: %.c
 	@printf "CC\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.cpp.o: %.cpp
 	@printf "CXX\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.S.o: %.S
 	@printf "AS\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(ASFLAGS) -c $< -o $@
+	$(CC) $(ASFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@

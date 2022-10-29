@@ -23,15 +23,9 @@ namespace timers::pit
             asm volatile ("pause");
     }
 
-    static void irq_handler(cpu::registers_t *regs)
-    {
-        tick++;
-        time::timer_handler();
-    }
-
     void init()
     {
-        log::info("Initialising PIT...");
+        log::infoln("Initialising PIT...");
 
         uint64_t divisor = 1193180 / time::frequency;
 
@@ -44,7 +38,11 @@ namespace timers::pit
         io::out<uint8_t>(0x40, h);
 
         auto [handler, vector] = idt::allocate_handler(idt::IRQ(0));
-        handler.set(irq_handler);
+        handler.set([](cpu::registers_t *regs)
+        {
+            tick++;
+            time::timer_handler();
+        });
         idt::unmask(vector - 0x20);
     }
 } // namespace timers::pit

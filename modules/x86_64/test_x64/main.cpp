@@ -1,9 +1,10 @@
 // Copyright (C) 2022  ilobilo
 
 #include <modules/module.hpp>
+#include <lib/log.hpp>
 #include <cstdio>
 
-// Always put DRIVER() until init and fini functions
+// Always put DRIVER() before init and fini functions
 DRIVER(test, init, fini)
 
 __init bool init()

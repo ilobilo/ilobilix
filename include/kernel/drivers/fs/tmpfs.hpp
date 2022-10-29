@@ -22,7 +22,7 @@ namespace tmpfs
         tmpfs() : filesystem("tmpfs"), max_inodes(0), max_size(0), current_size(0), root_mode(vfs::default_folder_mode), root_gid(0), root_uid(0) { }
 
         vfs::node_t *mount(vfs::node_t *source, vfs::node_t *parent, std::string_view name, void *data);
-        // bool unmount();
+        bool unmount();
 
         vfs::node_t *create(vfs::node_t *parent, std::string_view name, mode_t mode);
         vfs::node_t *symlink(vfs::node_t *parent, std::string_view name, std::string_view target);

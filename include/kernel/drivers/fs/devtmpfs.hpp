@@ -11,7 +11,7 @@ namespace devtmpfs
         devtmpfs() : filesystem("devtmpfs") { }
 
         vfs::node_t *mount(vfs::node_t *source, vfs::node_t *parent, std::string_view name, void *data);
-        // bool unmount();
+        bool unmount();
 
         vfs::node_t *create(vfs::node_t *parent, std::string_view name, mode_t mode);
         vfs::node_t *symlink(vfs::node_t *parent, std::string_view name, std::string_view target);

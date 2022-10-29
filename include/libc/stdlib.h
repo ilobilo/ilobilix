@@ -5,14 +5,15 @@
 #include <stddef.h>
 
 #ifdef __cplusplus
+#include <lib/alloc.hpp>
 extern "C" {
-#endif
-
+#else
 void *malloc(size_t size);
 void *calloc(size_t num, size_t size);
 void *realloc(void *oldptr, size_t size);
 void free(void *ptr);
 size_t allocsize(void *ptr);
+#endif
 
 int atoi(const char *str);
 long atol(const char *str);

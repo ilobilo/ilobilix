@@ -4,9 +4,9 @@
 #include <arch/x86_64/lib/io.hpp>
 #include <lib/panic.hpp>
 
-namespace pci
+namespace pci::legacy
 {
-    uint32_t legacy_configio::read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width)
+    uint32_t configio::read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width)
     {
         assert(seg == 0);
         uint32_t address = (bus << 16) | (dev << 11) | (func << 8) | (offset & ~(3U)) | 0x80000000;
@@ -24,7 +24,7 @@ namespace pci
         }
     }
 
-    void legacy_configio::write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value, size_t width)
+    void configio::write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value, size_t width)
     {
         assert(seg == 0);
         uint32_t address = (bus << 16) | (dev << 11) | (func << 8) | (offset & ~(3U)) | 0x80000000;
@@ -44,4 +44,27 @@ namespace pci
                 PANIC("PCI: Invalid integer size!");
         }
     }
-} // namespace pci
+
+    void init_ios()
+    {
+        auto io = new legacy::configio;
+        for (size_t i = 0; i < 256; i++)
+            addconfigio(0, i, io);
+    }
+
+    void init_rbs()
+    {
+        auto io = getconfigio(0, 0);
+        if (io->read<uint8_t>(0, 0, 0, 0, PCI_HEADER_TYPE) & (1 << 7))
+        {
+            for (size_t i = 0; i < 8; i++)
+            {
+                if (io->read<uint16_t>(0, 0, 0, i, PCI_VENDOR_ID) == 0xFFFF)
+                    continue;
+
+                addrootbus(new bus_t(nullptr, getconfigio(0, i), 0, i));
+            }
+        }
+        else addrootbus(new bus_t(nullptr, io, 0, 0));
+    }
+} // namespace pci::legacy

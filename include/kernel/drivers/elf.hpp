@@ -22,10 +22,7 @@ namespace elf
             size_t size;
             uint8_t type;
 
-            friend constexpr bool operator==(const symentry_t &lhs, const symentry_t &rhs)
-            {
-                return (lhs.name == rhs.name) && (lhs.addr == rhs.addr) && (lhs.size == rhs.size) && (lhs.type == rhs.type);
-            }
+            constexpr bool operator==(const symentry_t &) const = default;
         };
         static constexpr symentry_t empty_sym = { "<unknown>", UINTPTR_MAX, 0, STT_NOTYPE };
 
@@ -63,7 +60,7 @@ namespace elf
         void destroy(driver_t *entry);
         void destroy_all();
 
-        std::vector<driver_t*> init();
+        void init();
     } // namespace module
 
     namespace exec

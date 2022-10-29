@@ -9,6 +9,7 @@
 #include <utility>
 #include <cassert>
 #include <memory>
+#include <tuple>
 
 #define BUCKET_COUNT 10
 #define BUCKET_INC(size) size + BUCKET_COUNT / 2
@@ -226,7 +227,8 @@ namespace std
             else
             {
                 node = this->construct(value);
-                if (prev == nullptr) this->_table[bucket] = node;
+                if (prev == nullptr)
+                    this->_table[bucket] = node;
                 else
                     prev->next = node;
                 this->_size++;
@@ -353,7 +355,8 @@ namespace std
 
         iterator begin()
         {
-            if (this->_size == 0) return iterator(this, this->_cap, nullptr);
+            if (this->_size == 0)
+                return iterator(this, this->_cap, nullptr);
 
             for (size_type i = 0; i < this->_cap; i++)
                 if (this->_table[i] != nullptr)
@@ -364,7 +367,8 @@ namespace std
 
         const_iterator begin() const
         {
-            if (this->_size == 0) return const_iterator(this, this->_cap, nullptr);
+            if (this->_size == 0)
+                return const_iterator(this, this->_cap, nullptr);
 
             for (size_type i = 0; i < this->_cap; i++)
                 if (this->_table[i] != nullptr)
@@ -436,8 +440,8 @@ namespace std
 
         void insert(initializer_list<value_type> ilist)
         {
-            if (ilist.size() > this->_cap)
-                this->rehash(ilist.size());
+            if (ilist.size() + this->_size > this->_cap)
+                this->rehash(ilist.size() + this->_size);
 
             for (const auto &value : ilist)
                 this->_insert(value);

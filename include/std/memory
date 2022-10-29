@@ -3,10 +3,6 @@
 #pragma once
 
 #include_next <memory>
-
-#include <enable_shared_from_this.hpp>
-#include <owner_less.hpp>
-#include <unique_ptr.hpp>
 #include <new>
 
 namespace std
@@ -43,7 +39,7 @@ namespace std
         }
 
         template<typename Type, typename...Args>
-        static constexpr void construct(Allocator &a, Type* p, Args &&...args)
+        static constexpr void construct(Allocator &, Type* p, Args &&...args)
         {
             ::new (static_cast<void*>(p)) Type(forward<Args>(args)...);
         }
@@ -78,6 +74,4 @@ namespace std
             ::operator delete(ptr);
         }
     };
-
-    using namespace smart_ptr;
 } // namespace std

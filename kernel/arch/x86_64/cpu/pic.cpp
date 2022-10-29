@@ -2,7 +2,7 @@
 
 #include <arch/x86_64/cpu/pic.hpp>
 #include <arch/x86_64/lib/io.hpp>
-#include <kernel/kernel.hpp>
+#include <init/kernel.hpp>
 #include <lib/log.hpp>
 
 namespace pic
@@ -47,7 +47,7 @@ namespace pic
 
     void init()
     {
-        log::info("Initialising PIC...");
+        log::infoln("Initialising PIC...");
 
         auto a1 = io::in<uint8_t>(0x21);
         auto a2 = io::in<uint8_t>(0xA1);

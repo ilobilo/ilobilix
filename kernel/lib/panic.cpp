@@ -10,11 +10,11 @@
 [[noreturn]] void panic(const char *file, int line, const char *func, const char *message)
 {
     log::println();
-    log::error("%s", message);
-    log::error("File: %s", file);
-    log::error("Line: %d", line);
-    log::error("Function: %s", func);
-    log::error("System halted!");
+    log::errorln("{}", message);
+    log::errorln("File: {}", file);
+    log::errorln("Line: {}", line);
+    log::errorln("Function: {}", func);
+    log::errorln("System halted!");
 
     arch::halt(false);
 }
@@ -22,8 +22,8 @@
 [[noreturn]] void panic(const char *message)
 {
     log::println();
-    log::error("%s", message);
-    log::error("System halted!");
+    log::errorln("{}", message);
+    log::errorln("System halted!");
 
     arch::halt(false);
 }

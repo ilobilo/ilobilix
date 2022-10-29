@@ -14,6 +14,11 @@ extern bool lvl5;
 #if LVL5_PAGING
 extern volatile limine_5_level_paging_request _5_level_paging_request;
 #endif
+
+// #if defined(__aarch64__)
+// extern volatile limine_dtb_request dtb_request;
+// #endif
+
 extern volatile limine_efi_system_table_request efi_system_table_request;
 extern volatile limine_framebuffer_request framebuffer_request;
 extern volatile limine_terminal_request terminal_request;

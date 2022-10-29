@@ -50,7 +50,7 @@ extern "C"
 
     void __cxa_pure_virtual()
     {
-        PANIC("pure virtual function was called!");
+        PANIC("__cxa_pure_virtual()");
     }
 
     namespace __cxxabiv1
@@ -73,7 +73,7 @@ extern "C"
 
         void __cxa_guard_abort(uint64_t *guard)
         {
-            PANIC("__cxa_guard_abort was called!");
+            PANIC("__cxa_guard_abort()");
         }
     }
 
@@ -84,6 +84,14 @@ extern "C"
     }
 } // extern "C"
 
+namespace std
+{
+    [[noreturn]] void terminate() noexcept
+    {
+        PANIC("std::terminate()");
+    }
+} // namespace std
+
 namespace cxxabi
 {
     extern "C" void (*__init_array_start[])();
@@ -91,7 +99,8 @@ namespace cxxabi
 
     void init()
     {
-        log::info("Running global gonstructors...");
-        for (auto ctor = __init_array_start; ctor < __init_array_end; ctor++) (*ctor)();
+        log::infoln("Running global constructors...");
+        for (auto ctor = __init_array_start; ctor < __init_array_end; ctor++)
+            (*ctor)();
     }
 } // namespace cxxabi

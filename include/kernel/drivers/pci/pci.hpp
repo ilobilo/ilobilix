@@ -3,8 +3,8 @@
 #pragma once
 
 #include <unordered_map>
-#include <type_traits>
 #include <lai/core.h>
+#include <concepts>
 #include <cstdint>
 #include <vector>
 
@@ -59,7 +59,7 @@ namespace pci
     };
 
     template<typename Type>
-    concept valuetype = (std::is_same_v<Type, uint8_t> || std::is_same_v<Type, uint16_t> || std::is_same_v<Type, uint32_t>);
+    concept valuetype = (std::same_as<Type, uint8_t> || std::same_as<Type, uint16_t> || std::same_as<Type, uint32_t>);
 
     struct [[gnu::aligned]] configio
     {
@@ -79,12 +79,6 @@ namespace pci
         virtual uint32_t read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width) = 0;
         virtual void write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value, size_t width) = 0;
     };
-
-    template<valuetype Type>
-    Type read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset);
-
-    template<valuetype Type>
-    void write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, Type value);
 
     struct bar_t
     {
@@ -199,7 +193,7 @@ namespace pci
 
     struct bridge_t : entity
     {
-        bus_t *bus;
+        bus_t *parent;
         uint8_t secondaryid;
         uint8_t subordinateid;
 
@@ -247,6 +241,20 @@ namespace pci
     inline configio *getconfigio(uint32_t seg, uint32_t bus)
     {
         return configspaces.at((seg << 8) | bus);
+    }
+
+    template<valuetype Type>
+    inline Type read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset)
+    {
+        auto io = getconfigio(seg, bus);
+        return io->read<Type>(seg, bus, dev, func, offset);
+    }
+
+    template<valuetype Type>
+    inline void write(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, Type value)
+    {
+        auto io = getconfigio(seg, bus);
+        io->write<Type>(seg, bus, dev, func, offset, value);
     }
 
     void addconfigio(uint32_t seg, uint32_t bus, configio *io);

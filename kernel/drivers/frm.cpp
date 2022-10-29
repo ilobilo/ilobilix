@@ -1,7 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
-#include <kernel/kernel.hpp>
 #include <drivers/frm.hpp>
+#include <init/kernel.hpp>
 #include <lib/log.hpp>
 
 namespace frm
@@ -12,7 +12,7 @@ namespace frm
 
     void init()
     {
-        log::info("Initialising Framebuffers...");
+        log::infoln("Initialising Framebuffers...");
 
         auto response = framebuffer_request.response;
         frm_count = response->framebuffer_count;
@@ -21,5 +21,10 @@ namespace frm
             frms.push_back(response->framebuffers[i]);
 
         main_frm = frms.front();
+    }
+
+    // TODO
+    void late_init()
+    {
     }
 } // namespace frm

@@ -193,10 +193,16 @@ namespace std
         return detail::to_array_impl(a, make_index_sequence<N> { });
     }
 
-    template <class Type, size_t N>
+    template<class Type, size_t N>
     constexpr array<remove_cv_t<Type>, N> to_array(Type (&&a)[N])
     {
         return detail::to_array_impl(move(a), make_index_sequence<N> { });
+    }
+
+    template<typename ...Types>
+    constexpr auto make_array(Types &&...values) -> array<decay_t<common_type_t<Types...>>, sizeof...(Types)>
+    {
+        return { std::forward<Types>(values)... };
     }
 
     template<size_t I, typename Type, size_t N>

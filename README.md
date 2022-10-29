@@ -1,11 +1,84 @@
-# Kernel project v2
+<!-- # Kernel project v2 -->
+<!-- # MINUX Is Not Unix -->
+<!-- # MOSINUX OS Is Not Unix -->
+# Ilobilix
 Second attempt at making an OS
 
 ## [LICENSE](LICENSE)
 
+## Building And Running
+
+Make sure you have following programs installed:
+* Clang
+* lld
+* llvm
+* Make
+* Xorriso
+* Wget
+* Tar
+* Qemu x86-64
+* Qemu aarch64 (For aarch64 build)
+
+If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
+``sudo apt install clang lld llvm make xorriso wget tar qemu-system-x86 qemu-system-arm``
+
+Follow these steps to build and run the os:
+1. Clone this repo with:\
+``git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/ilobilix``
+
+2. Go to the root directory of the cloned repo and run:\
+``make uefi -j$(nproc --all)`` To run in UEFI mode\
+``make bios -j$(nproc --all)`` To run in BIOS mode\
+``ARCH=aarch64 make -j$(nproc --all)`` To build and run aarch64 kernel
+
+Note: If you are on Termux, add ``VNC=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer:\
+
+### Options
+* ``MODUBSAN=1``: Enable UBSAN in modules
+* ``NOUBSAN=1``: Disable UBSAN
+* ``NOCLEAN=1``: Don't clean the source after compiling
+* ``NORUN=1``: Don't run the kernel, just compile
+* ``NOACCEL=1``: Disable accelerators
+* ``DEBUG=1``: Disable accelerators and enable QEMU logging
+* ``GDB=1``: If DEBUG is on, enable QEMU GDB
+* ``VNC=1``: Disable QEMU GUI window and run VNC on port 5901
+* ``ARCH=x86_64/aarch64``: Architecure to build the kernel for
+* ``CFLAGS``, ``CXXFLAGS``, ``ASFLAGS``, ``LDFLAGS``: Arguments for CC, CXX, AS and LD respectively (applies for both kernel and modules)
+* ``KERNEL_CFLAGS``, ``KERNEL_CXXFLAGS``, ``KERNEL_ASFLAGS``, ``KERNEL_LDFLAGS``: Same as previous, but for kernel
+* ``MODULE_CFLAGS``, ``MODULE_CXXFLAGS``, ``MODULE_ASFLAGS``, ``MODULE_LDFLAGS``: Same as previous, but for modules
+
+## Discord server
+https://discord.gg/fM5GK3RpS7
+
+## Resources/projects used and notable OSes:
+* Osdev wiki: https://wiki.osdev.org
+* Osdev discord server: https://discord.gg/RnCtsqD
+* Managarm: https://github.com/managarm/managarm
+* ToaruOS: https://github.com/klange/toaruos
+* LemonOS: https://github.com/LemonOSProject/LemonOS
+* Sigma: https://github.com/sigma-os/Sigma
+* Luna: https://github.com/thomtl/Luna
+* Vinix: https://github.com/vlang/vinix
+* Lyre: https://github.com/lyre-os/lyre
+* Limine: https://github.com/limine-bootloader/limine
+* Lai: https://github.com/managarm/lai
+* Cxxshim: https://github.com/managarm/cxxshim
+* Frigg: https://github.com/managarm/frigg
+* MLibc: https://github.com/managarm/mlibc
+* Printf: https://github.com/eyalroz/printf
+* Span-lite: https://github.com/martinmoene/span-lite
+* Smart_ptr: https://github.com/X-czh/smart_ptr
+* Veque: https://github.com/Shmoopty/veque
+* CWalk: https://github.com/likle/cwalk
+* Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
+* Terminal: https://github.com/V01D-NULL/limine-terminal-port
+* ILAR: https://github.com/ilobilo/ilar
+* OVMF: https://efi.akeo.ie/
+
+
 ## TODO
 
-### System
+### Misc
 - [x] GDT
 - [x] IDT
 - [x] TSS
@@ -14,6 +87,7 @@ Second attempt at making an OS
 - [x] MSI
 - [ ] MSI-X
 - [x] Modules
+- [ ] DTB
 
 ### Memory
 - [x] PMM
@@ -69,7 +143,7 @@ Second attempt at making an OS
 
 ### Tasking
 - [x] SMP
-- [ ] Scheduler
+- [x] Scheduler
 - [ ] Signals
 
 <!-- ### Partition tables
@@ -91,6 +165,7 @@ Second attempt at making an OS
 
 ### Userspace
 - [ ] System calls
+- [ ] FDs
 - [ ] ELF
 - [ ] Userspace
 - [ ] Libc
@@ -109,67 +184,3 @@ Second attempt at making an OS
 - [ ] Telnet
 - [ ] SSL
 - [ ] Or just LWIP
-
-## Building And Running
-
-Make sure you have following programs installed:
-* Clang
-* lld
-* llvm
-* Make
-* Xorriso
-* Wget
-* Tar
-* Qemu x86-64
-
-If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
-```sudo apt install clang lld llvm xorriso wget tar qemu-system-x86``
-
-Follow these steps to build and run the os:
-1. Clone this repo with:\
-``git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/kernelv2``
-
-2. Go to the root directory of the cloned repo and run:\
-``make uefi -j$(nproc --all)`` To run in UEFI mode\
-``make bios -j$(nproc --all)`` To run in BIOS mode
-
-Note: If you are on Termux, add ``VNC=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer:\
-
-### Options
-* ``MODUBSAN=1``: Enable UBSAN in modules
-* ``NOUBSAN=1``: Disable UBSAN
-* ``NOCLEAN=1``: Don't clean the source after compiling
-* ``NORUN=1``: Don't run the kernel, just compile
-* ``NOACCEL=1``: Disable accelerators
-* ``DEBUG=1``: Disable accelerators and enable QEMU logging
-* ``GDB=1``: If DEBUG is on, enable QEMU GDB
-* ``VNC=1``: Disable QEMU GUI window and run VNC on port 5901
-* ``CFLAGS``, ``CXXFLAGS``, ``LDFLAGS``, ``ASFLAGS``: Arguments for CC, CXX, LD and AS respectively (applies for both kernel and modules)
-* ``KERNEL_CFLAGS``, ``KERNEL_CXXFLAGS``, ``KERNEL_LDFLAGS``, ``KERNEL_ASFLAGS``: Same as previous, but for kernel
-* ``MODULE_CFLAGS``, ``MODULE_CXXFLAGS``, ``MODULE_LDFLAGS``, ``MODULE_ASFLAGS``: Same as previous, but for modules
-
-## Discord server
-https://discord.gg/fM5GK3RpS7
-
-## Resources used:
-* Osdev wiki: https://wiki.osdev.org
-* Osdev discord server: https://discord.gg/RnCtsqD
-* Limine: https://github.com/limine-bootloader/limine
-* Lai: https://github.com/managarm/lai
-* Frigg: https://github.com/managarm/frigg
-* MLibc: https://github.com/managarm/mlibc
-* Managarm: https://github.com/managarm/managarm
-* ToaruOS: https://github.com/klange/toaruos
-* LemonOS: https://github.com/LemonOSProject/LemonOS
-* Sigma: https://github.com/sigma-os/Sigma
-* Luna: https://github.com/thomtl/Luna
-* Vinix: https://github.com/vlang/vinix
-* Lyre: https://github.com/lyre-os/lyre
-* Printf: https://github.com/eyalroz/printf
-* Smart_ptr: https://github.com/X-czh/smart_ptr
-* Veque: https://github.com/Shmoopty/veque
-* CWalk: https://github.com/likle/cwalk
-* Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
-* Terminal: https://github.com/V01D-NULL/limine-terminal-port
-* ILAR: https://github.com/ilobilo/ilar
-* OVMF: https://efi.akeo.ie/

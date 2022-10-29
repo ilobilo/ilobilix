@@ -1,22 +1,26 @@
 // Copyright (C) 2022  ilobilo
 
-#include <arch/x86_64/cpu/ioapic.hpp>
-#include <arch/x86_64/cpu/idt.hpp>
-#include <arch/x86_64/lib/io.hpp>
-#include <kernel/kernel.hpp>
 #include <lai/helpers/sci.h>
 #include <lai/helpers/pm.h>
 #include <lai/drivers/ec.h>
 #include <drivers/acpi.hpp>
+#include <init/kernel.hpp>
 #include <lib/alloc.hpp>
 #include <lib/panic.hpp>
 #include <lib/time.hpp>
 #include <lib/log.hpp>
+#include <cpu/cpu.hpp>
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 #include <lai/host.h>
 #include <lai/core.h>
 #include <string>
+
+#if defined(__x86_64__)
+#include <arch/x86_64/cpu/ioapic.hpp>
+#include <arch/x86_64/cpu/idt.hpp>
+#include <arch/x86_64/lib/io.hpp>
+#endif
 
 namespace acpi
 {
@@ -142,38 +146,42 @@ namespace acpi
         lai_acpi_reset();
     }
 
+    #if defined(__x86_64__)
     static void sci_handler(cpu::registers_t *)
     {
         uint16_t event = lai_get_sci_event();
         if (event & ACPI_POWER_BUTTON)
         {
             acpi::poweroff();
+
             time::msleep(50);
             io::out<uint16_t>(0xB004, 0x2000);
             io::out<uint16_t>(0x604, 0x2000);
             io::out<uint16_t>(0x4004, 0x3400);
         }
     }
+    #endif
 
     void enable()
     {
         ec_init();
-        lai_enable_acpi(ioapic::initialised ? 1  : 0);
+
+        #if defined(__x86_64__)
+        lai_enable_acpi(ioapic::initialised ? 1 : 0);
 
         uint8_t sci_int = fadthdr->SCI_Interrupt;
 
-        #if defined(__x86_64__)
         if(madthdr->legacy_pic() == false && ioapic::initialised)
             ioapic::set(sci_int, sci_int + 0x20, ioapic::deliveryMode::FIXED, ioapic::destMode::PHYSICAL, ioapic::ACTIVE_HIGH_LOW | ioapic::EDGE_LEVEL, smp_request.response->bsp_lapic_id);
-        #endif
 
         idt::handlers[sci_int + 0x20].set(sci_handler);
         idt::unmask(sci_int);
+        #endif
     }
 
     void init()
     {
-        log::info("Initialising ACPI...");
+        log::infoln("Initialising ACPI...");
 
         rsdp = reinterpret_cast<RSDP*>(tohh(rsdp_request.response->address));
 
@@ -181,35 +189,40 @@ namespace acpi
         {
             xsdt = true;
             rsdt = reinterpret_cast<RSDT*>(tohh(rsdp->xsdtaddr));
-            log::info("Found XSDT at: 0x%X", rsdt);
+            log::infoln("ACPI: Found XSDT at: 0x{:X}", rsdt);
         }
         else
         {
             xsdt = false;
             rsdt = reinterpret_cast<RSDT*>(tohh(rsdp->rsdtaddr));
-            log::info("Found RSDT at: 0x%X", rsdt);
+            log::infoln("ACPI: Found RSDT at: 0x{:X}", rsdt);
         }
 
         size_t entries = (rsdt->header.length - sizeof(SDTHeader)) / (xsdt ? 8 : 4);
-        for (size_t i = 0; i < entries; i++)
+        if (entries != 0)
         {
-            auto header = reinterpret_cast<SDTHeader*>(tohh(xsdt ? rsdt->tablesx[i] : rsdt->tables[i]));
-            if (header == nullptr)
-                continue;
-
-            auto checksum = [header]() -> bool
+            log::info("ACPI: Found Tables:");
+            for (size_t i = 0; i < entries; i++)
             {
-                uint8_t sum = 0;
-                for (size_t i = 0; i < header->length; i++)
-                    sum += reinterpret_cast<uint8_t*>(header)[i];
-                return sum == 0;
-            };
+                auto header = reinterpret_cast<SDTHeader*>(tohh(xsdt ? rsdt->tablesx[i] : rsdt->tables[i]));
+                if (header == nullptr)
+                    continue;
 
-            if (checksum())
-            {
-                log::info("ACPI: Found Table %.4s", header->signature);
-                tables.push_back(header);
+                auto checksum = [header]() -> bool
+                {
+                    uint8_t sum = 0;
+                    for (size_t i = 0; i < header->length; i++)
+                        sum += reinterpret_cast<uint8_t*>(header)[i];
+                    return sum == 0;
+                };
+
+                if (checksum())
+                {
+                    log::print(" {}", std::string_view(reinterpret_cast<const char *>(header->signature), 4));
+                    tables.push_back(header);
+                }
             }
+            log::println();
         }
 
         madthdr = reinterpret_cast<MADTHeader*>(findtable("APIC", 0));

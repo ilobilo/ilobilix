@@ -17,27 +17,25 @@ override LDFLAGS +=                  \
 	-T$(KERNELDIR)/linker-$(ARCH).ld \
 	-nostdlib                        \
 	-zmax-page-size=0x1000           \
-	-static $(GLOBALLIBS)
+	-static $(LIBRARIES)
 
-override CCFLAGS :=              \
-	$(INCLUDES)                  \
-	-ffreestanding               \
-	-fno-stack-protector         \
-	-fno-omit-frame-pointer      \
-	-fno-pic                     \
-	-fno-pie                     \
-	-Werror -Wall -Wextra        \
-	-Wno-error=\#warnings        \
-	-Ofast -pipe -MMD            \
-	-DNET_DEBUG=$(NET_DEBUG)     \
+override CCFLAGS :=               \
+	$(INCLUDES)                   \
+    -target $(TARGET)             \
+	-ffreestanding                \
+	-fno-stack-protector          \
+	-fno-omit-frame-pointer       \
+	-fno-pic -fno-pie             \
+	-Werror -Wall -Wextra         \
+	-Wno-error=\#warnings         \
+	-Wno-format-invalid-specifier \
+	-Ofast -pipe -MMD             \
 	-DLVL5_PAGING=$(LVL5_PAGING)
 
 ifeq ($(ARCH),x86_64)
-    override CCFLAGS += \
-        -target $(TARGET) \
+    override CCFLAGS +=  \
         -march=x86-64     \
         -mabi=sysv        \
-        -mno-80387        \
         -mno-mmx          \
         -mno-sse          \
         -mno-sse2         \
@@ -46,7 +44,10 @@ ifeq ($(ARCH),x86_64)
 
     override ASFLAGS += \
         -masm=intel
-else
+else ifeq ($(ARCH),aarch64)
+    override CCFLAGS +=     \
+        -mgeneral-regs-only \
+        -mcmodel=small
 endif
 
 ifndef NOUBSAN
@@ -95,15 +96,15 @@ $(KERNEL): $(OBJ)
 
 %.c.o: %.c
 	@printf "CC\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.cpp.o: %.cpp
 	@printf "CXX\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.S.o: %.S
 	@printf "AS\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(ASFLAGS) -c $< -o $@
+	$(CC) $(ASFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 .PHONY: clean
 clean:

@@ -37,16 +37,18 @@ namespace vmm
                 temp |= bitSel;
             this->value = temp;
         }
+
         bool getflags(uint64_t flags)
         {
             return (this->value & flags) ? true : false;
         }
 
-        uint64_t getAddr()
+        uint64_t getaddr()
         {
             return (this->value & 0x000FFFFFFFFFF000) >> 12;
         }
-        void setAddr(uint64_t address)
+
+        void setaddr(uint64_t address)
         {
             address &= 0x000000FFFFFFFFFF;
 

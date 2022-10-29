@@ -1,7 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
 #include <lib/alloc.hpp>
-#include <lib/misc.hpp>
 
 extern "C"
 {

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <kernel/kernel.hpp>
+#include <init/kernel.hpp>
 #include <type_traits>
 #include <concepts>
 #include <cstdint>

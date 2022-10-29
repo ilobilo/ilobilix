@@ -1,7 +1,8 @@
 // Copyright (C) 2022  ilobilo
 
-#include <kernel/kernel.hpp>
+#include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <init/kernel.hpp>
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
@@ -20,17 +21,21 @@ namespace smp
     {
         #if defined(__x86_64__)
         return cpu->lapic_id;
+        #elif defined(__aarch64__)
+        return cpu->mpidr;
         #else
         #error Unknown architecture
         #endif
     }
 
-    void init()
+    void bsp_init()
     {
         cpus = new cpu_t[smp_request.response->cpu_count]();
 
         #if defined(__x86_64__)
         bsp_id = smp_request.response->bsp_lapic_id;
+        #elif defined (__aarch64__)
+        bsp_id = smp_request.response->bsp_mpidr;
         #else
         #error Unknown architecture
         #endif
@@ -38,7 +43,8 @@ namespace smp
         for (size_t i = 0; i < smp_request.response->cpu_count; i++)
         {
             limine_smp_info *smp_info = smp_request.response->cpus[i];
-            if (get_arch_id(smp_info) != bsp_id) continue;
+            if (get_arch_id(smp_info) != bsp_id)
+                continue;
 
             smp_info->extra_argument = reinterpret_cast<uint64_t>(&cpus[i]);
             cpus[i].arch_id = get_arch_id(smp_info);
@@ -50,24 +56,23 @@ namespace smp
         initialised = true;
     }
 
-    void late_init()
+    void init()
     {
-        log::info("Initialising SMP...");
+        log::infoln("Initialising SMP...");
 
         auto cpu_entry = [](limine_smp_info *cpu)
         {
             static lock_t lock;
-            lock.lock();
+            {
+                lockit(lock);
+                cpu_init(cpu);
 
-            cpu_init(cpu);
-
-            log::info("CPU %lu is up", this_cpu()->id);
-            this_cpu()->is_up = true;
-
-            lock.unlock();
+                log::infoln("SMP: CPU {} is up", this_cpu()->id);
+                this_cpu()->is_up = true;
+            }
 
             if (bsp_id != this_cpu()->arch_id)
-                arch::halt();
+                proc::init();
         };
 
         for (size_t i = 0; i < smp_request.response->cpu_count; i++)

@@ -89,15 +89,19 @@ namespace devtmpfs
     // devtmpfs::mount() should only be called once
     vfs::node_t *devtmpfs::mount(vfs::node_t *, vfs::node_t *parent, std::string_view name, void *data)
     {
-        if (this->root == nullptr)
-            this->root = dev_root = this->create(parent, "dev", 0755 | s_ifdir);
-        return dev_root;
+        if (dev_root == nullptr)
+            dev_root = this->create(parent, "", 0755 | s_ifdir);
+
+        return this->root = dev_root;
     }
 
-    // TODO: Unmount
-    // bool filesystem::unmount()
-    // {
-    // }
+    bool devtmpfs::unmount()
+    {
+        if (this->mountdata != nullptr)
+            free(this->mountdata);
+
+        return true;
+    }
 
     vfs::node_t *devtmpfs::create(vfs::node_t *parent, std::string_view name, mode_t mode)
     {
@@ -149,7 +153,6 @@ namespace devtmpfs
         res->stat.st_ino = dev_fs->inodes++;
         res->stat.st_nlink = 1;
 
-        node->dotentries();
         lockit(nparent->lock);
         nparent->children[node->name] = node;
 

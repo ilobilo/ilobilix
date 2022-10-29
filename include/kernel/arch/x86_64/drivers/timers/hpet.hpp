@@ -41,7 +41,7 @@ namespace timers::hpet
     {
         friend class device;
         private:
-        irq_lock_t lock;
+        irq_lock lock;
 
         device *_device;
         uint8_t _num;
@@ -133,17 +133,17 @@ namespace timers::hpet
     uint64_t time_ns();
     uint64_t time_ms();
 
-    static irq_lock_t lock;
+    static irq_lock lock;
 
     template<typename Func, typename ...Args>
     static comparator *start_timer(uint64_t ns, modes mode, Func &&func, Args &&...args)
     {
         lockit(lock);
 
-        for (size_t i = 0; i < comparators.size(); i++)
+        for (auto comp : comparators)
         {
-            if (comparators[i]->start_timer(ns, mode, func, args...))
-                return comparators[i];
+            if (comp->start_timer(ns, mode, func, args...))
+                return comp;
         }
 
         return nullptr;

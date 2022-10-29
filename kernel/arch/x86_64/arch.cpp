@@ -10,21 +10,20 @@
 #include <arch/x86_64/cpu/pic.hpp>
 #include <arch/x86_64/lib/io.hpp>
 
+#include <drivers/pci/pci.hpp>
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
-#include <lib/misc.hpp>
-#include <lib/log.hpp>
 
 namespace arch
 {
     [[noreturn]] void halt(bool ints)
     {
         if (ints == true)
-            while (true) asm volatile ("hlt");
-        else while (true)
-            asm volatile ("cli; hlt");
-
-        __builtin_unreachable();
+            while (true)
+                asm volatile ("hlt");
+        else
+            while (true)
+                asm volatile ("cli; hlt");
     }
 
     void wfi()
@@ -76,14 +75,14 @@ namespace arch
 
     void init()
     {
-        smp::init();
+        smp::bsp_init();
 
         pic::init();
         ioapic::init();
 
-        timers::hpet::init();
         timers::pit::init();
+        timers::hpet::init();
 
-        smp::late_init();
+        smp::init();
     }
 } // namespace arch

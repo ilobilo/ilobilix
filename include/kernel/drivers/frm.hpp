@@ -1,6 +1,5 @@
 // Copyright (C) 2022  ilobilo
 
-#include <lib/misc.hpp>
 #include <vector>
 
 namespace frm
@@ -10,4 +9,5 @@ namespace frm
     extern size_t frm_count;
 
     void init();
+    void late_init();
 } // namespace frm

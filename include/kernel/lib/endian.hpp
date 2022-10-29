@@ -45,3 +45,23 @@ inline constexpr Type from_endian(Type num)
 {
     return convert_endian<endian::native, Old>(num);
 }
+
+template<typename Type, endian E>
+struct endian_storage
+{
+    using type = Type;
+    Type value;
+
+    constexpr endian_storage() = default;
+    constexpr endian_storage(Type value) : value(convert_endian<E, endian::native>(static_cast<Type>(value))) { }
+
+    Type load()
+    {
+        return convert_endian<endian::native, E>(this->value);
+    }
+
+    void store(Type value)
+    {
+        this->value = convert_endian<E, endian::native>(value);
+    }
+};

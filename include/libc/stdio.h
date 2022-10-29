@@ -21,6 +21,9 @@ int vsnprintf(char *str, size_t count, const char *format, va_list arg);
 int vasprintf(char **str, const char *format, va_list args);
 int asprintf(char **str, const char *format, ...);
 
+int fctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char *format, ...);
+int vfctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char *format, va_list arg);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

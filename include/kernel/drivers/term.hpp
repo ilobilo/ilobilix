@@ -1,7 +1,8 @@
 // Copyright (C) 2022  ilobilo
 
-#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
+#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD 1
 #include <printf/printf.h>
+
 #include <cpp/term.hpp>
 #include <lib/misc.hpp>
 #include <lib/lock.hpp>
@@ -17,19 +18,13 @@ namespace term
         public:
         lock_t lock;
 
-        void print(const char *str)
-        {
-            lockit(this->lock);
-            term_print(this, str);
-        }
-
         point getpos()
         {
-            this->print("\033[6n");
+            this->write("\033[6n", 5);
             return this->pos;
         }
 
-        static void callback(uint64_t _term, uint64_t type, uint64_t first, uint64_t second, uint64_t third);
+        static void callback(term_t *_term, uint64_t type, uint64_t first, uint64_t second, uint64_t third);
     };
 
     extern std::vector<terminal_t*> terms;
@@ -43,4 +38,5 @@ namespace term
 
     void early_init();
     void init();
+    void late_init();
 } // namespace term

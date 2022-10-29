@@ -6,6 +6,8 @@
 
 namespace std
 {
+    using deque_traits = veque::fast_resize_traits;
+
     template<typename Type, typename Allocator = allocator<Type>>
-    using deque = veque::veque<Type, veque::fast_resize_traits, Allocator>;
+    using deque = veque::veque<Type, deque_traits, Allocator>;
 } // namespace std

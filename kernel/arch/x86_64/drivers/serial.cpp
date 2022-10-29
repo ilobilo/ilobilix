@@ -1,6 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
 #include <arch/x86_64/lib/io.hpp>
+#include <arch/arch.hpp>
 
 namespace serial
 {
@@ -12,29 +13,23 @@ namespace serial
         COM4 = 0x2E8
     };
 
-    static bool is_transmit_empty(COMS com = COM1)
-    {
-        return io::in<uint8_t>(com + 5) & 0x20;
-    }
-
-    // static bool received(COMS com = COM1)
-    // {
-    //     uint8_t status = io::in<uint8_t>(com + 5);
-    //     return (status != 0xFF) && (status & 1);
-    // }
-
-    // static char read(COMS com = COM1)
-    // {
-    //     while (!received());
-    //     return io::in<uint8_t>(com);
-    // }
-
     static void printc(char c, COMS com)
     {
-        while (!is_transmit_empty());
-        io::out<uint8_t>(COM1, c);
+        while (not (io::in<uint8_t>(com + 5) & (1 << 5)))
+            arch::pause();
+
+        io::out<uint8_t>(com, c);
     }
     void printc(char c) { printc(c, COM1); }
+
+    static char readc(COMS com)
+    {
+        while (not (io::in<uint8_t>(com + 5) & (1 << 0)))
+            arch::pause();
+
+        return io::in<uint8_t>(com);
+    }
+    char readc() { return readc(COM1); }
 
     static void initport(COMS com)
     {
@@ -45,12 +40,6 @@ namespace serial
         io::out<uint8_t>(com + 3, 0x03);
         io::out<uint8_t>(com + 2, 0xC7);
         io::out<uint8_t>(com + 4, 0x0B);
-
-        auto print = [com](const char *str)
-        {
-            while (*str++) printc(*(str - 1), com);
-        };
-        print("\033[0m\n");
     }
 
     void early_init()
@@ -58,8 +47,8 @@ namespace serial
         initport(COM1);
         initport(COM2);
 
-        io::out<uint8_t>(COM1 + 1, 0x01);
-        io::out<uint8_t>(COM2 + 1, 0x01);
+        // io::out<uint8_t>(COM1 + 1, 0x01);
+        // io::out<uint8_t>(COM2 + 1, 0x01);
     }
 
     void init()

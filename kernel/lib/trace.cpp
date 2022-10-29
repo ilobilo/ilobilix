@@ -6,26 +6,32 @@
 
 namespace trace
 {
-    void print(uintptr_t bp, int (*func)(const char *, ...))
+    void print(uintptr_t bp, uintptr_t fip, const char *prefix)
     {
-        if (func == nullptr)
-            func = log::println;
+        if (bp == 0)
+            bp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
 
         auto frame = reinterpret_cast<stackframe*>(bp);
         if (frame == nullptr)
             return;
 
-        func("Stacktrace:");
+        auto print_name = [&prefix](uint64_t ip)
+        {
+            auto [entry, offset] = elf::syms::lookup(ip, STT_FUNC);
+            if (entry != elf::syms::empty_sym)
+                log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, entry.name, offset);
+        };
+
+        log::println("Stacktrace:");
+        if (fip != 0)
+            print_name(fip);
 
         while (true)
         {
             if (frame == nullptr || frame->ip == 0)
                 break;
 
-            auto [entry, offset] = elf::syms::lookup(frame->ip, STT_FUNC);
-            if (entry != elf::syms::empty_sym)
-                func("  [0x%.16lX] <%.*s+0x%lX>", entry.addr, entry.name.length(), entry.name.data(), offset);
-
+            print_name(frame->ip);
             frame = frame->next;
         }
     }
