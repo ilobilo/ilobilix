@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <cstddef>
 #include <cstdint>
 
@@ -12,9 +12,7 @@ extern "C"
         const uint8_t *psrc = static_cast<const uint8_t*>(src);
 
         for (size_t i = 0; i < len; i++)
-        {
             pdest[i] = psrc[i];
-        }
 
         return dest;
     }
@@ -24,9 +22,7 @@ extern "C"
         uint8_t *p = static_cast<uint8_t*>(dest);
 
         for (size_t i = 0; i < len; i++)
-        {
             p[i] = static_cast<uint8_t>(ch);
-        }
 
         return dest;
     }
@@ -37,13 +33,11 @@ extern "C"
         const uint8_t *psrc = static_cast<const uint8_t*>(src);
 
         if (src > dest)
-        {
-            for (size_t i = 0; i < len; i++) pdest[i] = psrc[i];
-        }
+            for (size_t i = 0; i < len; i++)
+                pdest[i] = psrc[i];
         else if (src < dest)
-        {
-            for (size_t i = len; i > 0; i--) pdest[i-1] = psrc[i-1];
-        }
+            for (size_t i = len; i > 0; i--)
+                pdest[i - 1] = psrc[i - 1];
 
         return dest;
     }
@@ -54,9 +48,8 @@ extern "C"
         const uint8_t *p2 = static_cast<const uint8_t*>(ptr2);
 
         for (size_t i = 0; i < len; i++)
-        {
-            if (p1[i] != p2[i]) return p1[i] < p2[i] ? -1 : 1;
-        }
+            if (p1[i] != p2[i])
+                return p1[i] < p2[i] ? -1 : 1;
 
         return 0;
     }
@@ -67,7 +60,8 @@ extern "C"
 
         while (len-- > 0)
         {
-            if (*src == ch) return const_cast<uint8_t*>(src);
+            if (*src == ch)
+                return const_cast<uint8_t*>(src);
             src++;
         }
 
@@ -76,9 +70,9 @@ extern "C"
 
     size_t strlen(const char *str)
     {
-        if (str == nullptr) return 0;
         size_t length = 0;
-        while (str[length]) length++;
+        while (str[length])
+            length++;
         return length;
     }
 
@@ -104,14 +98,17 @@ extern "C"
     char *strncat(char *dest, const char *src, size_t len)
     {
         char* ptr = dest + strlen(dest);
-        while (*src != '\0' && len--) *ptr++ = *src++;
+        while (*src != '\0' && len--)
+            *ptr++ = *src++;
+
         *ptr = '\0';
         return dest;
     }
 
     char *strchr(const char *str, int ch)
     {
-        while (*str && *str != ch) ++str;
+        while (*str && *str != ch)
+            str++;
         return const_cast<char*>(ch == *str ? str : nullptr);
     }
 
@@ -132,13 +129,13 @@ extern "C"
             str1++;
             str2++;
         }
-        if (len == 0) return 0;
+        if (len == 0)
+            return 0;
         return *str1 - *str2;
     }
 
     char *strcpy(char *dest, const char *src)
     {
-        if (dest == nullptr) return nullptr;
         char *ptr = dest;
         while (*src != '\0')
         {
@@ -152,7 +149,6 @@ extern "C"
 
     char *strncpy(char *dest, const char *src, size_t len)
     {
-        if (dest == nullptr) return nullptr;
         char *ptr = dest;
         while (*src != '\0' && len--)
         {
@@ -169,8 +165,11 @@ extern "C"
         const char *a = str, *b = substr;
         while (true)
         {
-            if (!*b) return const_cast<char*>(str);
-            if (!*a) return nullptr;
+            if (*b == 0)
+                return const_cast<char*>(str);
+            if (*a == 0)
+                return nullptr;
+
             if (*a++ != *b++)
             {
                 a = ++str;

@@ -5,8 +5,8 @@
 #include <drivers/term.hpp>
 #include <drivers/smp.hpp>
 
-#include <kernel/kernel.hpp>
-#include <kernel/main.hpp>
+#include <init/kernel.hpp>
+#include <init/main.hpp>
 
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
@@ -25,6 +25,15 @@ volatile limine_5_level_paging_request _5_level_paging_request
     .response = nullptr
 };
 #endif
+
+// #if defined(__aarch64__)
+// volatile limine_dtb_request dtb_request
+// {
+//     .id = LIMINE_DTB_REQUEST,
+//     .revision = 0,
+//     .response = nullptr
+// };
+// #endif
 
 volatile limine_efi_system_table_request efi_system_table_request
 {
@@ -53,7 +62,11 @@ volatile limine_smp_request smp_request
     .id = LIMINE_SMP_REQUEST,
     .revision = 0,
     .response = nullptr,
-    .flags = (1 << 0)
+    #if defined(__x86_64__)
+    .flags = LIMINE_SMP_X2APIC
+    #else
+    .flags = 0
+    #endif
 };
 
 volatile limine_memmap_request memmap_request
@@ -131,13 +144,19 @@ extern "C" void _start()
     term::early_init();
 
     uefi = efi_system_table_request.response != nullptr;
-#if LVL5_PAGING
+    #if LVL5_PAGING
     lvl5 = _5_level_paging_request.response != nullptr;
-#endif
-
-    #if !defined(__x86_64__)
-    assert(framebuffer_request.response, "Could not get framebuffer response!");
     #endif
+
+    // #if defined(__aarch64__)
+    // assert(dtb_request.response, "Could not get dtb response!");
+    // #endif
+
+    #if defined(__x86_64__)
+    if (uefi == true)
+    #endif
+        assert(framebuffer_request.response, "Could not get framebuffer response!");
+
     assert(smp_request.response, "Could not get smp response!");
     assert(memmap_request.response, "Could not get memmap response!");
     assert(rsdp_request.response, "Could not get rsdp response!");

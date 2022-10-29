@@ -12,60 +12,6 @@ namespace pci
     std::vector<device_t*> devices;
     std::vector<bus_t*> root_buses;
 
-    template<>
-    uint8_t read<uint8_t>(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset)
-    {
-        configio *io = configspaces.at((seg << 8) | bus);
-        assert(io != nullptr);
-
-        return io->read<uint8_t>(seg, bus, dev, func, offset);
-    }
-
-    template<>
-    uint16_t read<uint16_t>(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset)
-    {
-        configio *io = configspaces.at((seg << 8) | bus);
-        assert(io != nullptr);
-
-        return io->read<uint16_t>(seg, bus, dev, func, offset);
-    }
-
-    template<>
-    uint32_t read<uint32_t>(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset)
-    {
-        configio *io = configspaces.at((seg << 8) | bus);
-        assert(io != nullptr);
-
-        return io->read<uint32_t>(seg, bus, dev, func, offset);
-    }
-
-    template<>
-    void write<uint8_t>(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint8_t value)
-    {
-        configio *io = configspaces.at((seg << 8) | bus);
-        assert(io != nullptr);
-
-        io->write<uint8_t>(seg, bus, dev, func, offset, value);
-    }
-
-    template<>
-    void write<uint16_t>(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint16_t value)
-    {
-        configio *io = configspaces.at((seg << 8) | bus);
-        assert(io != nullptr);
-
-        io->write<uint16_t>(seg, bus, dev, func, offset, value);
-    }
-
-    template<>
-    void write<uint32_t>(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, uint32_t value)
-    {
-        configio *io = configspaces.at((seg << 8) | bus);
-        assert(io != nullptr);
-
-        io->write<uint32_t>(seg, bus, dev, func, offset, value);
-    }
-
     void addconfigio(uint32_t seg, uint32_t bus, configio *io)
     {
         configspaces[(seg << 8) | bus] = io;
@@ -73,7 +19,7 @@ namespace pci
 
     void addrootbus(bus_t *bus)
     {
-        log::info("PCI: Found root bus 0x%lX:0x%lX", bus->seg, bus->bus);
+        log::infoln("PCI: Found root bus 0x{:X}:0x{:X}", bus->seg, bus->bus);
         root_buses.push_back(bus);
     }
 
@@ -89,22 +35,32 @@ namespace pci
             bar_t ret = { 0, 0, PCI_BARTYPE_INVALID, false };
             bool skipnext = false;
 
-            uint32_t offset = PCI_BAR0 + num * 4;
+            uint32_t offset = PCI_BAR0 + num * sizeof(uint32_t);
             uint32_t bar = device->read<uint32_t>(offset);
 
-            auto barlen = [&device, bar](uint32_t offset, uint32_t bits)
+            auto barlen = [&device, bar](uint32_t offset, bool mmio)
             {
-                device->write<uint32_t>(offset, 0xFFFFFFFF);
-                size_t length = (~(device->read<uint32_t>(offset) & ~bits) + 0x01) & 0xFFFF;
-                device->write<uint32_t>(offset, bar);
+                // TODO: Fix this? (Doesn't work with rx550)
 
-                return length;
+                // device->write<uint32_t>(offset, 0xFFFFFFFF);
+
+                // size_t length = (~(device->read<uint32_t>(offset) & ~(mmio ? 0b1111 : 0b11)) + 0x01);
+                // if (mmio == false)
+                //     length &= 0xFFFF;
+
+                // device->write<uint32_t>(offset, bar);
+
+                // return length;
+
+                static_cast<void>(device);
+                static_cast<void>(bar);
+                return 0;
             };
 
             if (bar & 0x01)
             {
                 uintptr_t addr = bar & 0xFFFFFFFC;
-                size_t length = barlen(offset, 0b11);
+                size_t length = barlen(offset, false);
 
                 ret.base = addr;
                 ret.len = length;
@@ -119,20 +75,20 @@ namespace pci
                 switch (auto type = (bar >> 1) & 0x03)
                 {
                     case 0x00:
-                        length = barlen(offset, 0b1111);
+                        length = barlen(offset, true);
                         addr = bar & 0xFFFFFFF0;
                         break;
                     case 0x02:
                         if (num == count - 1)
                             continue;
 
-                        length = barlen(offset, 0b1111) | (static_cast<uint64_t>(barlen(offset + 0x04, 0b1111)) << 32);
+                        length = barlen(offset, true) | (static_cast<uint64_t>(barlen(offset + 0x04, true)) << 32);
                         addr = (bar & 0xFFFFFFF0) | (static_cast<uint64_t>(device->read<uint32_t>(offset + 0x04)) << 32);
 
                         skipnext = true;
                         break;
                     default:
-                        log::warn("PCI: Unknown MMIO bar type 0x%X", type);
+                        log::warnln("PCI: Unknown MMIO bar type 0x{:X}", type);
                         break;
                 }
 
@@ -189,7 +145,7 @@ namespace pci
 
     bool msix_set(uint64_t cpuid, uint16_t vector, uint16_t index)
     {
-        log::error("PCI: TODO: MSI-X is not supported!");
+        log::errorln("PCI: TODO: MSI-X is not supported!");
         return false;
     }
 
@@ -209,8 +165,8 @@ namespace pci
         if (status & (1 << 4))
         {
             uint8_t offset = device->read<uint16_t>(PCI_CAPABPTR) & 0xFC;
-            if (offset != 0)
-                log::info(" Capabilities:");
+            // if (offset != 0)
+            //     log::infoln(" Capabilities:");
 
             while (offset)
             {
@@ -221,15 +177,16 @@ namespace pci
                 {
                     case 0x10:
                     {
-                        log::info("  - PCIe");
+                        // log::infoln("  - PCIe");
                         auto tp = (device->read<uint16_t>(offset + 2) >> 4) & 0x0F;
                         device->is_pcie = true;
                         device->is_secondary = (tp == 4 || tp == 6 || tp == 8);
                         break;
                     }
                     default:
-                        if (func(id, offset) != true)
-                            log::info("  - Unknown: 0x%X", id);
+                        // if (func(id, offset) != true)
+                        //     log::infoln("  - Unknown: 0x{:X}", id);
+                        break;
                 }
 
                 offset = (entry >> 8) & 0xFC;
@@ -248,7 +205,7 @@ namespace pci
         uint8_t header_type = bus->read<uint8_t>(dev, func, PCI_HEADER_TYPE) & 0x7F;
         if (header_type == 0x00)
         {
-            log::info("PCI: Found device: %.4X:%.4X", vendorid, deviceid);
+            log::infoln("PCI: Found device: {:04X}:{:04X}", vendorid, deviceid);
 
             uint8_t progif = bus->read<uint8_t>(dev, func, PCI_PROG_IF);
             uint8_t subclass = bus->read<uint8_t>(dev, func, PCI_SUBCLASS);
@@ -261,11 +218,11 @@ namespace pci
                 switch (id)
                 {
                     case 0x5:
-                        log::info("  - MSI");
+                        // log::infoln("  - MSI");
                         device->msi = offset;
                         break;
                     case 0x11:
-                        log::info("  - MSI-X");
+                        // log::infoln("  - MSI-X");
                         device->msix = offset;
                         break;
                     default:
@@ -279,7 +236,7 @@ namespace pci
         }
         else if (header_type == 0x01)
         {
-            log::info("PCI: Found PCI-to-PCI bridge: %.4X:%.4X", vendorid, deviceid);
+            log::infoln("PCI: Found PCI-to-PCI bridge: {:04X}:{:04X}", vendorid, deviceid);
             auto bridge = new bridge_t(bus->seg, bus->bus, dev, func, bus);
 
             capabilities(bridge, [&](uint8_t id, uint8_t offset) -> bool { return true; });
@@ -291,7 +248,7 @@ namespace pci
                 bridge->subordinateid = bridge->read<uint8_t>(PCI_SUBORDINATE_BUS);
 
                 auto secondary_bus = new bus_t(bridge, bus->io, bus->seg, secondary_id);
-                bridge->bus = secondary_bus;
+                bridge->parent = secondary_bus;
                 enumbus(secondary_bus);
             }
 
@@ -316,19 +273,29 @@ namespace pci
 
     static void enumbus(bus_t *bus)
     {
-        for (uint8_t i = 0; i < ((bus->bridge && bus->bridge->is_pcie && bus->bridge->is_secondary) ? 1 : 32); i++)
+        auto devs = ((bus->bridge && bus->bridge->is_pcie && bus->bridge->is_secondary) ? 1 : 32);
+        for (uint8_t i = 0; i < devs; i++)
             enumdev(bus, i);
     }
 
     void init()
     {
-        log::info("Initialising PCI...");
+        log::infoln("Initialising PCI...");
 
         if (pci::arch_init)
             pci::arch_init();
 
-        assert(configspaces.size() != 0, "PCI: No config spaces found!");
-        assert(root_buses.size() != 0, "PCI: No root buses found!");
+        if (configspaces.size() == 0)
+        {
+            log::errorln("PCI: No config spaces found!");
+            return;
+        }
+
+        if (root_buses.size() == 0)
+        {
+            log::errorln("PCI: No root buses found!");
+            return;
+        }
 
         for (const auto bus : root_buses)
             enumbus(bus);

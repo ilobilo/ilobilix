@@ -5,8 +5,10 @@
 #include <initializer_list>
 #include <type_traits>
 #include <string_view>
+#include <iterator>
 #include <concepts>
 #include <compare>
+#include <cstdlib>
 #include <memory>
 
 namespace std
@@ -324,12 +326,22 @@ namespace std
             return this->_buffer;
         }
 
+        constexpr const_iterator begin() const
+        {
+            return this->_buffer;
+        }
+
         constexpr const_iterator cbegin() const
         {
             return this->_buffer;
         }
 
         constexpr iterator end()
+        {
+            return this->_buffer + this->_length;
+        }
+
+        constexpr const_iterator end() const
         {
             return this->_buffer + this->_length;
         }
@@ -359,6 +371,15 @@ namespace std
             return size_type(-1) / sizeof(Char);
         }
 
+        constexpr void reserve(size_type new_cap)
+        {
+            if (new_cap == this->_cap || new_cap < this->_cap)
+                return;
+
+            this->_buffer = this->reallocate(new_cap);
+            this->_cap = new_cap;
+        }
+
         constexpr size_type capacity() const
         {
             return this->_cap;
@@ -366,8 +387,11 @@ namespace std
 
         constexpr void shrink_to_fit()
         {
-            if (this->_length == this->_cap) return;
+            if (this->_length == this->_cap)
+                return;
+
             this->_buffer = this->reallocate(this->_length);
+            this->_cap = this->_length;
         }
 
         constexpr void clear()
@@ -461,10 +485,11 @@ namespace std
 
             if (index_str >= sv.size())
                 return *this;
+
             if (index_str + count > sv.size() || count == npos)
                 count = sv.size() - index_str;
 
-            return this->insert(index_str, sv.data(), count);
+            return this->insert(index, sv.data() + index_str * sizeof(Char), count);
         }
 
         constexpr basic_string &erase(size_type index = 0, size_type count = npos)
@@ -1157,6 +1182,16 @@ namespace std
     };
 
     using string = basic_string<char>;
+    using wstring = basic_string<wchar_t>;
+
+    template<typename InputIt, typename Allocator = allocator<typename iterator_traits<InputIt>::value_type>>
+    basic_string(InputIt, InputIt, Allocator = Allocator()) -> basic_string<typename std::iterator_traits<InputIt>::value_type, std::char_traits<typename std::iterator_traits<InputIt>::value_type>, Allocator>;
+
+    template<typename Char, typename Traits, typename Allocator = allocator<Char>>
+    explicit basic_string(basic_string_view<Char, Traits>, const Allocator & = Allocator()) -> basic_string<Char, Traits, Allocator>;
+
+    template<typename Char, typename Traits, typename Allocator = allocator<Char>>
+    basic_string(basic_string_view<Char, Traits>, size_t, size_t, const Allocator & = Allocator()) -> basic_string<Char, Traits, Allocator>;
 
     inline int stoi(const string &str, size_t *pos = nullptr, int base = 10)
     {
@@ -1193,6 +1228,118 @@ namespace std
 
         return ret;
     }
+
+    namespace detail
+    {
+        template<typename Type>
+        constexpr size_t to_chars_len(Type value)
+        {
+            constexpr Type b1 = 10;
+            constexpr Type b2 = 100;
+            constexpr Type b3 = 1000;
+            constexpr Type b4 = 10000;
+
+            for (size_t i = 1; ; i += 4, value /= b4)
+            {
+                if (value < b1)
+                    return i;
+                if (value < b2)
+                    return i + 1;
+                if (value < b3)
+                    return i + 2;
+                if (value < b4)
+                    return i + 3;
+            }
+        }
+
+        template<typename Type>
+        void to_chars(char *first, size_t len, Type val)
+        {
+            static constexpr char digits[201] =
+                "0001020304050607080910111213141516171819"
+                "2021222324252627282930313233343536373839"
+                "4041424344454647484950515253545556575859"
+                "6061626364656667686970717273747576777879"
+                "8081828384858687888990919293949596979899";
+
+            size_t pos = len - 1;
+            while (val >= 100)
+            {
+                auto const num = (val % 100) * 2;
+                val /= 100;
+                first[pos] = digits[num + 1];
+                first[pos - 1] = digits[num];
+                pos -= 2;
+            }
+            if (val >= 10)
+            {
+                auto const num = val * 2;
+                first[1] = digits[num + 1];
+                first[0] = digits[num];
+            }
+            else first[0] = '0' + val;
+        }
+
+        template<signed_integral Type, unsigned_integral UType = make_unsigned_t<Type>>
+        [[gnu::always_inline]]
+        inline string to_string(Type value)
+        {
+            const auto negative = value < 0;
+            const UType uvalue = negative ? static_cast<UType>(~value) + static_cast<UType>(1) : value;
+            const auto length = to_chars_len(uvalue);
+            string str(length + negative, '-');
+            to_chars(&str[negative], length, uvalue);
+            return str;
+        }
+
+        template<unsigned_integral Type>
+        [[gnu::always_inline]]
+        inline string to_string(Type value)
+        {
+            string str(to_chars_len(value), '\0');
+            to_chars(&str[0], str.length(), value);
+            return str;
+        }
+    } // namespace detail
+
+    inline string to_string(int value)
+    {
+        return detail::to_string(value);
+    }
+
+    inline string to_string(long value)
+    {
+        return detail::to_string(value);
+    }
+
+    inline string to_string(long long value)
+    {
+        return detail::to_string(value);
+    }
+
+    inline string to_string(unsigned value)
+    {
+        return detail::to_string(value);
+    }
+
+    inline string to_string(unsigned long value)
+    {
+        return detail::to_string(value);
+    }
+
+    inline string to_string(unsigned long long value)
+    {
+        return detail::to_string(value);
+    }
+
+    template<>
+    struct hash<string>
+    {
+        size_t operator()(const string &str) const
+        {
+            return detail::hash_impl::hash(str.data(), str.length());
+        }
+    };
 
     template<typename Char, typename Traits, typename Allocator>
     struct hash<basic_string<Char, Traits, Allocator>>

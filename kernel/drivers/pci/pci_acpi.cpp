@@ -1,13 +1,11 @@
 // Copyright (C) 2022  ilobilo
 
-#include <arch/x86_64/drivers/pci/pci_legacy.hpp>
 #include <drivers/pci/pci_ecam.hpp>
-#include <drivers/pci/pci.hpp>
 #include <lai/helpers/pci.h>
 #include <drivers/acpi.hpp>
 #include <lib/log.hpp>
 
-namespace pci
+namespace pci::acpi
 {
     static uint64_t eval_aml_method(lai_state_t *state, lai_nsnode_t *node, const char *name)
     {
@@ -17,57 +15,64 @@ namespace pci
 
         if (handle == nullptr)
         {
-            log::warn("PCI: Root bus doesn't have %s, assuming 0", name);
+            log::warnln("PCI: Root bus doesn't have {}, assuming 0", name);
             return 0;
         }
 
         if (auto e = lai_eval(&var, handle, state); e != LAI_ERROR_NONE)
         {
-            log::warn("PCI: Couldn't evaluate Root Bus %s, assuming 0", name);
+            log::warnln("PCI: Couldn't evaluate Root Bus {}, assuming 0", name);
             return 0;
         }
 
         if (auto e = lai_obj_get_integer(&var, &ret); e != LAI_ERROR_NONE)
         {
-            log::warn("PCI: Root Bus %s evaluation didn't result in an integer, assuming 0", name);
+            log::warnln("PCI: Root Bus {} evaluation didn't result in an integer, assuming 0", name);
             return 0;
         }
 
         return ret;
     }
 
-    bool add_acpi_configio()
+    bool init_ios()
     {
-        auto mcfg = acpi::findtable<acpi::MCFGHeader>("MCFG", 0);
+        using namespace ::acpi;
+
+        auto mcfg = findtable<MCFGHeader>("MCFG", 0);
         if (mcfg == nullptr)
         {
-            log::warn("PCI: MCFG table not found!");
-            return false;
-        }
-        else if (mcfg->header.length < sizeof(acpi::MCFGHeader) + sizeof(acpi::MCFGEntry))
-        {
-            log::error("PCI: No entries found in MCFG table!");
+            log::warnln("PCI: MCFG table not found!");
             return false;
         }
 
+        bool found = false;
+
         // TODO: Can there be multiple mcfg tables?
-        for (size_t i = 0; mcfg != nullptr; i++, mcfg = acpi::findtable<acpi::MCFGHeader>("MCFG", i))
+        for (size_t i = 0; mcfg != nullptr; i++, mcfg = findtable<MCFGHeader>("MCFG", i))
         {
-            size_t entries = ((mcfg->header.length) - sizeof(acpi::MCFGHeader)) / sizeof(acpi::MCFGEntry);
+            if (mcfg->header.length < sizeof(MCFGHeader) + sizeof(MCFGEntry))
+            {
+                log::errorln("PCI: No entries found in MCFG table!");
+                continue;
+            }
+
+            found = true;
+
+            size_t entries = ((mcfg->header.length) - sizeof(MCFGHeader)) / sizeof(MCFGEntry);
             for (size_t i = 0; i < entries; i++)
             {
                 auto &entry = mcfg->entries[i];
-                auto io = new ecam_configio(entry.baseaddr, entry.segment, entry.startbus, entry.endbus);
+                auto io = new ecam::configio(entry.baseaddr, entry.segment, entry.startbus, entry.endbus);
 
                 for (size_t b = entry.startbus; b <= entry.endbus; b++)
                     addconfigio(entry.segment, b, io);
             }
         }
 
-        return true;
+        return found;
     }
 
-    bool add_acpi_rootbusses()
+    bool init_rbs()
     {
         LAI_CLEANUP_STATE lai_state_t state;
         lai_init_state(&state);
@@ -100,4 +105,4 @@ namespace pci
 
         return found;
     }
-} // namespace pci
+} // namespace pci::acpi

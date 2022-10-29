@@ -3,106 +3,49 @@
 #include <drivers/serial.hpp>
 #include <drivers/term.hpp>
 #include <frg/macros.hpp>
-#include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <lai/host.h>
 
 namespace log
 {
-    static lock_t lock;
-    bool toterm = true;
+    static bool toterm = true;
+
+    void prints(const char *str, size_t length)
+    {
+        while (length--)
+        {
+            if (toterm == true)
+                term::printc(*str);
+            serial::printc(*str++);
+        }
+    }
 
     void prints(const char *str)
     {
-        auto sptr = str;
-        while (*sptr)
-            serial::printc(*sptr++);
         if (toterm == true)
             term::print(str);
+
+        while (*str)
+            serial::printc(*str++);
     }
 
     void printc(char c)
     {
-        serial::printc(c);
         if (toterm == true)
             term::printc(c);
+        serial::printc(c);
     }
 
-    int vprint(const char *fmt, va_list arg)
-    {
-        return vfctprintf([](char c, auto) { printc(c); }, nullptr, fmt, arg);
-    }
-
-    int print(const char *fmt, ...)
+    void toggle_term(bool on)
     {
         lockit(lock);
-
-        va_list arg;
-        va_start(arg, fmt);
-
-        int ret = vprint(fmt, arg);
-
-        va_end(arg);
-        return ret;
+        toterm = on;
     }
 
-    int println(const char *fmt, ...)
+    bool to_term()
     {
         lockit(lock);
-
-        va_list arg;
-        va_start(arg, fmt);
-
-        int ret = vprint(fmt, arg);
-        printc('\n');
-
-        va_end(arg);
-        return ++ret;
-    }
-
-    int info(const char *fmt, ...)
-    {
-        lockit(lock);
-
-        va_list arg;
-        va_start(arg, fmt);
-
-        int ret = vprint(info_prefix, arg);
-        ret += vprint(fmt, arg);
-        printc('\n');
-
-        va_end(arg);
-        return ++ret;
-    }
-
-    int warn(const char *fmt, ...)
-    {
-        lockit(lock);
-
-        va_list arg;
-        va_start(arg, fmt);
-
-        int ret = vprint(warn_prefix, arg);
-        ret += vprint(fmt, arg);
-        printc('\n');
-
-        va_end(arg);
-        return ++ret;
-    }
-
-    int error(const char *fmt, ...)
-    {
-        lockit(lock);
-
-        va_list arg;
-        va_start(arg, fmt);
-
-        int ret = vprint(error_prefix, arg);
-        ret += vprint(fmt, arg);
-        printc('\n');
-
-        va_end(arg);
-        return ++ret;
+        return toterm;
     }
 } // namespace log
 
@@ -111,18 +54,18 @@ void laihost_log(int level, const char *msg)
     switch (level)
     {
         case LAI_DEBUG_LOG:
-            log::info("%s", msg);
+            log::infoln("LAI: {}{}", char(toupper(*msg)), msg + 1);
             break;
         case LAI_WARN_LOG:
-            log::warn("%s", msg);
+            log::warnln("LAI: {}{}", char(toupper(*msg)), msg + 1);
             break;
     }
 }
 
 extern "C"
 {
-    void FRG_INTF(log)(const char *cstring)
+    void FRG_INTF(log)(const char *msg)
     {
-        log::info("%s", cstring);
+        log::infoln("FRG: {}{}", char(toupper(*msg)), msg + 1);
     }
 } // extern "C"

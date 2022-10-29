@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <arch/x86_64/cpu/cpu.hpp>
+#include <cpu/cpu.hpp>
 #include <functional>
 #include <utility>
 #include <cstddef>
@@ -11,8 +11,7 @@
 
 namespace idt
 {
-    static constexpr uint8_t INT_SYSCALL = 0x69;
-    static constexpr uint8_t INT_PANIC = 0xFF;
+    static constexpr uint8_t INT_SYSCALL = 0x80;
 
     constexpr uint8_t IRQ(uint8_t num)
     {
@@ -52,6 +51,8 @@ namespace idt
         bool reserved = false;
 
         public:
+        bool eoi_first = false;
+
         template<typename Func, typename ...Args>
         bool set(Func &&func, Args &&...args)
         {
@@ -73,6 +74,7 @@ namespace idt
         {
             if (this->is_reserved())
                 return false;
+
             return this->reserved = true;
         }
 
@@ -92,16 +94,18 @@ namespace idt
         {
             if (this->get() == false)
                 return false;
+
             this->handler(regs);
             return true;
         }
     };
 
     extern int_handler_t handlers[];
+    extern uint8_t panic_int;
     extern IDTEntry idt[];
     extern IDTPtr idtr;
 
-    std::pair<int_handler_t&, uint8_t> allocate_handler(uint8_t hint = 0);
+    std::pair<int_handler_t&, uint8_t> allocate_handler(uint8_t hint = IRQ(0));
 
     void mask(uint8_t irq);
     void unmask(uint8_t irq);

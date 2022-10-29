@@ -18,7 +18,7 @@ namespace pmm
     void *alloc(size_t count = 1);
 
     template<typename Type = void*>
-    Type alloc(size_t count = 1)
+    inline Type alloc(size_t count = 1)
     {
         return reinterpret_cast<Type>(alloc(count));
     }

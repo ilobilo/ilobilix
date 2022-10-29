@@ -1,11 +1,15 @@
 // Copyright (C) 2022  ilobilo
 
 #include <misc/ubsan.hpp>
+#include <arch/arch.hpp>
+#include <lib/trace.hpp>
 #include <lib/log.hpp>
 
 static void print(const char *message, source_location loc)
 {
-    log::warn("Ubsan: %s at file %s, line %d, column %d", message, loc.file, loc.line, loc.column);
+    log::warnln("Ubsan: {} at file {}, line {}, column {}", message, loc.file, loc.line, loc.column);
+    trace::print();
+    arch::halt();
 }
 
 extern "C"

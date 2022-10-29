@@ -13,14 +13,14 @@ define wget_down
 	wget $(3) -O $(2) $(4) || $(call err,$(1))
 endef
 
-override DEPS :=                              \
-	$(EXTDEPDIR)/lai $(EXTDEPDIR)/cxxshim     \
-	$(EXTDEPDIR)/frigg $(EXTDEPDIR)/ovmf      \
-	$(EXTDEPDIR)/smart_ptr $(EXTDEPDIR)/veque \
-	$(EXTDEPDIR)/cwalk $(EXTDEPDIR)/printf    \
-	$(EXTDEPDIR)/limine-terminal-port         \
-	$(EXTDEPDIR)/libgcc-binaries              \
-	$(EXTDEPDIR)/limine
+override DEPS :=                                \
+	$(EXTDEPDIR)/lai $(EXTDEPDIR)/cxxshim       \
+	$(EXTDEPDIR)/frigg $(EXTDEPDIR)/span-lite   \
+	$(EXTDEPDIR)/smart_ptr $(EXTDEPDIR)/veque   \
+	$(EXTDEPDIR)/cwalk $(EXTDEPDIR)/printf      \
+	$(EXTDEPDIR)/limine-terminal-port           \
+	$(EXTDEPDIR)/libgcc-binaries                \
+	$(EXTDEPDIR)/limine $(OVMFDIR)
 
 .PHONY: all
 all: $(DEPS)
@@ -32,22 +32,16 @@ $(EXTDEPDIR)/cxxshim:
 	$(call git_clone,ilobilo,cxxshim)
 
 $(EXTDEPDIR)/frigg:
-	$(call git_clone,managarm,frigg)
+	$(call git_clone,ilobilo,frigg)
 
-override OVMF_ZIP := $(EXTDEPDIR)/OVMF-$(EFI_ARCH).zip
-$(EXTDEPDIR)/ovmf:
-	$(call wget_down,ovmf,$(OVMF_ZIP),https://efi.akeo.ie/OVMF/OVMF-$(EFI_ARCH).zip)
-	unzip $(OVMF_ZIP) -d $(EXTDEPDIR)/ovmf
-	rm -f $(OVMF_ZIP)
+$(EXTDEPDIR)/span-lite:
+	$(call git_clone,martinmoene,span-lite)
 
 $(EXTDEPDIR)/smart_ptr:
 	$(call git_clone,ilobilo,smart_ptr)
 
 $(EXTDEPDIR)/veque:
 	$(call git_clone,ilobilo,veque)
-
-$(EXTDEPDIR)/Deque:
-	$(call git_clone,vstanka,Deque)
 
 $(EXTDEPDIR)/cwalk:
 	$(call git_clone,likle,cwalk)
@@ -62,8 +56,14 @@ $(EXTDEPDIR)/libgcc-binaries:
 	$(call git_clone,mintsuki,libgcc-binaries,trunk)
 
 $(EXTDEPDIR)/limine:
-	$(call git_clone,limine-bootloader,limine,v3.0-branch-binary)
+	$(call git_clone,limine-bootloader,limine,v4.x-branch-binary)
 	$(MAKE) -sC $(EXTDEPDIR)/limine
+
+override OVMF_ZIP := $(EXTDEPDIR)/OVMF-$(EFI_ARCH).zip
+$(OVMFDIR):
+	$(call wget_down,ovmf,$(OVMF_ZIP),https://efi.akeo.ie/OVMF/OVMF-$(EFI_ARCH).zip)
+	unzip $(OVMF_ZIP) -d $(OVMFDIR)
+	rm -f $(OVMF_ZIP)
 
 .PHONY: clean
 clean:

@@ -41,7 +41,7 @@ namespace timers::tsc
 
         if (ret == false || !(d & (1 << 8)))
         {
-            log::error("Invariant TSC not supported!");
+            log::errorln("Invariant TSC not supported!");
             return;
         }
 

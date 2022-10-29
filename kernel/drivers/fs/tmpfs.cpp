@@ -184,10 +184,16 @@ namespace tmpfs
         return fs->root;
     }
 
-    // TODO: Unmount
-    // bool tmpfs::unmount()
-    // {
-    // }
+    // TODO: Is this correct?
+    bool tmpfs::unmount()
+    {
+        vfs::recursive_delete(this->root, true);
+
+        if (this->mountdata != nullptr)
+            free(this->mountdata);
+
+        return true;
+    }
 
     vfs::node_t *tmpfs::create(vfs::node_t *parent, std::string_view name, mode_t mode)
     {

@@ -58,10 +58,16 @@ namespace vfs
         std::optional<types> type();
         std::optional<mode_t> mode();
 
-        bool dotentries();
+        bool empty();
 
         node_t(std::string_view name) : name(name) { }
         node_t(std::string_view name, node_t *parent, filesystem *fs, resource *res = nullptr) : fs(fs), res(res), name(name), parent(parent) { }
+
+        ~node_t()
+        {
+            if (this->res && this->res->refcount == 0)
+                delete this->res;
+        }
     };
 
     struct filesystem
@@ -105,6 +111,8 @@ namespace vfs
 
     bool register_fs(filesystem *fs);
     filesystem *find_fs(std::string_view name);
+
+    void recursive_delete(node_t *node, bool resources);
 
     std::tuple<node_t*, node_t*, std::string> path2node(node_t *parent, path_t path, bool automount = true);
 

@@ -81,8 +81,8 @@ namespace timers::hpet
 
         this->_legacy = (this->regs->cap >> 15) & 1;
 
-        log::info("HPET: Found device %d: Legacy replacement mode: %s", table->hpet_number, this->_legacy ? "true" : "false");
-        log::info(" Timers:");
+        log::infoln("HPET: Found device {}: Legacy replacement mode: {}", table->hpet_number, this->_legacy ? "true" : "false");
+        log::infoln(" Timers:");
 
         uint32_t gsi_mask = 0xFFFFFFFF;
         for (size_t i = 0; i < this->comp_count; i++)
@@ -92,7 +92,7 @@ namespace timers::hpet
             timer._periodic = (this->regs->comparators[i].cmd >> 4) & 1;
             timer._int_route = this->regs->comparators[i].cmd >> 32;
 
-            log::info("  - Comparator %d: FSB: %s, Periodic: %s", i, timer._fsb ? "true" : "false", timer._periodic ? "true" : "false");
+            log::infoln("  - Comparator {}: FSB: {}, Periodic: {}", i, timer._fsb ? "true" : "false", timer._periodic ? "true" : "false");
 
             gsi_mask &= timer._int_route;
         }
@@ -198,7 +198,7 @@ namespace timers::hpet
             }
             else
             {
-                log::error("HPET: Neither standard nor FSB interrupt mappings are supported!");
+                log::errorln("HPET: Neither standard nor FSB interrupt mappings are supported!");
                 continue;
             }
 
@@ -212,7 +212,7 @@ namespace timers::hpet
     {
         uint64_t target = this->regs->main_counter + ((ns * 1'000'000) / this->clk);
 
-        while(this->regs->main_counter < target)
+        while (this->regs->main_counter < target)
             asm volatile ("pause");
     }
 
@@ -220,7 +220,7 @@ namespace timers::hpet
     {
         uint64_t target = this->regs->main_counter + ((ms * 1'000'000'000'000) / this->clk);
 
-        while(this->regs->main_counter < target)
+        while (this->regs->main_counter < target)
             asm volatile ("pause");
     }
 
@@ -262,13 +262,13 @@ namespace timers::hpet
 
     void init()
     {
-        log::info("Initialising HPET...");
+        log::infoln("Initialising HPET...");
 
         auto table = acpi::findtable<acpi::HPETHeader>("HPET", 0);
 
         if (table == nullptr)
         {
-            log::error("HPET table not found!");
+            log::errorln("HPET table not found!");
             return;
         }
 

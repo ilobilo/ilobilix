@@ -4,23 +4,24 @@
 
 #include <frg/mutex.hpp>
 #include <arch/arch.hpp>
+#include <atomic>
 
-struct lock_t
+struct ticket_lock
 {
     private:
     uint64_t _next_ticket;
     uint64_t _serving_ticket;
 
     public:
-    constexpr lock_t() : _next_ticket(0), _serving_ticket(0) { }
+    constexpr ticket_lock() : _next_ticket(0), _serving_ticket(0) { }
 
-    lock_t(const lock_t &) = delete;
-    lock_t &operator= (const lock_t &) = delete;
+    ticket_lock(const ticket_lock &) = delete;
+    ticket_lock &operator=(const ticket_lock &) = delete;
 
     void lock()
     {
         auto ticket = __atomic_fetch_add(&this->_next_ticket, 1, __ATOMIC_RELAXED);
-        while(__atomic_load_n(&this->_serving_ticket, __ATOMIC_ACQUIRE) != ticket)
+        while (__atomic_load_n(&this->_serving_ticket, __ATOMIC_ACQUIRE) != ticket)
             arch::pause();
     }
 
@@ -47,54 +48,56 @@ struct lock_t
     }
 };
 
-// struct lock_t
-// {
-//     private:
-//     std::atomic_flag _locked;
+struct normal_lock
+{
+    private:
+    std::atomic_flag _locked;
 
-//     public:
-//     constexpr lock_t() : _locked() { }
+    public:
+    constexpr normal_lock() : _locked() { }
 
-//     lock_t(const lock_t &) = delete;
-//     lock_t &operator=(const lock_t &) = delete;
+    normal_lock(const normal_lock &) = delete;
+    normal_lock &operator=(const normal_lock &) = delete;
 
-//     void lock()
-//     {
-//         while(this->_locked.test_and_set(std::memory_order_acquire) == false)
-//             arch::pause();
-//     }
+    void lock()
+    {
+        while (this->_locked.test_and_set(std::memory_order_acquire) == false)
+            arch::pause();
+    }
 
-//     void unlock()
-//     {
-//         this->_locked.clear(std::memory_order_release);
-//     }
+    void unlock()
+    {
+        this->_locked.clear(std::memory_order_release);
+    }
 
-//     bool is_locked()
-//     {
-//         return this->_locked.test(std::memory_order_release);
-//     }
+    bool is_locked()
+    {
+        return this->_locked.test(std::memory_order_release);
+    }
 
-//     bool try_lock()
-//     {
-//         if (this->is_locked())
-//             return false;
+    bool try_lock()
+    {
+        if (this->is_locked())
+            return false;
 
-//         this->lock();
-//         return true;
-//     }
-// };
+        this->lock();
+        return true;
+    }
+};
 
-struct irq_lock_t
+using lock_t = ticket_lock;
+
+struct irq_lock
 {
     private:
     bool _irqs = false;
     lock_t _lock;
 
     public:
-    constexpr irq_lock_t() : _irqs(false), _lock() { }
+    constexpr irq_lock() : _irqs(false), _lock() { }
 
-    irq_lock_t(const irq_lock_t &) = delete;
-    irq_lock_t &operator=(const irq_lock_t &) = delete;
+    irq_lock(const irq_lock &) = delete;
+    irq_lock &operator=(const irq_lock &) = delete;
 
     void lock()
     {

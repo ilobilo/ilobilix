@@ -1,15 +1,18 @@
-override SUPARCHS := x86_64
+override SUPARCHS := x86_64 aarch64
 ARCH ?= x86_64
 
-ifeq (,$(findstring $(ARCH),$(SUPARCHS)))
-    $(error Architecture $(ARCH) not supported, please use one of the following: $(SUPARCHS))
+ifeq (,$(filter $(ARCH),$(SUPARCHS)))
+    $(error Architecture $(ARCH) is not supported, please use one of the following: $(SUPARCHS))
 endif
 
 ifeq ($(ARCH),x86_64)
     override EFI_ARCH := X64
     override LIBGCC := libgcc-x86_64-no-red-zone.a
     override TARGET := x86_64-pc-none-elf
-else
+else ifeq ($(ARCH),aarch64)
+    override EFI_ARCH := AA64
+    override LIBGCC := libgcc-aarch64.a
+    override TARGET := aarch64-elf
 endif
 
 ROOTDIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -19,20 +22,21 @@ INITRDDIR := $(ROOTDIR)/initrd
 EXTDEPDIR := $(ROOTDIR)/extdeps
 ISO_ROOT := $(ROOTDIR)/iso_root
 
-MODSRCDIR := $(MODULEDIR)/source/
-MODDESTDIR := $(INITRDDIR)/lib/modules/
-MODSUBDIRS := $(realpath $(wildcard $(MODSRCDIR)/$(ARCH)/*/)) $(realpath $(wildcard $(MODSRCDIR)/noarch/*/))
+MODDESTDIR := $(INITRDDIR)/lib/modules
+MODSUBDIRS := $(realpath $(wildcard $(MODULEDIR)/$(ARCH)/*/)) $(realpath $(wildcard $(MODULEDIR)/noarch/*/))
 
 MODULES := $(foreach i,$(MODSUBDIRS),$(i)/$(notdir $(i)).ko)
 KERNEL_MODULES := $(foreach i,$(MODSUBDIRS),$(if $(realpath $(i)/EXTERNAL),,$(i)/$(notdir $(i)).ko))
 EXTERN_MODULES := $(foreach i,$(MODSUBDIRS),$(if $(realpath $(i)/EXTERNAL),$(i)/$(notdir $(i)).ko))
 
 LIMINEDIR ?= $(EXTDEPDIR)/limine
-OVMF ?= $(EXTDEPDIR)/ovmf/OVMF.fd
+
+OVMFDIR := $(EXTDEPDIR)/ovmf-$(EFI_ARCH)
+OVMF ?= $(OVMFDIR)/OVMF.fd
 
 BACKGROUND ?= $(ROOTDIR)/misc/bg.bmp
 TERMFONT ?= $(ROOTDIR)/misc/font.bin
-SFNFONT ?= $(ROOTDIR)/misc/font.sfn
+DTB ?= $(ROOTDIR)/misc/dtb.img
 
 KERNEL ?= $(KERNELDIR)/kernel.elf
 
@@ -41,9 +45,6 @@ DISK0 ?= $(ROOTDIR)/disk0.img
 DISK1 ?= $(ROOTDIR)/disk1.img
 
 LOGFILE ?= $(ROOTDIR)/log.txt
-
-VERSION ?= 0
-NET_DEBUG ?= 1
 LVL5_PAGING ?= 0
 
 CC = clang
@@ -58,7 +59,7 @@ LDFLAGS ?=
 CVERSION = gnu1x
 CXXVERSION = gnu++2b
 
-LIMINE ?= $(LIMINEDIR)/limine-deploy
+LIMINE_DEP ?= $(LIMINEDIR)/limine-deploy
 XORRISO ?= xorriso
 
 INITRD ?= $(ROOTDIR)/initrd.img.gz
@@ -69,7 +70,7 @@ QEMU = qemu-system-$(ARCH)
 
 override QEMUFLAGS := -cpu max -smp 4 -m 512M \
 	-rtc base=localtime -serial stdio         \
-	-boot d -cdrom $(ISO)
+	-boot order=d,menu=on,splash-time=100
 
 ifeq ($(ARCH),x86_64)
     override QEMUFLAGS += -M q35                        \
@@ -81,7 +82,8 @@ ifeq ($(ARCH),x86_64)
         -drive format=raw,file=$(DISK0)                 \
         -net nic,model=rtl8139                          \
         -net user,hostfwd=tcp::4321-:4321
-else
+else ifeq ($(ARCH),aarch64)
+    override QEMUFLAGS += -M virt -device ramfb
 endif
 
 ifdef VNC
@@ -125,16 +127,18 @@ override INCLUDES :=                            \
 	-I$(EXTDEPDIR)/frigg/include/               \
 	-I$(EXTDEPDIR)/veque/include/               \
 	-I$(EXTDEPDIR)/smart_ptr/include/           \
+	-I$(EXTDEPDIR)/span-lite/include/           \
 	-I$(EXTDEPDIR)/cxxshim/stage2/include/      \
+	-I$(EXTDEPDIR)/limine-terminal-port/fonts/  \
 	-I$(EXTDEPDIR)/limine-terminal-port/source/
 
-override GLOBALLIBS :=                           \
+override LIBRARIES :=                            \
 	-L$(EXTDEPDIR)/libgcc-binaries/ -l:$(LIBGCC)
 
 export
 
 .PHONY: all
-all: bios
+all: uefi
 
 .PHONY: uefi
 uefi: extdeps iso-clean modules-clean
@@ -190,14 +194,14 @@ initrd-clean:
 
 $(ISO):
 	@mkdir -p $(ISO_ROOT)
-	@cp $(KERNEL) $(INITRD) $(BACKGROUND) $(TERMFONT) $(SFNFONT) $(ROOTDIR)/limine.cfg $(LIMINEDIR)/limine.sys \
+	@cp $(KERNEL) $(INITRD) $(BACKGROUND) $(TERMFONT) $(DTB) $(ROOTDIR)/limine.cfg $(LIMINEDIR)/limine.sys \
 		$(LIMINEDIR)/limine-cd.bin $(LIMINEDIR)/limine-cd-efi.bin $(ISO_ROOT)
 
 	@printf "XORRISO\t%s\n" $(ISO:$(ROOTDIR)/%=%)
 	@$(XORRISO) $(XORRISOFLAGS) $(ISO_ROOT) -o $(ISO) 2> /dev/null || echo "\e[31mFailed to build iso!\e[0m"
 
-	@printf "LIMINE\t%s\n" $(ISO:$(ROOTDIR)/%=%)
-	@$(LIMINE) $(ISO) 2> /dev/null || echo "\e[32mFailed to install Limine!\e[0m"
+	@printf "LIMINE_DEP\t%s\n" $(ISO:$(ROOTDIR)/%=%)
+	@$(LIMINE_DEP) $(ISO) 2> /dev/null || echo "\e[32mFailed to install Limine!\e[0m"
 
 .PHONY: iso-clean
 iso-clean:
@@ -210,13 +214,19 @@ run: run-bios
 run-uefi:
 ifndef NORUN
 	@echo "\nBooting in uefi mode...\n"
-	@$(QEMU) $(QEMUFLAGS) -drive if=pflash,format=raw,unit=0,file=$(OVMF) | $(CXXFILT)
+	@$(QEMU) $(QEMUFLAGS) -bios $(OVMF) -cdrom $(ISO) | $(CXXFILT)
+#	@$(QEMU) $(QEMUFLAGS) -drive if=pflash,format=raw,unit=0,file=$(OVMF) -cdrom $(ISO) | $(CXXFILT)
 endif
 
 run-bios:
 ifndef NORUN
+
+ifeq ($(ARCH),aarch64)
+	$(error Can not run aarch64 kernel in bios mode)
+endif
+
 	@echo "\nBooting in bios mode...\n"
-	@$(QEMU) $(QEMUFLAGS) | $(CXXFILT)
+	@$(QEMU) $(QEMUFLAGS) -cdrom $(ISO) | $(CXXFILT)
 endif
 
 clean:

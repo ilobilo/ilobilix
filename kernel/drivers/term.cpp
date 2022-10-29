@@ -5,6 +5,7 @@
 #include <lib/panic.hpp>
 #include <lib/alloc.hpp>
 #include <lib/log.hpp>
+#include <unifont.h>
 
 namespace term
 {
@@ -25,7 +26,7 @@ namespace term
                 terminal_request.response->write(early_term, str, strlen(str));
             }
         }
-        else term->print(str);
+        else term->write(str, strlen(str));
     }
 
     void printc(char c, terminal_t *term)
@@ -38,7 +39,7 @@ namespace term
                 terminal_request.response->write(early_term, &c, 1);
             }
         }
-        else term->write(reinterpret_cast<uint64_t>(&c), 1);
+        else term->write(&c, 1);
     }
 
     extern "C"
@@ -50,7 +51,7 @@ namespace term
 
         void *alloc_mem(size_t size)
         {
-            return malloc(size);
+            return calloc(size, 1);
         }
 
         void free_mem(void *ptr, size_t size)
@@ -59,7 +60,7 @@ namespace term
         }
     } // extern "C"
 
-    void terminal_t::callback(uint64_t _term, uint64_t type, uint64_t first, uint64_t second, uint64_t third)
+    void terminal_t::callback(term_t *_term, uint64_t type, uint64_t first, uint64_t second, uint64_t third)
     {
         auto term = reinterpret_cast<terminal_t*>(_term);
         switch (type)
@@ -93,12 +94,12 @@ namespace term
 
     void init()
     {
-        log::info("Initialising Terminals...");
+        log::infoln("Initialising Terminals...");
 
         #if defined(__x86_64__)
         if (frm::frm_count == 0)
         {
-            log::error("Couldn't get a framebuffer!");
+            log::errorln("Couldn't get a framebuffer!");
             assert(uefi != true, "Booted in UEFI mode, Can't use textmode!");
 
             terminal_t *term = new terminal_t;
@@ -113,16 +114,17 @@ namespace term
         }
         #endif
 
+        uint64_t font_address = reinterpret_cast<uint64_t>(&unifont);
+        cppimage_t *image = nullptr;
+
         auto font_mod = find_module("font");
-        if (font_mod == nullptr)
-            PANIC("Terminal font not found!");
+        if (font_mod != nullptr)
+            font_address = reinterpret_cast<uint64_t>(font_mod->address);
 
         auto back_mod = find_module("background");
         if (back_mod == nullptr)
-            log::error("Terminal background not found!");
-
-        cppimage_t *image = nullptr;
-        if (back_mod != nullptr)
+            log::errorln("Terminal background not found!");
+        else
         {
             image = new cppimage_t;
             image->open(reinterpret_cast<uint64_t>(back_mod->address), back_mod->size);
@@ -130,7 +132,7 @@ namespace term
 
         font_t font
         {
-            reinterpret_cast<uint64_t>(font_mod->address),
+            font_address,
             8, 16, 1, 0, 0
         };
 
@@ -166,7 +168,7 @@ namespace term
             if (frm::frms[i]->width > image->x_size || frm::frms[i]->height > image->y_size)
                 back.style = STRETCHED;
 
-            term->init(term->callback, !uefi);
+            term->init(term->callback, uefi == false, 8);
             term->vbe(frm, font, style, back);
 
             terms.push_back(term);
@@ -174,5 +176,10 @@ namespace term
                 main_term = term;
         }
         term_count = frm::frm_count;
+    }
+
+    // TODO
+    void late_init()
+    {
     }
 } // namespace term

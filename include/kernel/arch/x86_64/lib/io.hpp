@@ -7,7 +7,7 @@
 
 namespace io
 {
-    template<std::unsigned_integral Type> requires (!std::is_same_v<Type, uint64_t>)
+    template<std::unsigned_integral Type> requires (!std::same_as<Type, uint64_t>)
     static inline Type in(uint16_t port)
     {
         Type data = Type(0);
@@ -20,7 +20,7 @@ namespace io
         return data;
     }
 
-    template<std::unsigned_integral Type> requires (!std::is_same_v<Type, uint64_t>)
+    template<std::unsigned_integral Type> requires (!std::same_as<Type, uint64_t>)
     static inline void out(uint16_t port, Type val)
     {
         if constexpr (std::is_same_v<Type, uint8_t>)

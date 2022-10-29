@@ -33,13 +33,15 @@ namespace lapic
 
     uint32_t lapic::read(uint32_t reg)
     {
-        if (this->x2apic) return cpu::rdmsr(reg2x2apic(reg));
+        if (this->x2apic == true)
+            return cpu::rdmsr(reg2x2apic(reg));
         return mmio::in<uint32_t>(this->mmio_base + reg);
     }
 
     void lapic::write(uint32_t reg, uint64_t value)
     {
-        if (this->x2apic) cpu::wrmsr(reg2x2apic(reg), value);
+        if (this->x2apic == true)
+            cpu::wrmsr(reg2x2apic(reg), value);
         mmio::out<uint32_t>(this->mmio_base + reg, value);
     }
 
@@ -70,7 +72,7 @@ namespace lapic
         // this->mmio_base = malloc<uintptr_t>(0x1000);
 
         // if (this->x2apic == false)
-        //     vmm::kernel_pagemap->mapMem(this->mmio_base, phys_mmio_base, vmm::RW);
+        //     vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw);
 
         this->id = (this->x2apic ? this->read(0x20) : (this->read(0x20) >> 24) & 0xFF);
 
@@ -78,14 +80,14 @@ namespace lapic
         this->write(0xF0, 0xFF | (1 << 8));
     }
 
-    void lapic::ipi(uint32_t vector, uint32_t id)
+    void lapic::ipi(uint32_t flags, uint32_t id)
     {
         if (this->x2apic == true)
-            this->write(0x300, (static_cast<uint64_t>(id) << 32) | (1 << 14) | vector);
+            this->write(0x300, (static_cast<uint64_t>(id) << 32) | (1 << 14) | flags);
         else
         {
             this->write(0x310, id << 24);
-            this->write(0x300, vector);
+            this->write(0x300, flags);
         }
     }
 
@@ -99,6 +101,8 @@ namespace lapic
         if (this->ticks_per_ms == 0)
             this->timer_calibrate();
 
+        uint64_t ticks = this->ticks_per_ms * ms;
+
         this->write(0x3E0, 0x03);
         uint64_t value = this->read(0x320) & ~(3 << 17);
 
@@ -107,7 +111,7 @@ namespace lapic
         value |= vector;
 
         this->write(0x320, value);
-        this->write(0x380, this->ticks_per_ms * ms);
+        this->write(0x380, ticks ? ticks : 1);
         this->write(0x320, this->read(0x320) & ~(1 << 16));
     }
 } // namespace lapic

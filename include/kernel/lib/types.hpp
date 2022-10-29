@@ -116,21 +116,21 @@ struct timespec
     time_t tv_sec;
     long tv_nsec;
 
-    timespec() : tv_sec(0), tv_nsec(0) { }
-    timespec(time_t s, long ns) : tv_sec(s), tv_nsec(ns) { }
-    timespec(time_t ms) : tv_sec(ms / 1'000), tv_nsec((ms % 1'000) * 1'000'000) { }
+    constexpr timespec() : tv_sec(0), tv_nsec(0) { }
+    constexpr timespec(time_t s, long ns) : tv_sec(s), tv_nsec(ns) { }
+    constexpr timespec(time_t ms) : tv_sec(ms / 1'000), tv_nsec((ms % 1'000) * 1'000'000) { }
 
-    long to_ns()
+    constexpr long to_ns()
     {
         return this->tv_sec * 1'000'000'000 + this->tv_nsec;
     }
 
-    time_t to_ms()
+    constexpr time_t to_ms()
     {
         return this->to_ns() / 1'000'000;
     }
 
-    timespec &operator+=(const timespec &rhs)
+    constexpr timespec &operator+=(const timespec &rhs)
     {
         this->tv_sec += rhs.tv_sec;
         this->tv_nsec += rhs.tv_nsec;
@@ -144,18 +144,18 @@ struct timespec
         return *this;
     }
 
-    friend timespec operator+(const timespec &lhs, const timespec &rhs)
+    friend constexpr timespec operator+(const timespec &lhs, const timespec &rhs)
     {
         timespec ret = lhs;
         return ret += rhs;
     }
 
-    friend timespec operator+(const timespec &lhs, long ns)
+    friend constexpr timespec operator+(const timespec &lhs, long ns)
     {
         return lhs + timespec(0, ns);
     }
 
-    timespec &operator-=(const timespec &rhs)
+    constexpr timespec &operator-=(const timespec &rhs)
     {
         this->tv_sec -= rhs.tv_sec;
         this->tv_nsec -= rhs.tv_nsec;
@@ -174,13 +174,13 @@ struct timespec
         return *this;
     }
 
-    friend timespec operator-(const timespec &lhs, const timespec &rhs)
+    friend constexpr timespec operator-(const timespec &lhs, const timespec &rhs)
     {
         timespec ret = lhs;
         return ret -= rhs;
     }
 
-    friend timespec operator-(const timespec &lhs, long ns)
+    friend constexpr timespec operator-(const timespec &lhs, long ns)
     {
         return lhs - timespec(0, ns);
     }
@@ -221,12 +221,12 @@ struct stat_t
 
     long __unused1[3];
 
-    types type()
+    constexpr types type()
     {
         return types(this->st_mode & s_ifmt);
     }
 
-    mode_t mode()
+    constexpr mode_t mode()
     {
         return this->st_mode & ~s_ifmt;
     }

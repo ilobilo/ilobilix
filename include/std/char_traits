@@ -3,7 +3,7 @@
 #pragma once
 
 #include <cassert>
-#include <cstdlib>
+#include <cstddef>
 
 namespace std
 {
@@ -18,7 +18,8 @@ namespace std
         static constexpr char_type *assign(char_type *p, size_t count, char_type a)
         {
             auto ret = p;
-            while (count-- != 0) assign(*p++, a);
+            while (count-- != 0)
+                assign(*p++, a);
             return ret;
         }
 

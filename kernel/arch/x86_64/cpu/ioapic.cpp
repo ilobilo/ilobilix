@@ -42,7 +42,7 @@ namespace ioapic
     {
         this->mmio_base = tohh(phys_mmio_base);
         // this->mmio_base = malloc<uintptr_t>(0x1000);
-        // vmm::kernel_pagemap->mapMem(this->mmio_base, phys_mmio_base, vmm::RW);
+        // vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw);
 
         this->redirs = ((this->read(0x01) >> 16) & 0xFF) + 1;
 
@@ -142,11 +142,11 @@ namespace ioapic
 
     void init()
     {
-        log::info("Initialising IOAPIC...");
+        log::infoln("Initialising IOAPIC...");
 
         if (acpi::madthdr == nullptr)
         {
-            log::error("MADT table not found!");
+            log::errorln("MADT table not found!");
             return;
         }
 

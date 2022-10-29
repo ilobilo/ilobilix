@@ -5,8 +5,8 @@
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/cpu/cpu.hpp>
-#include <kernel/kernel.hpp>
 #include <drivers/smp.hpp>
+#include <init/kernel.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
 #include <mm/vmm.hpp>
@@ -20,7 +20,7 @@ namespace smp
 
     void cpu_bsp_init(limine_smp_info *cpu)
     {
-        auto cpuptr = reinterpret_cast<::smp::cpu_t*>(cpu->extra_argument);
+        auto cpuptr = reinterpret_cast<cpu_t*>(cpu->extra_argument);
 
         gdt::init(cpuptr->id);
         idt::init();
@@ -30,16 +30,11 @@ namespace smp
         cpu::set_gs(cpu->extra_argument);
 
         this_cpu()->lapic.init();
-        idt::handlers[idt::INT_PANIC].set([](auto)
-        {
-            while (true) asm volatile ("cli; hlt");
-            __builtin_unreachable();
-        });
     }
 
     void cpu_init(limine_smp_info *cpu)
     {
-        auto cpuptr = reinterpret_cast<::smp::cpu_t*>(cpu->extra_argument);
+        auto cpuptr = reinterpret_cast<cpu_t*>(cpu->extra_argument);
 
         if (cpuptr->arch_id != bsp_id)
         {

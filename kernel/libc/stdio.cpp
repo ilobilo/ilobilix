@@ -1,8 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
-#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES 1
-#include <printf/printf.h>
-#include <lib/alloc.hpp>
+#include <cstdlib>
+#include <cstdio>
 
 extern "C"
 {
@@ -14,10 +13,12 @@ extern "C"
         int ret = vsnprintf(NULL, 0, format, tmpa);
 
         va_end(tmpa);
-        if (ret < 0) return -1;
+        if (ret < 0)
+            return -1;
 
         *str = malloc<char*>(ret + 1);
-        if (*str == nullptr) return -1;
+        if (*str == nullptr)
+            return -1;
 
         ret = vsprintf(*str, format, args);
         return ret;

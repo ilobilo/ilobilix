@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <utility>
 #include <cstdint>
 
@@ -65,7 +66,7 @@ namespace cpu
     void enablePAT();
 
     template<typename Func, typename ...Args, typename Ret = std::invoke_result_t<Func, Args...>>
-        requires (!std::is_same_v<Ret, void>)
+        requires (!std::same_as<Ret, void>)
     static Ret mem_as_user(Func &&func, Args &&...args)
     {
         stac();

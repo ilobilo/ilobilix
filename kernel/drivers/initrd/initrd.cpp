@@ -2,7 +2,7 @@
 
 #include <drivers/initrd/ustar.hpp>
 #include <drivers/initrd/ilar.hpp>
-#include <kernel/kernel.hpp>
+#include <init/kernel.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 
@@ -13,7 +13,7 @@ namespace initrd
         auto mod = find_module("initrd");
         if (mod == nullptr)
         {
-            log::error("Could not find initrd module!");
+            log::errorln("Could not find initrd module!");
             return;
         }
 
@@ -21,14 +21,14 @@ namespace initrd
 
         if (ustar::validate(address))
         {
-            log::info("Initrd: Archive format is USTAR");
+            log::infoln("Initrd: Archive format is USTAR");
             ustar::init(address);
         }
         else if (ilar::validate(address))
         {
-            log::info("Initrd: Archive format is ILAR");
+            log::infoln("Initrd: Archive format is ILAR");
             ilar::init(address);
         }
-        else log::error("Initrd: Unknown archive format!");
+        else log::errorln("Initrd: Unknown archive format!");
     }
 } // namespace initrd

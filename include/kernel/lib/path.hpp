@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <frg/formatting.hpp>
 #include <cwalk.h>
 #include <vector>
 #include <string>
@@ -517,3 +518,19 @@ class path_t
         return lhs.compare(rhs) <=> 0;
     }
 };
+
+namespace frg
+{
+    template<typename F>
+    void format_object(const path_view_t &object, format_options, F &formatter)
+    {
+        for (const auto c : object)
+            formatter.append(c);
+    }
+
+    template<typename F>
+    void format_object(const path_t &object, format_options, F &formatter)
+    {
+        formatter.append(object.c_str());
+    }
+} // namespace frg

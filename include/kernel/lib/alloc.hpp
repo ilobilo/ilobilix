@@ -2,10 +2,9 @@
 
 #pragma once
 
-#include <lib/misc.hpp>
 #include <lib/lock.hpp>
+#include <lib/misc.hpp>
 #include <memory>
-#include <new>
 
 namespace heap
 {

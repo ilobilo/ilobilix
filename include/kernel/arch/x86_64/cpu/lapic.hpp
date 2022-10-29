@@ -37,7 +37,7 @@ namespace lapic
         lapic() : ticks_per_ms(0), mmio_base(0), x2apic(false), id(0) { }
 
         void init();
-        void ipi(uint32_t vector, uint32_t id);
+        void ipi(uint32_t flags, uint32_t id);
         void eoi();
 
         void timer(uint8_t vector, uint64_t ms, timerModes mode);
