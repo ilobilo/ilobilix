@@ -6,8 +6,18 @@
 
 namespace std
 {
+    // Stubs for fmtlib
+    using ::FILE;
+    inline int fputws(const auto *str, FILE *) { return -1; }
+
     extern "C"
     {
+        int fputc(char c, FILE *stream);
+        int fputs(const char *str, FILE *stream);
+
+        int fprintf(FILE *stream, const char *fmt, ...);
+        size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+
         int printf(const char *format, ...);
         int vprintf(const char *format, va_list arg);
 

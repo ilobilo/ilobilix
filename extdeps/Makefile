@@ -13,13 +13,14 @@ define wget_down
 	wget $(3) -O $(2) $(4) || $(call err,$(1))
 endef
 
-override DEPS :=                                \
-	$(EXTDEPDIR)/lai $(EXTDEPDIR)/cxxshim       \
-	$(EXTDEPDIR)/frigg $(EXTDEPDIR)/span-lite   \
-	$(EXTDEPDIR)/smart_ptr $(EXTDEPDIR)/veque   \
-	$(EXTDEPDIR)/cwalk $(EXTDEPDIR)/printf      \
-	$(EXTDEPDIR)/limine-terminal-port           \
-	$(EXTDEPDIR)/libgcc-binaries                \
+override DEPS :=                              \
+	$(EXTDEPDIR)/lai $(EXTDEPDIR)/frigg       \
+	$(EXTDEPDIR)/cwalk $(EXTDEPDIR)/printf    \
+	$(EXTDEPDIR)/fmt                          \
+	$(EXTDEPDIR)/smart_ptr $(EXTDEPDIR)/veque \
+	$(EXTDEPDIR)/libstdcxx-headers            \
+	$(EXTDEPDIR)/libgcc-binaries              \
+	$(EXTDEPDIR)/limine-terminal-port         \
 	$(EXTDEPDIR)/limine $(OVMFDIR)
 
 .PHONY: all
@@ -28,20 +29,8 @@ all: $(DEPS)
 $(EXTDEPDIR)/lai:
 	$(call git_clone,managarm,lai)
 
-$(EXTDEPDIR)/cxxshim:
-	$(call git_clone,ilobilo,cxxshim)
-
 $(EXTDEPDIR)/frigg:
-	$(call git_clone,ilobilo,frigg)
-
-$(EXTDEPDIR)/span-lite:
-	$(call git_clone,martinmoene,span-lite)
-
-$(EXTDEPDIR)/smart_ptr:
-	$(call git_clone,ilobilo,smart_ptr)
-
-$(EXTDEPDIR)/veque:
-	$(call git_clone,ilobilo,veque)
+	$(call git_clone,managarm,frigg)
 
 $(EXTDEPDIR)/cwalk:
 	$(call git_clone,likle,cwalk)
@@ -49,11 +38,23 @@ $(EXTDEPDIR)/cwalk:
 $(EXTDEPDIR)/printf:
 	$(call git_clone,eyalroz,printf)
 
-$(EXTDEPDIR)/limine-terminal-port:
-	$(call git_clone,V01D-NULL,limine-terminal-port)
+$(EXTDEPDIR)/fmt:
+	$(call git_clone,fmtlib/fmt)
+
+$(EXTDEPDIR)/smart_ptr:
+	$(call git_clone,ilobilo,smart_ptr)
+
+$(EXTDEPDIR)/veque:
+	$(call git_clone,ilobilo,veque)
+
+$(EXTDEPDIR)/libstdcxx-headers:
+	$(call git_clone,ilobilo,libstdcxx-headers)
 
 $(EXTDEPDIR)/libgcc-binaries:
 	$(call git_clone,mintsuki,libgcc-binaries,trunk)
+
+$(EXTDEPDIR)/limine-terminal-port:
+	$(call git_clone,V01D-NULL,limine-terminal-port)
 
 $(EXTDEPDIR)/limine:
 	$(call git_clone,limine-bootloader,limine,v4.x-branch-binary)
@@ -67,4 +68,4 @@ $(OVMFDIR):
 
 .PHONY: clean
 clean:
-	rm -rf $(DEPS)
+	rm -rf $(DEPS) ovmf-*

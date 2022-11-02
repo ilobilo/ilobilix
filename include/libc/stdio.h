@@ -9,6 +9,17 @@
 extern "C" {
 #endif
 
+// Stubs for fmtlib
+typedef size_t FILE;
+static FILE *stdout = (FILE*)&stdout;
+static FILE *stderr = (FILE*)&stderr;
+
+int fputc(char c, FILE *stream);
+int fputs(const char *str, FILE *stream);
+
+int fprintf(FILE *stream, const char *format, ...);
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+
 int printf(const char *format, ...);
 int vprintf(const char *format, va_list arg);
 

@@ -21,8 +21,6 @@
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 
-#include <lib/log.hpp>
-
 proc::process *kernel_proc = nullptr;
 void kernel_thread()
 {

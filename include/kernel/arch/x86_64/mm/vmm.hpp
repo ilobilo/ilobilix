@@ -6,7 +6,7 @@
 
 namespace vmm
 {
-    enum x86_64_flags
+    enum
     {
         Present = (1 << 0),
         Write = (1 << 1),
