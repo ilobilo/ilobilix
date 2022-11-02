@@ -7,7 +7,4 @@
 namespace vmm
 {
     // TODO: VMM
-    enum aarch64_flags
-    {
-    };
 } // namespace vmm

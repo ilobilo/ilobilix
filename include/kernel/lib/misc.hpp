@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <concepts>
 #include <cstdint>
+#include <cstddef>
 #include <cctype>
 #include <limits>
 

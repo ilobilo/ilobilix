@@ -44,11 +44,6 @@ namespace term
 
     extern "C"
     {
-        void putchar_(char c)
-        {
-            printc(c);
-        }
-
         void *alloc_mem(size_t size)
         {
             return calloc(size, 1);

@@ -8,7 +8,7 @@
 
 namespace heap
 {
-    slaballoc allocator;
+    frg::manual_box<slaballoc> allocator;
 
     void slab_t::init(uint64_t size)
     {
@@ -23,7 +23,8 @@ namespace heap
         uint64_t *array = reinterpret_cast<uint64_t*>(this->firstfree);
         uint64_t max = available / this->size - 1;
         uint64_t fact = this->size / 8;
-        for (size_t i = 0; i < max; i++) array[i * fact] = reinterpret_cast<uint64_t>(&array[(i + 1) * fact]);
+        for (size_t i = 0; i < max; i++)
+            array[i * fact] = reinterpret_cast<uint64_t>(&array[(i + 1) * fact]);
         array[max * fact] = 0;
     }
 
@@ -50,11 +51,8 @@ namespace heap
         this->firstfree = reinterpret_cast<uint64_t>(newhead);
     }
 
-    void slaballoc::init()
+    slaballoc::slaballoc()
     {
-        if (this->initialised == true)
-            return;
-
         this->slabs[0].init(8);
         this->slabs[1].init(16);
         this->slabs[2].init(24);
@@ -65,8 +63,6 @@ namespace heap
         this->slabs[7].init(256);
         this->slabs[8].init(512);
         this->slabs[9].init(1024);
-
-        this->initialised = true;
     }
 
     slab_t *slaballoc::get_slab(size_t size)
@@ -134,8 +130,6 @@ namespace heap
 
     void *slaballoc::malloc(size_t size)
     {
-        if (this->initialised == false) this->init();
-
         slab_t *slab = this->get_slab(size);
         if (slab == nullptr)
             return this->big_malloc(size);
@@ -154,12 +148,6 @@ namespace heap
 
     void *slaballoc::realloc(void *oldptr, size_t size)
     {
-        if (this->initialised == false)
-        {
-            this->init();
-            return this->malloc(size);
-        }
-
         if (oldptr == nullptr)
             return this->malloc(size);
 
@@ -187,7 +175,7 @@ namespace heap
 
     void slaballoc::free(void *ptr)
     {
-        if (ptr == nullptr || this->initialised == false)
+        if (ptr == nullptr)
             return;
 
         if ((reinterpret_cast<uint64_t>(ptr) & 0xFFF) == 0)
@@ -197,7 +185,7 @@ namespace heap
 
     size_t slaballoc::allocsize(void *ptr)
     {
-        if (ptr == nullptr || this->initialised == false)
+        if (ptr == nullptr)
             return 0;
 
         if ((reinterpret_cast<uint64_t>(ptr) & 0xFFF) == 0)
@@ -224,11 +212,6 @@ void *operator new[](size_t size)
 void *operator new[](size_t size, std::align_val_t)
 {
     return malloc(size);
-}
-
-void *operator new[](size_t, void *ptr)
-{
-    return ptr;
 }
 
 void operator delete(void *ptr)

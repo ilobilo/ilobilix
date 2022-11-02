@@ -189,13 +189,13 @@ namespace acpi
         {
             xsdt = true;
             rsdt = reinterpret_cast<RSDT*>(tohh(rsdp->xsdtaddr));
-            log::infoln("ACPI: Found XSDT at: 0x{:X}", rsdt);
+            log::infoln("ACPI: Found XSDT at: 0x{:X}", reinterpret_cast<uintptr_t>(rsdt));
         }
         else
         {
             xsdt = false;
             rsdt = reinterpret_cast<RSDT*>(tohh(rsdp->rsdtaddr));
-            log::infoln("ACPI: Found RSDT at: 0x{:X}", rsdt);
+            log::infoln("ACPI: Found RSDT at: 0x{:X}", reinterpret_cast<uintptr_t>(rsdt));
         }
 
         size_t entries = (rsdt->header.length - sizeof(SDTHeader)) / (xsdt ? 8 : 4);

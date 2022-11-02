@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <frg/manual_box.hpp>
 #include <lib/lock.hpp>
 #include <lib/misc.hpp>
 #include <memory>
@@ -46,7 +47,7 @@ namespace heap
         bool initialised = false;
         slab_t slabs[10];
 
-        void init();
+        slaballoc();
 
         void *malloc(size_t size);
         void *calloc(size_t num, size_t size);
@@ -84,13 +85,13 @@ namespace heap
         }
     };
 
-    extern slaballoc allocator;
+    extern frg::manual_box<slaballoc> allocator;
 } // namespace heap
 
 template<typename Type = void*>
 Type malloc(size_t size, bool phys = false)
 {
-    Type ret = heap::allocator.malloc<Type>(size);
+    Type ret = heap::allocator->malloc<Type>(size);
     if (phys == true)
         ret = fromhh(ret);
     return ret;
@@ -99,7 +100,7 @@ Type malloc(size_t size, bool phys = false)
 template<typename Type = void*>
 Type calloc(size_t num, size_t size, bool phys = false)
 {
-    Type ret = heap::allocator.calloc<Type>(num, size);
+    Type ret = heap::allocator->calloc<Type>(num, size);
     if (phys == true)
         ret = fromhh(ret);
     return ret;
@@ -107,7 +108,7 @@ Type calloc(size_t num, size_t size, bool phys = false)
 
 auto realloc(auto oldptr, size_t size, bool phys = false)
 {
-    auto ret = heap::allocator.realloc(oldptr, size);
+    auto ret = heap::allocator->realloc(oldptr, size);
     if (phys == true)
         ret = fromhh(ret);
     return ret;
@@ -115,12 +116,12 @@ auto realloc(auto oldptr, size_t size, bool phys = false)
 
 void free(auto ptr, bool phys)
 {
-    heap::allocator.free(phys ? fromhh(ptr) : ptr);
+    heap::allocator->free(phys ? fromhh(ptr) : ptr);
 }
 
 size_t allocsize(auto ptr, bool phys)
 {
-    return heap::allocator.allocsize(phys ? fromhh(ptr) : ptr);
+    return heap::allocator->allocsize(phys ? fromhh(ptr) : ptr);
 }
 
 void free(auto ptr)

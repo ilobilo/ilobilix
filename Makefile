@@ -117,21 +117,32 @@ XORRISOFLAGS = -as mkisofs -b limine-cd.bin          \
 override INCLUDES :=                            \
 	-I$(ROOTDIR)/include/                       \
 	-I$(ROOTDIR)/include/std/                   \
+	-I$(ROOTDIR)/include/std/stubs/             \
 	-I$(ROOTDIR)/include/libc/                  \
 	-I$(ROOTDIR)/include/kernel/                \
 	-I$(ROOTDIR)/include/kernel/arch/$(ARCH)/   \
-	-I$(EXTDEPDIR)/tlsf/                        \
 	-I$(EXTDEPDIR)/limine/                      \
+	-I$(EXTDEPDIR)/fmt/src/                     \
 	-I$(EXTDEPDIR)/printf/src/                  \
+	-I$(EXTDEPDIR)/fmt/include/                 \
 	-I$(EXTDEPDIR)/lai/include/                 \
 	-I$(EXTDEPDIR)/cwalk/include/               \
 	-I$(EXTDEPDIR)/frigg/include/               \
 	-I$(EXTDEPDIR)/veque/include/               \
 	-I$(EXTDEPDIR)/smart_ptr/include/           \
-	-I$(EXTDEPDIR)/span-lite/include/           \
-	-I$(EXTDEPDIR)/cxxshim/stage2/include/      \
+	-I$(EXTDEPDIR)/libstdcxx-headers/include/   \
 	-I$(EXTDEPDIR)/limine-terminal-port/fonts/  \
 	-I$(EXTDEPDIR)/limine-terminal-port/source/
+
+override MACROS :=                                \
+	-DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD=1 \
+	-DPRINTF_ALIAS_STANDARD_FUNCTION_NAMES=1      \
+	-DPRINTF_SUPPORT_EXPONENTIAL_SPECIFIERS=0     \
+	-DPRINTF_SUPPORT_DECIMAL_SPECIFIERS=0         \
+	-DFMT_STATIC_THOUSANDS_SEPARATOR=1            \
+	-DFMT_USE_LONG_DOUBLE=0                       \
+	-DFMT_USE_DOUBLE=0                            \
+	-DFMT_USE_FLOAT=0
 
 override LIBRARIES :=                            \
 	-L$(EXTDEPDIR)/libgcc-binaries/ -l:$(LIBGCC)

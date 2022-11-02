@@ -2,8 +2,8 @@
 
 #pragma once
 
+#include_next <functional>
 #include <cstring>
-#include <cstddef>
 #include <cstdint>
 
 constexpr __int128_t MurmurHash3_128(const void *key, uint64_t len, uint64_t seed, void *out = nullptr)
@@ -185,73 +185,6 @@ namespace std
         };
     } // namespace impl
 
-    template<typename Type>
-    struct hash;
-
-    template<>
-    struct hash<const char*>
-    {
-        size_t operator()(const char *str) const
-        {
-            return detail::hash_impl::hash(str, strlen(str));
-        }
-    };
-
-    template<>
-    struct hash<char*>
-    {
-        size_t operator()(char *str) const
-        {
-            return detail::hash_impl::hash(str, strlen(str));
-        }
-    };
-
-    template<typename Type>
-    struct hash<Type*>
-    {
-        size_t operator()(Type *ptr) const
-        {
-            return reinterpret_cast<size_t>(ptr);
-        }
-    };
-
-    template<>
-    struct hash<nullptr_t>
-    {
-        size_t operator()(nullptr_t) const
-        {
-            return 0;
-        }
-    };
-
-    #define DEFINE_HASH(Type)                    \
-        template<>                               \
-        struct hash<Type>                        \
-        {                                        \
-            size_t operator()(Type val) const    \
-            {                                    \
-                return static_cast<size_t>(val); \
-            }                                    \
-        };
-
-    DEFINE_HASH(bool)
-    DEFINE_HASH(char)
-    DEFINE_HASH(signed char)
-    DEFINE_HASH(unsigned char)
-    DEFINE_HASH(char8_t)
-    DEFINE_HASH(char16_t)
-    DEFINE_HASH(char32_t)
-    DEFINE_HASH(short)
-    DEFINE_HASH(int)
-    DEFINE_HASH(long)
-    DEFINE_HASH(long long)
-    DEFINE_HASH(unsigned short)
-    DEFINE_HASH(unsigned int)
-    DEFINE_HASH(unsigned long)
-    DEFINE_HASH(unsigned long long)
-
-    #undef DEFINE_HASH
-
     // std::function
 
     template<typename func>
@@ -328,60 +261,6 @@ namespace std
         operator bool()
         {
             return this->callable_ != nullptr;
-        }
-    };
-
-    template<typename Type = void>
-    struct equal_to
-    {
-        constexpr bool operator()(const Type &lhs, const Type &rhs) const
-        {
-            return lhs == rhs;
-        }
-    };
-
-    template<typename Type = void>
-    struct not_equal_to
-    {
-        constexpr bool operator()(const Type &lhs, const Type &rhs) const
-        {
-            return lhs != rhs;
-        }
-    };
-
-    template<typename Type = void>
-    struct greater
-    {
-        constexpr bool operator()(const Type &lhs, const Type &rhs) const
-        {
-            return lhs > rhs;
-        }
-    };
-
-    template<typename Type = void>
-    struct less
-    {
-        constexpr bool operator()(const Type &lhs, const Type &rhs) const
-        {
-            return lhs < rhs;
-        }
-    };
-
-    template<typename Type = void>
-    struct greater_equal
-    {
-        constexpr bool operator()(const Type &lhs, const Type &rhs) const
-        {
-            return lhs >= rhs;
-        }
-    };
-
-    template<typename Type = void>
-    struct less_equal
-    {
-        constexpr bool operator()(const Type &lhs, const Type &rhs) const
-        {
-            return lhs <= rhs;
         }
     };
 } // namespace std

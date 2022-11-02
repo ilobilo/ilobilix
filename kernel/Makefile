@@ -20,7 +20,7 @@ override LDFLAGS +=                  \
 	-static $(LIBRARIES)
 
 override CCFLAGS :=               \
-	$(INCLUDES)                   \
+	$(INCLUDES) $(MACROS)         \
     -target $(TARGET)             \
 	-ffreestanding                \
 	-fno-stack-protector          \
@@ -33,14 +33,15 @@ override CCFLAGS :=               \
 	-DLVL5_PAGING=$(LVL5_PAGING)
 
 ifeq ($(ARCH),x86_64)
-    override CCFLAGS +=  \
+    override CCFLAGS +=   \
         -march=x86-64     \
         -mabi=sysv        \
+        -msoft-float      \
         -mno-mmx          \
         -mno-sse          \
         -mno-sse2         \
         -mno-red-zone     \
-        -mcmodel=kernel
+        -mcmodel=kernel # -mno-80387 -fasm-blocks
 
     override ASFLAGS += \
         -masm=intel
@@ -76,8 +77,8 @@ override OTHERARCHDIRS := $(if $(OTHERARCHDIRS),-not -path $(subst $(subst ,, ),
 
 override CFILES := $(shell find $(KERNELDIR)/ -type f -name '*.c' $(OTHERARCHDIRS) 2> /dev/null) \
 	$(shell find $(EXTDEPDIR)/limine-terminal-port/source/ -type f -name '*.c' 2> /dev/null)     \
-	$(shell find $(EXTDEPDIR)/cwalk/src/ -type f -name '*.c' 2> /dev/null)                       \
-	$(shell find $(EXTDEPDIR)/lai/ -type f -name '*.c' 2> /dev/null)
+	$(shell find $(EXTDEPDIR)/lai/ -type f -name '*.c' 2> /dev/null)                             \
+	$(EXTDEPDIR)/cwalk/src/cwalk.c $(EXTDEPDIR)/printf/src/printf/printf.c
 
 override CXXFILES := $(shell find $(KERNELDIR)/ -type f -name '*.cpp' $(OTHERARCHDIRS) 2> /dev/null)
 override ASFILES := $(shell find $(KERNELDIR)/ -type f -name '*.S' $(OTHERARCHDIRS) 2> /dev/null)

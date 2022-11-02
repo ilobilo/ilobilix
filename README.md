@@ -65,8 +65,8 @@ https://discord.gg/fM5GK3RpS7
 * Cxxshim: https://github.com/managarm/cxxshim
 * Frigg: https://github.com/managarm/frigg
 * MLibc: https://github.com/managarm/mlibc
+* Fmt: https://github.com/fmtlib/fmt
 * Printf: https://github.com/eyalroz/printf
-* Span-lite: https://github.com/martinmoene/span-lite
 * Smart_ptr: https://github.com/X-czh/smart_ptr
 * Veque: https://github.com/Shmoopty/veque
 * CWalk: https://github.com/likle/cwalk

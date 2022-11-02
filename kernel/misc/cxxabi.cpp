@@ -86,7 +86,7 @@ extern "C"
 
 namespace std
 {
-    [[noreturn]] void terminate() noexcept
+    [[gnu::noreturn]] void terminate() noexcept
     {
         PANIC("std::terminate()");
     }

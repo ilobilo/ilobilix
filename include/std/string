@@ -13,6 +13,7 @@
 
 namespace std
 {
+    // TODO: Fix basic_string
     template<typename Char, typename Traits = char_traits<Char>, typename Allocator = allocator<Char>>
     class basic_string
     {
@@ -35,57 +36,66 @@ namespace std
 
         using iterator = Char*;
         using const_iterator = const Char*;
+        using reverse_iterator = reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         static constexpr size_type npos = size_type(-1);
 
         private:
         constexpr void null_terminate()
         {
-            if (this->_buffer == nullptr || this->_length == 0) return;
-            this->_buffer[this->_length] = 0;
+            if (this->_buffer == nullptr || this->_length == 0)
+                return;
+
+            this->_buffer[this->_length] = Char(0);
         }
 
         constexpr Char *reallocate(size_t new_cap)
         {
-            auto new_length = min(new_cap, this->_length);
             auto new_buffer = this->_allocator.allocate(new_cap + 1);
 
-            Traits::copy(new_buffer, this->_buffer, new_length);
-            this->_allocator.deallocate(this->_buffer, this->_cap + 1);
+            if (this->_buffer != nullptr)
+            {
+                auto new_length = min(new_cap, this->_length);
+                Traits::copy(new_buffer, this->_buffer, new_length);
+                this->_length = new_length;
+                this->_allocator.deallocate(this->_buffer, this->_cap + 1);
+            }
 
             this->_buffer = new_buffer;
             this->_cap = new_cap;
-            this->_length = new_length;
 
             return new_buffer;
         }
 
         constexpr size_t it2pos(const_iterator pos)
         {
-            if (this->_buffer == nullptr || this->_length == 0) return npos;
+            if (this->_buffer == nullptr || this->_length == 0)
+                return npos;
+
             pos = max(pos, const_iterator(this->_buffer));
             pos = min(pos, const_iterator(this->_buffer + this->_length));
 
-            return static_cast<size_type>(pos - this->_buffer) / sizeof(Char);
+            return static_cast<size_type>(pos - this->_buffer);
         }
 
         constexpr size_t range2count(const_iterator first, const_iterator last)
         {
-            if (this->_buffer == nullptr || this->_length == 0) return npos;
+            if (this->_buffer == nullptr || this->_length == 0)
+                return npos;
+
             first = max(first, const_iterator(this->_buffer));
             first = min(first, const_iterator(this->_buffer + this->_length));
 
             last = max(last, const_iterator(this->_buffer));
             last = min(last, const_iterator(this->_buffer + this->_length));
 
-            last = max(first, last);
-
-            return static_cast<size_type>(last - first) / sizeof(Char);
+            return static_cast<size_type>(last - first);
         }
 
         public:
-        constexpr basic_string() : basic_string(Allocator()) { }
-        explicit constexpr basic_string(const Allocator &alloc) : _allocator(alloc), _buffer(nullptr), _length(0), _cap(0) { }
+        constexpr basic_string() noexcept(noexcept(Allocator())) : basic_string(Allocator()) { }
+        explicit constexpr basic_string(const Allocator &alloc) noexcept : _allocator(alloc), _buffer(nullptr), _length(0), _cap(0) { }
 
         constexpr basic_string(size_type count, Char c, const Allocator &alloc = Allocator()) : _allocator(alloc), _length(count), _cap(count)
         {
@@ -96,7 +106,9 @@ namespace std
 
         constexpr basic_string(const basic_string &other, size_type pos, size_type count, const Allocator &alloc = Allocator()) : _allocator(alloc)
         {
-            if (pos + count > other._length) count = other._length - pos;
+            if (pos + count > other._length)
+                count = other._length - pos;
+
             this->_length = this->_cap = count;
 
             this->_buffer = this->_allocator.allocate(this->_length + 1);
@@ -113,6 +125,14 @@ namespace std
         }
         constexpr basic_string(const Char *s, const Allocator &alloc = Allocator()) : basic_string(s, Traits::length(s), alloc) { }
 
+        // TODO: Is this correct
+        template<typename InputIt>
+        constexpr basic_string(InputIt first, InputIt last, const Allocator &alloc = Allocator()) : _allocator(alloc)
+        {
+            while (first != last)
+                this->push_back(*first++);
+        }
+
         constexpr basic_string(const basic_string &other, const Allocator &alloc) : _allocator(alloc), _length(other._length), _cap(other._length)
         {
             this->_buffer = this->_allocator.allocate(this->_length + 1);
@@ -128,7 +148,7 @@ namespace std
         }
 
         constexpr basic_string(basic_string &&other, const Allocator &alloc) : basic_string(move(other._buffer), move(other._length), alloc) { }
-        constexpr basic_string(basic_string &&other) : basic_string(other, move(other._allocator)) { }
+        constexpr basic_string(basic_string &&other) noexcept : basic_string(other, move(other._allocator)) { }
 
         constexpr basic_string(initializer_list<Char> ilist, const Allocator &alloc = Allocator()) : basic_string(ilist.begin(), ilist.size(), alloc) { }
 
@@ -140,18 +160,24 @@ namespace std
 
         constexpr basic_string(nullptr_t) = delete;
 
-        ~basic_string()
+        constexpr ~basic_string()
         {
-            if (this->_buffer) this->_allocator.deallocate(this->_buffer, this->_cap + 1);
+            if (this->_buffer != nullptr)
+                this->_allocator.deallocate(this->_buffer, this->_cap + 1);
+
             this->_length = this->_cap = 0;
         }
 
-        constexpr basic_string &operator=(const basic_string &str)
+        constexpr basic_string &operator=(const basic_string &str) noexcept(
+            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
+            allocator_traits<Allocator>::is_always_equal::value)
         {
             return this->assign(str);
         }
 
-        constexpr basic_string &operator=(basic_string &&str) = default;
+        constexpr basic_string &operator=(basic_string &&str) noexcept(
+            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
+            allocator_traits<Allocator>::is_always_equal::value) = default;
 
         constexpr basic_string &operator=(const Char *s)
         {
@@ -168,7 +194,8 @@ namespace std
             return this->assign(ilist.begin(), ilist.size());
         }
 
-        template<typename Type> requires (convertible_to<const Type&, basic_string_view<Char>> && !convertible_to<const Type&, const Char*>)
+        template<typename Type>
+        requires (convertible_to<const Type&, basic_string_view<Char>> && !convertible_to<const Type&, const Char*>)
         constexpr basic_string &operator=(const Type &t)
         {
             return this->assign(basic_string_view<Char>(t));
@@ -204,7 +231,9 @@ namespace std
             return *this;
         }
 
-        constexpr basic_string &assign(basic_string &&str)
+        constexpr basic_string &assign(basic_string &&str) noexcept(
+            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
+            allocator_traits<Allocator>::is_always_equal::value)
         {
             return this->swap(str);
         }
@@ -232,7 +261,8 @@ namespace std
             return this->assign(ilist.begin(), ilist.size());
         }
 
-        template<typename Type> requires (convertible_to<const Type&, basic_string_view<Char>> && !convertible_to<const Type&, const Char*>)
+        template<typename Type>
+        requires (convertible_to<const Type&, basic_string_view<Char>> && !convertible_to<const Type&, const Char*>)
         constexpr basic_string &assign(const Type &t)
         {
             basic_string_view<Char> sv(t);
@@ -252,32 +282,30 @@ namespace std
             return this->assign(sv.data() + pos, count);
         }
 
-        constexpr allocator_type get_allocator() const
+        constexpr allocator_type get_allocator() const noexcept
         {
             return this->_allocator;
         }
 
         constexpr reference at(size_type index)
         {
-            index = min(index, this->_length - 1);
+            assert(index < this->_length);
             return this->_buffer[index];
         }
 
         constexpr const_reference at(size_type index) const
         {
-            index = min(index, this->_length - 1);
+            assert(index < this->_length);
             return this->_buffer[index];
         }
 
         constexpr reference operator[](size_type index)
         {
-            index = min(index, this->_length - 1);
             return this->_buffer[index];
         }
 
         constexpr const_reference operator[](size_type index) const
         {
-            index = min(index, this->_length - 1);
             return this->_buffer[index];
         }
 
@@ -301,72 +329,102 @@ namespace std
             return this->operator[](this->_length - 1);
         }
 
-        constexpr pointer data()
+        constexpr pointer data() noexcept
         {
             return this->_buffer;
         }
 
-        constexpr const_pointer data() const
+        constexpr const_pointer data() const noexcept
         {
             return this->_buffer;
         }
 
-        constexpr const_pointer c_str() const
+        constexpr const_pointer c_str() const noexcept
         {
             return this->_buffer;
         }
 
-        constexpr operator basic_string_view<Char>() const
+        constexpr operator basic_string_view<Char>() const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length);
         }
 
-        constexpr iterator begin()
+        constexpr iterator begin() noexcept
         {
             return this->_buffer;
         }
 
-        constexpr const_iterator begin() const
+        constexpr const_iterator begin() const noexcept
         {
             return this->_buffer;
         }
 
-        constexpr const_iterator cbegin() const
+        constexpr const_iterator cbegin() const noexcept
         {
             return this->_buffer;
         }
 
-        constexpr iterator end()
+        constexpr iterator end() noexcept
         {
             return this->_buffer + this->_length;
         }
 
-        constexpr const_iterator end() const
+        constexpr const_iterator end() const noexcept
         {
             return this->_buffer + this->_length;
         }
 
-        constexpr const_iterator cend() const
+        constexpr const_iterator cend() const noexcept
         {
             return this->_buffer + this->_length;
         }
 
-        [[nodiscard]] constexpr bool empty() const
+        constexpr reverse_iterator rbegin() noexcept
+        {
+            return reverse_iterator(this->end());
+        }
+
+        constexpr const_reverse_iterator rbegin() const noexcept
+        {
+            return const_reverse_iterator(this->end());
+        }
+
+        constexpr const_reverse_iterator crbegin() const noexcept
+        {
+            return const_reverse_iterator(this->end());
+        }
+
+        constexpr reverse_iterator rend() noexcept
+        {
+            return reverse_iterator(this->begin());
+        }
+
+        constexpr const_reverse_iterator rend() const noexcept
+        {
+            return const_reverse_iterator(this->begin());
+        }
+
+        constexpr const_reverse_iterator crend() const noexcept
+        {
+            return const_reverse_iterator(this->begin());
+        }
+
+        [[nodiscard]] constexpr bool empty() const noexcept
         {
             return this->_length == 0;
         }
 
-        constexpr size_type size() const
+        constexpr size_type size() const noexcept
         {
             return this->_length;
         }
 
-        constexpr size_type length() const
+        constexpr size_type length() const noexcept
         {
             return this->_length;
         }
 
-        constexpr size_type max_size() const
+        constexpr size_type max_size() const noexcept
         {
             return size_type(-1) / sizeof(Char);
         }
@@ -380,7 +438,7 @@ namespace std
             this->_cap = new_cap;
         }
 
-        constexpr size_type capacity() const
+        constexpr size_type capacity() const noexcept
         {
             return this->_cap;
         }
@@ -394,7 +452,7 @@ namespace std
             this->_cap = this->_length;
         }
 
-        constexpr void clear()
+        constexpr void clear() noexcept
         {
             this->erase();
         }
@@ -611,7 +669,7 @@ namespace std
             return this->append(sv);
         }
 
-        constexpr int compare(const basic_string &str) const
+        constexpr int compare(const basic_string &str) const noexcept
         {
             if (this->_length != str._length)
                 return this->_length < str._length ? -1 : 1;
@@ -674,7 +732,7 @@ namespace std
         }
 
         template<typename Type> requires (convertible_to<const Type&, basic_string_view<Char>> && !convertible_to<const Type&, const Char*>)
-        constexpr int compare(const Type &t) const
+        constexpr int compare(const Type &t) const noexcept (is_nothrow_convertible_v<const Type&, basic_string_view<Char, Traits>>)
         {
             basic_string_view<Char> sv(t);
             if (this->_length != sv.size())
@@ -704,12 +762,12 @@ namespace std
             return basic_string_view<Char>(*this).substr(pos1, count1).compare(sv);
         }
 
-        constexpr bool starts_with(basic_string_view<Char> sv) const
+        constexpr bool starts_with(basic_string_view<Char> sv) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).starts_with(sv);
         }
 
-        constexpr bool starts_with(Char c) const
+        constexpr bool starts_with(Char c) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).starts_with(c);
         }
@@ -719,12 +777,12 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).starts_with(s);
         }
 
-        constexpr bool ends_with(basic_string_view<Char> sv) const
+        constexpr bool ends_with(basic_string_view<Char> sv) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).ends_with(sv);
         }
 
-        constexpr bool ends_with(Char c) const
+        constexpr bool ends_with(Char c) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).ends_with(c);
         }
@@ -734,12 +792,12 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).ends_with(s);
         }
 
-        constexpr bool contains(basic_string_view<Char> sv) const
+        constexpr bool contains(basic_string_view<Char> sv) const noexcept
         {
             return this->find(sv) != npos;
         }
 
-        constexpr bool contains(Char c) const
+        constexpr bool contains(Char c) const noexcept
         {
             return this->find(c) != npos;
         }
@@ -751,8 +809,10 @@ namespace std
 
         constexpr basic_string &replace(size_type pos, size_type count, const basic_string &str)
         {
-            if (pos > this->_length) return *this;
-            if (pos + count > this->_length) count = this->_length - pos;
+            if (pos > this->_length)
+                return *this;
+            if (pos + count > this->_length)
+                count = this->_length - pos;
 
             this->erase(pos, count);
             this->insert(pos, str);
@@ -767,11 +827,15 @@ namespace std
 
         constexpr basic_string &replace(size_type pos, size_type count, const basic_string &str, size_type pos2, size_type count2 = npos)
         {
-            if (pos > this->_length) return *this;
-            if (pos + count > this->_length) count = this->_length - pos;
+            if (pos > this->_length)
+                return *this;
+            if (pos + count > this->_length)
+                count = this->_length - pos;
 
-            if (pos2 > str._length) return *this;
-            if (pos2 + count2 > str._length || count2 == npos) count2 = str._length - pos2;
+            if (pos2 > str._length)
+                return *this;
+            if (pos2 + count2 > str._length || count2 == npos)
+                count2 = str._length - pos2;
 
             this->erase(pos, count);
             this->insert(pos, str, pos2, count2);
@@ -781,8 +845,10 @@ namespace std
 
         constexpr basic_string &replace(size_type pos, size_type count, const Char *str, size_type count2)
         {
-            if (pos > this->_length) return *this;
-            if (pos + count > this->_length) count = this->_length - pos;
+            if (pos > this->_length)
+                return *this;
+            if (pos + count > this->_length)
+                count = this->_length - pos;
 
             this->erase(pos, count);
             this->insert(pos, str, count2);
@@ -925,7 +991,7 @@ namespace std
             swap(this->_cap, other._cap);
         }
 
-        constexpr size_type find(const basic_string &str, size_type pos = 0) const
+        constexpr size_type find(const basic_string &str, size_type pos = 0) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find(basic_string_view<Char>(str), pos);
         }
@@ -940,7 +1006,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find(s, pos);
         }
 
-        constexpr size_type find(Char c, size_type pos = 0) const
+        constexpr size_type find(Char c, size_type pos = 0) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find(c, pos);
         }
@@ -951,7 +1017,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find(basic_string_view<Char>(t), pos);
         }
 
-        constexpr size_type rfind(const basic_string &str, size_type pos = npos) const
+        constexpr size_type rfind(const basic_string &str, size_type pos = npos) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).rfind(basic_string_view<Char>(str), pos);
         }
@@ -966,7 +1032,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).rfind(s, pos);
         }
 
-        constexpr size_type rfind(Char c, size_type pos = npos) const
+        constexpr size_type rfind(Char c, size_type pos = npos) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).rfind(c, pos);
         }
@@ -977,7 +1043,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).rfind(basic_string_view<Char>(t), pos);
         }
 
-        constexpr size_type find_first_of(const basic_string &str, size_type pos = 0) const
+        constexpr size_type find_first_of(const basic_string &str, size_type pos = 0) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_of(basic_string_view<Char>(str), pos);
         }
@@ -992,7 +1058,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_of(s, pos);
         }
 
-        constexpr size_type find_first_of(Char c, size_type pos = 0) const
+        constexpr size_type find_first_of(Char c, size_type pos = 0) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_of(c, pos);
         }
@@ -1003,7 +1069,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_of(basic_string_view<Char>(t), pos);
         }
 
-        constexpr size_type find_first_not_of(const basic_string &str, size_type pos = 0) const
+        constexpr size_type find_first_not_of(const basic_string &str, size_type pos = 0) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_not_of(basic_string_view<Char>(str), pos);
         }
@@ -1018,7 +1084,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_not_of(s, pos);
         }
 
-        constexpr size_type find_first_not_of(Char c, size_type pos = 0) const
+        constexpr size_type find_first_not_of(Char c, size_type pos = 0) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_not_of(c, pos);
         }
@@ -1029,7 +1095,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_first_not_of(basic_string_view<Char>(t), pos);
         }
 
-        constexpr size_type find_last_of(const basic_string &str, size_type pos = npos) const
+        constexpr size_type find_last_of(const basic_string &str, size_type pos = npos) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_of(basic_string_view<Char>(str), pos);
         }
@@ -1044,7 +1110,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_of(s, pos);
         }
 
-        constexpr size_type find_last_of(Char c, size_type pos = npos) const
+        constexpr size_type find_last_of(Char c, size_type pos = npos) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_of(c, pos);
         }
@@ -1055,7 +1121,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_of(basic_string_view<Char>(t), pos);
         }
 
-        constexpr size_type find_last_not_of(const basic_string &str, size_type pos = npos) const
+        constexpr size_type find_last_not_of(const basic_string &str, size_type pos = npos) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_not_of(basic_string_view<Char>(str), pos);
         }
@@ -1070,7 +1136,7 @@ namespace std
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_not_of(s, pos);
         }
 
-        constexpr size_type find_last_not_of(Char c, size_type pos = npos) const
+        constexpr size_type find_last_not_of(Char c, size_type pos = npos) const noexcept
         {
             return basic_string_view<Char>(this->_buffer, this->_length).find_last_not_of(c, pos);
         }
@@ -1142,7 +1208,7 @@ namespace std
             return move(rhs.insert(0, 1, lhs));
         }
 
-        friend constexpr bool operator==(const basic_string &lhs, const basic_string &rhs)
+        friend constexpr bool operator==(const basic_string &lhs, const basic_string &rhs) noexcept
         {
             return lhs.compare(rhs) == 0;
         }
@@ -1152,7 +1218,7 @@ namespace std
             return lhs.compare(rhs) == 0;
         }
 
-        friend constexpr auto operator<=>(const basic_string &lhs, const basic_string &rhs)
+        friend constexpr auto operator<=>(const basic_string &lhs, const basic_string &rhs) noexcept
         {
             return lhs.compare(rhs) <=> 0;
         }
@@ -1162,7 +1228,7 @@ namespace std
             return lhs.compare(rhs) <=> 0;
         }
 
-        friend constexpr void swap(basic_string &lhs, basic_string &rhs)
+        friend constexpr void swap(basic_string &lhs, basic_string &rhs) noexcept (noexcept (lhs.swap(rhs)))
         {
             lhs.swap(rhs);
         }
@@ -1333,8 +1399,9 @@ namespace std
     }
 
     template<>
-    struct hash<string>
+    class hash<string>
     {
+        public:
         size_t operator()(const string &str) const
         {
             return detail::hash_impl::hash(str.data(), str.length());
@@ -1342,8 +1409,9 @@ namespace std
     };
 
     template<typename Char, typename Traits, typename Allocator>
-    struct hash<basic_string<Char, Traits, Allocator>>
+    class hash<basic_string<Char, Traits, Allocator>>
     {
+        public:
         size_t operator()(const basic_string<Char, Traits, Allocator> &str) const
         {
             return detail::hash_impl::hash(str.data(), str.length());

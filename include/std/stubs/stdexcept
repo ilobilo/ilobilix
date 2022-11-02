@@ -1,0 +1,20 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <exception>
+
+namespace std
+{
+    inline const char *exception::what() const noexcept { return ""; }
+    inline exception::~exception() noexcept { }
+
+    class runtime_error : public exception
+    {
+        public:
+        runtime_error(auto) { }
+        runtime_error(const runtime_error &) noexcept = default;
+
+        runtime_error &operator=(const runtime_error &) noexcept = default;
+    };
+} // namespace std

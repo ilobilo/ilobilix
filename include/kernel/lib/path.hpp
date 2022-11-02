@@ -3,6 +3,7 @@
 #pragma once
 
 #include <frg/formatting.hpp>
+#include <fmt/format.h>
 #include <cwalk.h>
 #include <vector>
 #include <string>
@@ -534,3 +535,23 @@ namespace frg
         formatter.append(object.c_str());
     }
 } // namespace frg
+
+template<>
+struct fmt::formatter<path_view_t> : formatter<std::string_view>
+{
+    template<typename FormatContext>
+    auto format(path_view_t path, FormatContext &ctx) const
+    {
+        return formatter<std::string_view>::format(path.data(), ctx);
+    }
+};
+
+template<>
+struct fmt::formatter<path_t> : formatter<std::string>
+{
+    template<typename FormatContext>
+    auto format(path_t path, FormatContext &ctx) const
+    {
+        return formatter<std::string>::format(path.c_str(), ctx);
+    }
+};

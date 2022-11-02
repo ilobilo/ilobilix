@@ -25,39 +25,65 @@ namespace std
         using const_reference = const Char&;
         using const_iterator = const_pointer;
         using iterator = const_iterator;
+        using const_reverse_iterator = reverse_iterator<const_pointer>;
+        using reverse_iterator = const_reverse_iterator;
         using size_type = size_t;
         using difference_type = ptrdiff_t;
 
         static constexpr size_type npos = size_type(-1);
 
-        constexpr basic_string_view() : _pointer(nullptr), _length(0) { }
-        constexpr basic_string_view(const basic_string_view &other) = default;
+        constexpr basic_string_view() noexcept : _pointer(nullptr), _length(0) { }
+        constexpr basic_string_view(const basic_string_view &other) noexcept = default;
 
         constexpr basic_string_view(const Char *s, size_type length) : _pointer(s), _length(length) { }
         constexpr basic_string_view(const Char *s) : _pointer(s), _length(Traits::length(s)) { }
 
+        template<contiguous_iterator It, sized_sentinel_for<It> End>
+        requires (same_as<iter_value_t<It>, Char> && !convertible_to<End, size_t>)
+        constexpr basic_string_view(It first, End last) : _pointer(to_address(first)), _length(last - first) { }
+
         constexpr basic_string_view(nullptr_t) = delete;
 
-        constexpr basic_string_view &operator=(const basic_string_view &view) = default;
+        constexpr basic_string_view &operator=(const basic_string_view &view) noexcept = default;
 
-        constexpr const_iterator begin() const
+        constexpr const_iterator begin() const noexcept
         {
             return this->_pointer;
         }
 
-        constexpr const_iterator cbegin() const
+        constexpr const_iterator cbegin() const noexcept
         {
             return this->_pointer;
         }
 
-        constexpr const_iterator end() const
+        constexpr const_iterator end() const noexcept
         {
             return this->_pointer + this->_length;
         }
 
-        constexpr const_iterator cend() const
+        constexpr const_iterator cend() const noexcept
         {
             return this->_pointer + this->_length;
+        }
+
+        constexpr const_reverse_iterator rbegin() const noexcept
+        {
+            return const_reverse_iterator(this->end());
+        }
+
+        constexpr const_reverse_iterator crbegin() const noexcept
+        {
+            return const_reverse_iterator(this->cend());
+        }
+
+        constexpr const_reverse_iterator rend() const noexcept
+        {
+            return const_reverse_iterator(this->begin());
+        }
+
+        constexpr const_reverse_iterator crend() const noexcept
+        {
+            return const_reverse_iterator(this->cbegin());
         }
 
         constexpr const_reference operator[](size_type index) const
@@ -67,8 +93,7 @@ namespace std
 
         constexpr const_reference at(size_type index) const
         {
-            if (index > this->_length)
-                index = this->_length - 1;
+            assert(index < this->_length);
             return this->operator[](index);
         }
 
@@ -82,27 +107,27 @@ namespace std
             return this->_pointer[this->_length - 1];
         }
 
-        constexpr const_pointer data() const
+        constexpr const_pointer data() const noexcept
         {
             return this->_pointer;
         }
 
-        constexpr size_type size() const
+        constexpr size_type size() const noexcept
         {
             return this->_length;
         }
 
-        constexpr size_type length() const
+        constexpr size_type length() const noexcept
         {
             return this->_length;
         }
 
-        constexpr size_type max_size() const
+        constexpr size_type max_size() const noexcept
         {
             return size_type(-1) / sizeof(value_type);
         }
 
-        [[nodiscard]] constexpr bool empty() const
+        [[nodiscard]] constexpr bool empty() const noexcept
         {
             return this->_length == 0;
         }
@@ -118,7 +143,7 @@ namespace std
             this->_length -= n;
         }
 
-        constexpr void swap(basic_string_view &v)
+        constexpr void swap(basic_string_view &v) noexcept
         {
             using std::swap;
             swap(this->_pointer, v._pointer);
@@ -127,21 +152,19 @@ namespace std
 
         constexpr size_type copy(Char *dest, size_type count, size_type pos = 0) const
         {
-            if (pos > this->length) return 0;
-            return Traits::copy(dest, this->_pointer + pos, count);
+            assert(pos <= this->_length);
+            return Traits::copy(dest, this->_pointer + pos, min(count, this->_length - pos));
         }
 
         constexpr basic_string_view substr(size_type pos = 0, size_type count = npos) const
         {
-            if (pos > this->_length)
-                pos = this->_length;
+            assert(pos <= this->_length);
             return basic_string_view(_pointer + pos, min(count, this->_length - pos));
         }
 
-        constexpr int compare(basic_string_view v) const
+        constexpr int compare(basic_string_view v) const noexcept
         {
-            auto rlen = min(this->_length, v._length);
-            auto result = Traits::compare(this->_pointer, v._pointer, rlen);
+            auto result = Traits::compare(this->_pointer, v._pointer, min(this->_length, v._length));
 
             if (result == 0)
                 return this->_length < v._length ? -1 : (this->_length > v._length ? 1 : 0);
@@ -174,42 +197,42 @@ namespace std
             return this->substr(pos1, count1).compare(basic_string_view(s, count2));
         }
 
-        constexpr bool starts_with(basic_string_view sv) const
+        constexpr bool starts_with(basic_string_view sv) const noexcept
         {
             return this->substr(0, sv.size()) == sv;
         }
 
-        constexpr bool starts_with(Char c) const
+        constexpr bool starts_with(Char c) const noexcept
         {
             return !this->empty() && Traits::eq(this->front(), c);
         }
 
-        constexpr bool starts_with(const Char *s) const
+        constexpr bool starts_with(const Char *s) const noexcept
         {
             return this->starts_with(basic_string_view(s));
         }
 
-        constexpr bool ends_with(basic_string_view sv) const
+        constexpr bool ends_with(basic_string_view sv) const noexcept
         {
             return this->size() >= sv.size() && this->compare(this->size() - sv.size(), npos, sv) == 0;
         }
 
-        constexpr bool ends_with(Char c) const
+        constexpr bool ends_with(Char c) const noexcept
         {
             return !this->empty() && Traits::eq(this->back(), c);
         }
 
-        constexpr bool ends_with(const Char *s) const
+        constexpr bool ends_with(const Char *s) const noexcept
         {
             return this->ends_with(basic_string_view(s));
         }
 
-        constexpr bool contains(basic_string_view sv) const
+        constexpr bool contains(basic_string_view sv) const noexcept
         {
             return this->find(sv) != npos;
         }
 
-        constexpr bool contains(Char c) const
+        constexpr bool contains(Char c) const noexcept
         {
             return this->find(c) != npos;
         }
@@ -219,7 +242,7 @@ namespace std
             return this->find(s) != npos;
         }
 
-        constexpr size_type find(basic_string_view v, size_type pos = 0) const
+        constexpr size_type find(basic_string_view v, size_type pos = 0) const noexcept
         {
             if (v._length == 0)
                 return pos <= this->_length ? pos : npos;
@@ -236,7 +259,7 @@ namespace std
             return npos;
         }
 
-        constexpr size_type find(Char c, size_type pos = 0) const
+        constexpr size_type find(Char c, size_type pos = 0) const noexcept
         {
             return this->find(basic_string_view(addressof(c), 1), pos);
         }
@@ -251,7 +274,7 @@ namespace std
             return this->find(basic_string_view(s), pos);
         }
 
-        constexpr size_type rfind(basic_string_view v, size_type pos = npos) const
+        constexpr size_type rfind(basic_string_view v, size_type pos = npos) const noexcept
         {
             if (v._length <= this->_length)
             {
@@ -266,7 +289,7 @@ namespace std
             return npos;
         }
 
-        constexpr size_type rfind(Char c, size_type pos = npos) const
+        constexpr size_type rfind(Char c, size_type pos = npos) const noexcept
         {
             return this->rfind(basic_string_view(addressof(c), 1), pos);
         }
@@ -281,7 +304,7 @@ namespace std
             return this->rfind(basic_string_view(s), pos);
         }
 
-        constexpr size_type find_first_of(basic_string_view v, size_type pos = 0) const
+        constexpr size_type find_first_of(basic_string_view v, size_type pos = 0) const noexcept
         {
             if (v._length == 0)
                 return npos;
@@ -292,7 +315,7 @@ namespace std
             return npos;
         }
 
-        constexpr size_type find_first_of(Char c, size_type pos = 0) const
+        constexpr size_type find_first_of(Char c, size_type pos = 0) const noexcept
         {
             return this->find_first_of(basic_string_view(addressof(c), 1), pos);
         }
@@ -307,7 +330,7 @@ namespace std
             return this->find_first_of(basic_string_view(s), pos);
         }
 
-        constexpr size_type find_last_of(basic_string_view v, size_type pos = npos) const
+        constexpr size_type find_last_of(basic_string_view v, size_type pos = npos) const noexcept
         {
             if (this->_length == 0 || v._length == 0)
                 return npos;
@@ -323,7 +346,7 @@ namespace std
             return npos;
         }
 
-        constexpr size_type find_last_of(Char c, size_type pos = npos) const
+        constexpr size_type find_last_of(Char c, size_type pos = npos) const noexcept
         {
             return this->find_last_of(basic_string_view(addressof(c), 1), pos);
         }
@@ -338,7 +361,7 @@ namespace std
             return this->find_last_of(basic_string_view(s), pos);
         }
 
-        constexpr size_type find_first_not_of(basic_string_view v, size_type pos = 0) const
+        constexpr size_type find_first_not_of(basic_string_view v, size_type pos = 0) const noexcept
         {
             for (size_type i = pos; i < this->_length; i++)
                 if (Traits::find(v._pointer, v._length, this->_pointer[i]) == nullptr)
@@ -346,7 +369,7 @@ namespace std
             return npos;
         }
 
-        constexpr size_type find_first_not_of(Char c, size_type pos = 0) const
+        constexpr size_type find_first_not_of(Char c, size_type pos = 0) const noexcept
         {
             return this->find_first_not_of(basic_string_view(addressof(c), 1), pos);
         }
@@ -361,7 +384,7 @@ namespace std
             return this->find_first_not_of(basic_string_view(s), pos);
         }
 
-        constexpr size_type find_last_not_of(basic_string_view v, size_type pos = npos) const
+        constexpr size_type find_last_not_of(basic_string_view v, size_type pos = npos) const noexcept
         {
             if (this->_length == 0)
                 return npos;
@@ -377,7 +400,7 @@ namespace std
             return npos;
         }
 
-        constexpr size_type find_last_not_of(Char c, size_type pos = npos) const
+        constexpr size_type find_last_not_of(Char c, size_type pos = npos) const noexcept
         {
             return this->find_last_not_of(basic_string_view(addressof(c), 1), pos);
         }
@@ -392,12 +415,12 @@ namespace std
             return this->find_last_not_of(basic_string_view(s), pos);
         }
 
-        friend constexpr bool operator==(basic_string_view lhs, basic_string_view rhs)
+        friend constexpr bool operator==(basic_string_view lhs, basic_string_view rhs) noexcept
         {
             return lhs.compare(rhs) == 0;
         }
 
-        friend constexpr auto operator<=>(basic_string_view lhs, basic_string_view rhs)
+        friend constexpr auto operator<=>(basic_string_view lhs, basic_string_view rhs) noexcept
         {
             return lhs.compare(rhs) <=> 0;
         }
@@ -406,14 +429,28 @@ namespace std
     using string_view = basic_string_view<char>;
     using wstring_view = basic_string_view<wchar_t>;
 
-    template<typename Char, typename Traits>
-    struct hash<basic_string_view<Char, Traits>>
+    template<>
+    class hash<string_view>
     {
-        size_t operator()(const basic_string_view<Char, Traits> &str) const
+        public:
+        size_t operator()(const string_view &str) const
         {
             return detail::hash_impl::hash(str.data(), str.length());
         }
     };
+
+    template<>
+    class hash<wstring_view>
+    {
+        public:
+        size_t operator()(const wstring_view &str) const
+        {
+            return detail::hash_impl::hash(str.data(), str.length());
+        }
+    };
+
+    template<typename It, typename End>
+    basic_string_view(It, End) -> basic_string_view<iter_value_t<It>>;
 
     inline namespace literals
     {
@@ -422,6 +459,11 @@ namespace std
             inline string_view operator""sv(const char *str, size_t len)
             {
                 return string_view(str, len);
+            }
+
+            inline wstring_view operator""sv(const wchar_t *str, size_t len)
+            {
+                return wstring_view(str, len);
             }
         } // inline namespace string_view_literals
     } // inline namespace literals

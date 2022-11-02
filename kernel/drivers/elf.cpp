@@ -404,7 +404,7 @@ namespace elf
         {
             auto node = std::get<1>(vfs::path2node(parent, directory));
             if (node == nullptr)
-                return false;
+                return std::nullopt;
 
             log::infoln("ELF: Loading modules from \"{}\"", directory);
 

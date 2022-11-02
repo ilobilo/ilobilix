@@ -2,8 +2,7 @@
 
 #pragma once
 
-#include <frg/formatting.hpp>
-#include <string>
+#include <format>
 
 namespace frg
 {
@@ -33,36 +32,48 @@ namespace log
     void prints(const char *str);
     void printc(char c);
 
-    void toggle_term(bool on);
-    bool to_term();
+    template<typename ...Args> requires (sizeof...(Args) > 0)
+    inline auto print(std::string_view fmt, Args &&...args) -> size_t
+    {
+        if (heap::allocator.valid() == false)
+        {
+            struct
+            {
+                void append(char val)
+                {
+                    printc(val);
+                    this->_length++;
+                }
+
+                void append(const char *val)
+                {
+                    prints(val);
+                    this->_length += strlen(val);
+                }
+
+                size_t _length;
+            } printer;
+
+            frg::format(frg::fmt({ fmt.data(), fmt.length() }, args...), printer);
+            return printer._length;
+        }
+
+        auto str = fmt::vformat(fmt, fmt::make_format_args(args...));
+        prints(str.c_str());
+        return str.length();
+    }
 
     template<typename ...Args>
     inline auto print(std::string_view fmt, Args &&...args) -> size_t
     {
-        struct
-        {
-            void append(char val)
-            {
-                printc(val);
-                this->_length++;
-            }
-
-            void append(const char *val)
-            {
-                prints(val);
-                this->_length += strlen(val);
-            }
-
-            size_t _length;
-        } printer;
-
-        frg::format(frg::fmt({ fmt.data(), fmt.length() }, args...), printer);
-        return printer._length;
+        prints(fmt.data(), fmt.length());
+        return fmt.length();
     }
 
     template<typename ...Args>
     inline auto println(std::string_view fmt = "", Args &&...args) -> size_t
     {
+        lockit(lock);
         auto ret = print(fmt, args...);
         printc('\n');
         return ret + 1;
@@ -81,7 +92,9 @@ namespace log
         {                                                            \
             lockit(lock);                                            \
             prints(name ## _prefix);                                 \
-            return println(fmt, args...);                            \
+            auto ret = print(fmt, args...);                          \
+            printc('\n');                                            \
+            return ret + 1;                                          \
         }
 
     PRINT_FUNC(info)
@@ -89,26 +102,4 @@ namespace log
     PRINT_FUNC(error)
 
     #undef PRINT_FUNC
-
-    template<typename ...Args>
-    inline auto fmt(std::string_view fmt, Args &&...args) -> std::string
-    {
-        struct
-        {
-            void append(char val)
-            {
-                this->_buffer += val;
-            }
-
-            void append(const char *val)
-            {
-                this->_buffer += val;
-            }
-
-            std::string _buffer;
-        } formatter;
-
-        frg::format(frg::fmt({ fmt.data(), fmt.length() }, args...), formatter);
-        return formatter._buffer;
-    }
 } // namespace log

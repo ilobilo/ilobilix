@@ -92,14 +92,15 @@ namespace pmm
         for (size_t i = page; i < page + count; i++)
             bitmap[i] = false;
 
-        // TODO: Does this improve performace when reallocating same amount or fewer pages?
-        // lastindex = std::min(lastindex, page);
+        // TODO: Should we remove this?
+        lastindex = std::min(lastindex, page);
 
         usedmem -= count * page_size;
     }
 
     void init()
     {
+        // If sizeof...(Args) == 0 formatter is not used, so no memory allocation is needed, but if sizeof...(Args) > 0 then frg::format is used
         log::infoln("Initialising PMM...");
 
         limine_memmap_entry **memmaps = memmap_request.response->entries;
@@ -153,5 +154,7 @@ namespace pmm
             for (uintptr_t t = 0; t < memmaps[i]->length; t += page_size)
                 bitmap[(memmaps[i]->base + t) / page_size] = false;
         }
+
+        heap::allocator.initialize();
     }
 } // namespace pmm
