@@ -16,6 +16,7 @@ static FILE *stderr = (FILE*)&stderr;
 
 int fputc(char c, FILE *stream);
 int fputs(const char *str, FILE *stream);
+int fputws(const wchar_t *str, FILE *stream);
 
 int fprintf(FILE *stream, const char *format, ...);
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);

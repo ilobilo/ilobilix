@@ -14,17 +14,13 @@ namespace term
     size_t term_count = 0;
 
     limine_terminal *early_term = nullptr;
-    static lock_t early_lock;
 
     void print(const char *str, terminal_t *term)
     {
         if (term == nullptr)
         {
             if (early_term != nullptr)
-            {
-                lockit(early_lock);
                 terminal_request.response->write(early_term, str, strlen(str));
-            }
         }
         else term->write(str, strlen(str));
     }
@@ -34,10 +30,7 @@ namespace term
         if (term == nullptr)
         {
             if (early_term != nullptr)
-            {
-                lockit(early_lock);
                 terminal_request.response->write(early_term, &c, 1);
-            }
         }
         else term->write(&c, 1);
     }
@@ -89,7 +82,7 @@ namespace term
 
     void init()
     {
-        log::infoln("Initialising Terminals...");
+        log::infoln("Terminal: Initialising...");
 
         #if defined(__x86_64__)
         if (frm::frm_count == 0)
@@ -109,12 +102,12 @@ namespace term
         }
         #endif
 
-        uint64_t font_address = reinterpret_cast<uint64_t>(&unifont);
+        auto font_address = reinterpret_cast<uintptr_t>(&unifont);
         cppimage_t *image = nullptr;
 
         auto font_mod = find_module("font");
         if (font_mod != nullptr)
-            font_address = reinterpret_cast<uint64_t>(font_mod->address);
+            font_address = reinterpret_cast<uintptr_t>(font_mod->address);
 
         auto back_mod = find_module("background");
         if (back_mod == nullptr)
@@ -122,7 +115,7 @@ namespace term
         else
         {
             image = new cppimage_t;
-            image->open(reinterpret_cast<uint64_t>(back_mod->address), back_mod->size);
+            image->open(reinterpret_cast<uintptr_t>(back_mod->address), back_mod->size);
         }
 
         font_t font
@@ -154,7 +147,7 @@ namespace term
 
             framebuffer_t frm
             {
-                reinterpret_cast<uint64_t>(frm::frms[i]->address),
+                reinterpret_cast<uintptr_t>(frm::frms[i]->address),
                 frm::frms[i]->width,
                 frm::frms[i]->height,
                 frm::frms[i]->pitch

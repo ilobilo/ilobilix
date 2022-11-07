@@ -18,17 +18,18 @@ override LDFLAGS += \
 	-nostdlib       \
 	-static
 
-override CCFLAGS :=         \
-	$(INCLUDES) $(MACROS)   \
-	-target $(TARGET)       \
-	-ffreestanding          \
-	-fno-stack-protector    \
-	-fno-omit-frame-pointer \
-	-fno-pic -fno-pie       \
-	-Werror -Wall -Wextra   \
-	-Wno-error=\#warnings   \
-	-Wno-unused-parameter   \
-	-Ofast -pipe -MMD       \
+override CCFLAGS :=              \
+	$(INCLUDES) $(MACROS)        \
+	-target $(TARGET)            \
+	-ffreestanding               \
+	-fno-stack-protector         \
+	-fno-omit-frame-pointer      \
+	-fno-pic -fno-pie            \
+	-Werror -Wall -Wextra        \
+	-Wno-error=\#warnings        \
+	-Wno-unused-parameter        \
+	-Wno-builtin-macro-redefined \
+	-Ofast -pipe -MMD
 
 ifeq ($(ARCH),x86_64)
     override CCFLAGS +=   \
@@ -88,12 +89,12 @@ $(MODULE): $(OBJ)
 
 %.c.o: %.c
 	@printf "CC\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(CFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
+	$(CC) $(CFLAGS) -D__FILE__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.cpp.o: %.cpp
 	@printf "CXX\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CXX) $(CXXFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
+	$(CXX) $(CXXFLAGS) -D__FILE__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.S.o: %.S
 	@printf "AS\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(ASFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
+	$(CC) $(ASFLAGS) -D__FILE__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@

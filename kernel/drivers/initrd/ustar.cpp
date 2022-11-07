@@ -47,19 +47,19 @@ namespace ustar
                 case AREGTYPE:
                     node = vfs::create(nullptr, name, mode | s_ifreg);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not create regular file \"{}\"", name);
+                        log::errorln("USTAR: Could not create regular file '{}'", name);
                     else if (node->res->write(reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(current) + 512), 0, size) != ssize_t(size))
-                        log::errorln("USTAR: Could not write to regular file \"{}\"", name);
+                        log::errorln("USTAR: Could not write to regular file '{}'", name);
                     break;
                 case LNKTYPE:
                     node = vfs::link(nullptr, name, target);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not create hardlink \"{}\"", name);
+                        log::errorln("USTAR: Could not create hardlink '{}'", name);
                     break;
                 case SYMTYPE:
                     node = vfs::symlink(nullptr, name, target);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not create symlink \"{}\"", name);
+                        log::errorln("USTAR: Could not create symlink '{}'", name);
                     break;
                 case CHRTYPE:
                     log::errorln("USTAR: TODO: CHARDEV");
@@ -70,7 +70,7 @@ namespace ustar
                 case DIRTYPE:
                     node = vfs::create(nullptr, name, mode | s_ifdir);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not creare directory \"{}\"", name);
+                        log::errorln("USTAR: Could not creare directory '{}'", name);
                     break;
                 case FIFOTYPE:
                     log::errorln("USTAR: TODO: FIFO");

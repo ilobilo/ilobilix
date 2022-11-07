@@ -24,8 +24,8 @@ namespace proc
 
     // O(1) scheduling algorithm (used in linux kernel versions 2.6.0-2.6.22)
     static std::deque<thread*> queues[2];
-    static std::deque<thread*> *active = &queues[0];
-    static std::deque<thread*> *expired = &queues[1];
+    static auto active = &queues[0];
+    static auto expired = &queues[1];
 
     thread *next_thread()
     {
@@ -169,7 +169,7 @@ namespace proc
         return this->next_tid++;
     }
 
-    thread::thread(process *parent, uintptr_t pc, uintptr_t arg, bool user) : self(this), error(0), parent(parent), user(user), in_queue(false), status(status::dequeued)
+    thread::thread(process *parent, uintptr_t pc, uintptr_t arg, bool user) : self(this), error(ENOERR), parent(parent), user(user), in_queue(false), status(status::dequeued)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
@@ -209,13 +209,19 @@ namespace proc
             save_thread(current_thread, regs);
         }
 
-        // log::infoln("Scheduler: Running \"{}\" {}:{} on CPU: {}", new_thread->parent->name.c_str(), new_thread->parent->pid, new_thread->tid, this_cpu()->id);
+        // log::infoln("Scheduler: Running '{}' {}:{} on CPU: {}", new_thread->parent->name.c_str(), new_thread->parent->pid, new_thread->tid, this_cpu()->id);
 
         reschedule(fixed_timeslice);
         load_thread(new_thread, regs);
 
         if (current_thread != nullptr && current_thread->status == status::killed)
             thread_delete(current_thread);
+    }
+
+    std::pair<pid_t, tid_t> pid()
+    {
+        auto thread = this_thread();
+        return { thread->parent->pid, thread->tid };
     }
 
     // Pid 0 is for kernel process

@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include <lib/types.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <cerrno>
 
 #if defined(__x86_64__)
 #include <arch/x86_64/cpu/lapic.hpp>

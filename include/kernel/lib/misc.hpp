@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cctype>
+#include <cerrno>
 #include <limits>
 
 struct point
@@ -16,22 +17,22 @@ struct point
     size_t Y = 0;
 };
 
-constexpr uint64_t align_down(uint64_t n, uint64_t a)
+constexpr auto align_down(auto n, auto a)
 {
     return (n & ~(a - 1));
 }
 
-constexpr uint64_t align_up(uint64_t n, uint64_t a)
+constexpr auto align_up(auto n, auto a)
 {
     return align_down(n + a - 1, a);
 }
 
-constexpr uint64_t div_roundup(uint64_t n, uint64_t a)
+constexpr auto div_roundup(auto n, auto a)
 {
     return align_down(n + a - 1, a) / a;
 }
 
-constexpr uint64_t next_pow2(uint64_t n)
+constexpr auto next_pow2(uint64_t n)
 {
     return n == 1 ? 1 : 1 << (64 - __builtin_clzl(n - 1));
 }
@@ -45,37 +46,37 @@ constexpr auto as_int(Enum const value) -> typename std::underlying_type<Enum>::
 template<std::integral Type>
 constexpr bool ishh(Type a)
 {
-    return static_cast<uint64_t>(a) >= hhdm_offset;
+    return static_cast<uintptr_t>(a) >= hhdm_offset;
 }
 
 template<std::integral Type>
 constexpr Type tohh(Type a)
 {
-    return ishh(a) ? a : static_cast<Type>(static_cast<uint64_t>(a) + hhdm_offset);
+    return ishh(a) ? a : static_cast<Type>(static_cast<uintptr_t>(a) + hhdm_offset);
 }
 
 template<std::integral Type>
 constexpr Type fromhh(Type a)
 {
-    return !ishh(a) ? a : static_cast<Type>(static_cast<uint64_t>(a) - hhdm_offset);
+    return !ishh(a) ? a : static_cast<Type>(static_cast<uintptr_t>(a) - hhdm_offset);
 }
 
 template<typename Type>
 constexpr bool ishh(Type a)
 {
-    return reinterpret_cast<uint64_t>(a) >= hhdm_offset;
+    return reinterpret_cast<uintptr_t>(a) >= hhdm_offset;
 }
 
 template<typename Type>
 constexpr Type tohh(Type a)
 {
-    return ishh(a) ? a : reinterpret_cast<Type>(reinterpret_cast<uint64_t>(a) + hhdm_offset);
+    return ishh(a) ? a : reinterpret_cast<Type>(reinterpret_cast<uintptr_t>(a) + hhdm_offset);
 }
 
 template<typename Type>
 constexpr Type fromhh(Type a)
 {
-    return !ishh(a) ? a : reinterpret_cast<Type>(reinterpret_cast<uint64_t>(a) - hhdm_offset);
+    return !ishh(a) ? a : reinterpret_cast<Type>(reinterpret_cast<uintptr_t>(a) - hhdm_offset);
 }
 
 template<typename Type>
@@ -118,7 +119,6 @@ inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t 
     return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
 }
 
-extern "C" int *__errno_location();
 template<typename Ret, typename URet = std::make_unsigned_t<Ret>>
 static Ret str2int(const char *nptr, char **endptr, int _base)
 {
@@ -206,7 +206,7 @@ static Ret str2int(const char *nptr, char **endptr, int _base)
 
     if (out_of_range)
     {
-        *__errno_location() = 34;
+        errno = ERANGE;
         if constexpr (std::is_unsigned_v<Ret>)
             return std::numeric_limits<Ret>::max();
         else

@@ -29,19 +29,19 @@ namespace ilar
                 case ILAR_REGULAR:
                     node = vfs::create(nullptr, name, mode | s_ifreg);
                     if (node == nullptr)
-                        log::errorln("ILAR: Could not create regular file \"{}\"", name);
+                        log::errorln("ILAR: Could not create regular file '{}'", name);
                     else if (node->res->write(reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(current) + sizeof(header)), 0, size) != ssize_t(size))
-                        log::errorln("ILAR: Could not write to regular file \"{}\"", name);
+                        log::errorln("ILAR: Could not write to regular file '{}'", name);
                     break;
                 case ILAR_SYMLINK:
                     node = vfs::symlink(nullptr, name, target);
                     if (node == nullptr)
-                        log::errorln("ILAR: Could not create symlink \"{}\"", name);
+                        log::errorln("ILAR: Could not create symlink '{}'", name);
                     break;
                 case ILAR_DIRECTORY:
                     node = vfs::create(nullptr, name, mode | s_ifdir);
                     if (node == nullptr)
-                        log::errorln("ILAR: Could not creare directory \"{}\"", name);
+                        log::errorln("ILAR: Could not creare directory '{}'", name);
                     break;
             }
 

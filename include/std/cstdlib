@@ -22,5 +22,7 @@ namespace std
 
         unsigned long strtoul(const char *str, char **str_end, int base);
         unsigned long long strtoull(const char *str, char **str_end, int base);
+
+        [[noreturn]] void abort() noexcept;
     }
 } // namespace std

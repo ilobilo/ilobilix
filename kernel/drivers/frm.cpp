@@ -12,7 +12,7 @@ namespace frm
 
     void init()
     {
-        log::infoln("Initialising Framebuffers...");
+        log::infoln("Framebuffer: Initialising...");
 
         auto response = framebuffer_request.response;
         frm_count = response->framebuffer_count;

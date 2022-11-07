@@ -31,7 +31,7 @@ Follow these steps to build and run the os:
 ``make bios -j$(nproc --all)`` To run in BIOS mode\
 ``ARCH=aarch64 make -j$(nproc --all)`` To build and run aarch64 kernel
 
-Note: If you are on Termux, add ``VNC=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer:\
+Note: If you are on Termux, add ``VNC=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer
 
 ### Options
 * ``MODUBSAN=1``: Enable UBSAN in modules
@@ -51,30 +51,30 @@ Note: If you are on Termux, add ``VNC=1`` to arguments and connect to ``127.0.0.
 https://discord.gg/fM5GK3RpS7
 
 ## Resources/projects used and notable OSes:
-* Osdev wiki: https://wiki.osdev.org
-* Osdev discord server: https://discord.gg/RnCtsqD
-* Managarm: https://github.com/managarm/managarm
-* ToaruOS: https://github.com/klange/toaruos
+* osdev wiki: https://wiki.osdev.org
+* osdev discord server: https://discord.gg/RnCtsqD
+* managarm: https://github.com/managarm/managarm
+* toaruOS: https://github.com/klange/toaruos
 * LemonOS: https://github.com/LemonOSProject/LemonOS
 * Sigma: https://github.com/sigma-os/Sigma
 * Luna: https://github.com/thomtl/Luna
-* Vinix: https://github.com/vlang/vinix
-* Lyre: https://github.com/lyre-os/lyre
-* Limine: https://github.com/limine-bootloader/limine
-* Lai: https://github.com/managarm/lai
-* Cxxshim: https://github.com/managarm/cxxshim
-* Frigg: https://github.com/managarm/frigg
-* MLibc: https://github.com/managarm/mlibc
-* Fmt: https://github.com/fmtlib/fmt
-* Printf: https://github.com/eyalroz/printf
-* Smart_ptr: https://github.com/X-czh/smart_ptr
-* Veque: https://github.com/Shmoopty/veque
-* CWalk: https://github.com/likle/cwalk
-* Unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
-* Terminal: https://github.com/V01D-NULL/limine-terminal-port
-* ILAR: https://github.com/ilobilo/ilar
-* OVMF: https://efi.akeo.ie/
-
+* vinix: https://github.com/vlang/vinix
+* lyre: https://github.com/lyre-os/lyre
+* limine: https://github.com/limine-bootloader/limine
+* lai: https://github.com/managarm/lai
+* cxxshim: https://github.com/managarm/cxxshim
+* frigg: https://github.com/managarm/frigg
+* mlibc: https://github.com/managarm/mlibc
+* magic_enum: https://github.com/Neargye/magic_enum
+* fmt: https://github.com/fmtlib/fmt
+* printf: https://github.com/eyalroz/printf
+* smart_ptr: https://github.com/X-czh/smart_ptr
+* veque: https://github.com/Shmoopty/veque
+* cwalk: https://github.com/likle/cwalk
+* unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
+* terminal: https://github.com/V01D-NULL/limine-terminal-port
+* ilar: https://github.com/ilobilo/ilar
+* ovmf: https://efi.akeo.ie/
 
 ## TODO
 

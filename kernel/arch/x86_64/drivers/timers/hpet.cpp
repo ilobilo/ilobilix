@@ -262,7 +262,7 @@ namespace timers::hpet
 
     void init()
     {
-        log::infoln("Initialising HPET...");
+        log::infoln("HPET: Initialising...");
 
         auto table = acpi::findtable<acpi::HPETHeader>("HPET", 0);
 

@@ -45,7 +45,7 @@ namespace acpi
     {
         if (!strncmp(signature, "DSDT", 4))
         {
-            uint64_t dsdt_addr = 0;
+            uintptr_t dsdt_addr = 0;
 
             if (xsdt == true && vmm::is_canonical(fadthdr->X_Dsdt))
                 dsdt_addr = fadthdr->X_Dsdt;
@@ -181,7 +181,7 @@ namespace acpi
 
     void init()
     {
-        log::infoln("Initialising ACPI...");
+        log::infoln("ACPI: Initialising...");
 
         rsdp = reinterpret_cast<RSDP*>(tohh(rsdp_request.response->address));
 

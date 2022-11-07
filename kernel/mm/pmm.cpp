@@ -45,8 +45,10 @@ namespace pmm
 
     void *alloc(size_t count)
     {
-        lockit(lock);
+        if (count == 0)
+            return nullptr;
 
+        lockit(lock);
         auto inner_alloc = [count](size_t limit) -> void*
         {
             size_t p = 0;
@@ -100,8 +102,7 @@ namespace pmm
 
     void init()
     {
-        // If sizeof...(Args) == 0 formatter is not used, so no memory allocation is needed, but if sizeof...(Args) > 0 then frg::format is used
-        log::infoln("Initialising PMM...");
+        log::infoln("PMM: Initialising...");
 
         limine_memmap_entry **memmaps = memmap_request.response->entries;
         size_t memmap_count = memmap_request.response->entry_count;
@@ -155,6 +156,7 @@ namespace pmm
                 bitmap[(memmaps[i]->base + t) / page_size] = false;
         }
 
+        mem_top = align_up(mem_top, 0x40000000);
         heap::allocator.initialize();
     }
 } // namespace pmm

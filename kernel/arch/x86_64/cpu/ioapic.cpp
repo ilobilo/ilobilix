@@ -142,7 +142,7 @@ namespace ioapic
 
     void init()
     {
-        log::infoln("Initialising IOAPIC...");
+        log::infoln("IOAPIC: Initialising...");
 
         if (acpi::madthdr == nullptr)
         {

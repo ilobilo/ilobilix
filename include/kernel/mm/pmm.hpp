@@ -8,7 +8,7 @@
 namespace pmm
 {
     static constexpr size_t page_size = 0x1000;
-    extern uint64_t mem_top;
+    extern uintptr_t mem_top;
 
     size_t total();
     size_t usable();

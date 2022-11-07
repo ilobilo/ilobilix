@@ -155,7 +155,7 @@ namespace idt
     extern "C" void *int_table[];
     void init()
     {
-        log::infoln("Initialising IDT...");
+        log::infoln("IDT: Initialising...");
 
         idtr.Limit = sizeof(IDTEntry) * 256 - 1;
         idtr.Base = reinterpret_cast<uint64_t>(&idt);

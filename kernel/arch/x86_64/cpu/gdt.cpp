@@ -17,7 +17,7 @@ namespace gdt
         lockit(lock);
         if (tss == nullptr)
         {
-            log::infoln("Initialising GDT...");
+            log::infoln("GDT: Initialising...");
             tss = new TSS[smp_request.response->cpu_count];
         }
 
