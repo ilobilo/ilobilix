@@ -520,6 +520,7 @@ class path_t
     }
 };
 
+// TODO: Should we support frg::format?
 namespace frg
 {
     template<typename F>

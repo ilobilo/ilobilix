@@ -16,8 +16,9 @@ endef
 override DEPS :=                              \
 	$(EXTDEPDIR)/lai $(EXTDEPDIR)/frigg       \
 	$(EXTDEPDIR)/cwalk $(EXTDEPDIR)/printf    \
-	$(EXTDEPDIR)/fmt                          \
+	$(EXTDEPDIR)/fmt $(EXTDEPDIR)/magic_enum  \
 	$(EXTDEPDIR)/smart_ptr $(EXTDEPDIR)/veque \
+	$(EXTDEPDIR)/frozen                       \
 	$(EXTDEPDIR)/libstdcxx-headers            \
 	$(EXTDEPDIR)/libgcc-binaries              \
 	$(EXTDEPDIR)/limine-terminal-port         \
@@ -39,13 +40,19 @@ $(EXTDEPDIR)/printf:
 	$(call git_clone,eyalroz,printf)
 
 $(EXTDEPDIR)/fmt:
-	$(call git_clone,fmtlib/fmt)
+	$(call git_clone,fmtlib,fmt)
+
+$(EXTDEPDIR)/magic_enum:
+	$(call git_clone,ilobilo,magic_enum)
 
 $(EXTDEPDIR)/smart_ptr:
 	$(call git_clone,ilobilo,smart_ptr)
 
 $(EXTDEPDIR)/veque:
 	$(call git_clone,ilobilo,veque)
+
+$(EXTDEPDIR)/frozen:
+	$(call git_clone,serge-sans-paille,frozen)
 
 $(EXTDEPDIR)/libstdcxx-headers:
 	$(call git_clone,ilobilo,libstdcxx-headers)

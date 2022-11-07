@@ -2,4 +2,4 @@
 
 #pragma once
 
-#define __GLIBC_PREREQ(maj, min) 1
+#define __GLIBC_PREREQ(maj, min) 0

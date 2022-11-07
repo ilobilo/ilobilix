@@ -18,7 +18,8 @@ namespace timers::rtc
 
     uint8_t century()
     {
-        if (acpi::fadthdr && acpi::fadthdr->Century == 0) return 20;
+        if (acpi::fadthdr && acpi::fadthdr->Century == 0)
+            return 20;
         return read(0x32);
     }
 

@@ -9,8 +9,8 @@
 struct ticket_lock
 {
     private:
-    uint64_t _next_ticket;
-    uint64_t _serving_ticket;
+    size_t _next_ticket;
+    size_t _serving_ticket;
 
     public:
     constexpr ticket_lock() : _next_ticket(0), _serving_ticket(0) { }

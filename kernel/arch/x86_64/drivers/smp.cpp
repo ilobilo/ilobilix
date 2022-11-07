@@ -64,8 +64,10 @@ namespace smp
             this_cpu()->fpu_restore = cpu::xrstor;
 
             assert(cpu::id(0x0D, 1, a, b, c, d), "CPUID failure");
-            if (a & 0x00000001) this_cpu()->fpu_save = cpu::xsaveopt;
-            else this_cpu()->fpu_save = cpu::xsave;
+            if (a & 0x00000001)
+                this_cpu()->fpu_save = cpu::xsaveopt;
+            else
+                this_cpu()->fpu_save = cpu::xsave;
         }
         else if (d & 0x01000000)
         {

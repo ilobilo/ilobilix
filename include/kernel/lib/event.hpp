@@ -28,14 +28,14 @@ struct promise
     template<typename ...Args>
     void trigger(Args &&...args)
     {
-        new ((Type*)object.data) Type(std::forward<Args>(args)...);
-        event.trigger();
+        new (&this->object) Type(std::forward<Args>(args)...);
+        this->event.trigger();
     }
 
     // TODO: Reference?
     Type await()
     {
-        event.await();
-        return *reinterpret_cast<Type*>(object.data);
+        this->event.await();
+        return *reinterpret_cast<Type*>(&this->object);
     }
 };

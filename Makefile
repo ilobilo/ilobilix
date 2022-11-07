@@ -129,7 +129,10 @@ override INCLUDES :=                            \
 	-I$(EXTDEPDIR)/cwalk/include/               \
 	-I$(EXTDEPDIR)/frigg/include/               \
 	-I$(EXTDEPDIR)/veque/include/               \
+	-I$(EXTDEPDIR)/frozen/include/              \
+	-I$(EXTDEPDIR)/CompileTimeRandom/           \
 	-I$(EXTDEPDIR)/smart_ptr/include/           \
+	-I$(EXTDEPDIR)/magic_enum/include/          \
 	-I$(EXTDEPDIR)/libstdcxx-headers/include/   \
 	-I$(EXTDEPDIR)/limine-terminal-port/fonts/  \
 	-I$(EXTDEPDIR)/limine-terminal-port/source/
@@ -142,7 +145,9 @@ override MACROS :=                                \
 	-DFMT_STATIC_THOUSANDS_SEPARATOR=1            \
 	-DFMT_USE_LONG_DOUBLE=0                       \
 	-DFMT_USE_DOUBLE=0                            \
-	-DFMT_USE_FLOAT=0
+	-DFMT_USE_FLOAT=0                             \
+	-D__cpp_lib_format=202207L                    \
+	-DMAGIC_ENUM_NO_STREAMS=1
 
 override LIBRARIES :=                            \
 	-L$(EXTDEPDIR)/libgcc-binaries/ -l:$(LIBGCC)

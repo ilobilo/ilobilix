@@ -4,10 +4,10 @@
 
 #include <limine.h>
 
-static constexpr uint64_t default_stack_size = 0x10000; // 64Kib
+static constexpr uintptr_t default_stack_size = 0x10000; // 64Kib
 
 extern const char *cmdline;
-extern uint64_t hhdm_offset;
+extern uintptr_t hhdm_offset;
 extern bool uefi;
 extern bool lvl5;
 

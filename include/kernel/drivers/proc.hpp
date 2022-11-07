@@ -134,6 +134,8 @@ namespace proc
     void exit(thread *thread);
     void exit();
 
+    std::pair<pid_t, tid_t> pid();
+
     [[noreturn]] void init(bool start = false);
 } // namespace proc
 

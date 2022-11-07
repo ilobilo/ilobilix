@@ -7,10 +7,12 @@
 
 namespace std
 {
+    using namespace fmt;
+
     template<typename ...Args>
     inline constexpr auto fmt(std::string_view fmt, Args &&...args) -> std::string
     {
-        return fmt::vformat(fmt, fmt::make_format_args(args...));
+        return vformat(fmt, fmt::make_format_args(args...));
     }
 
     template<typename ...Args>
@@ -27,3 +29,20 @@ namespace std
         return formatter._buffer;
     }
 } // namespace std
+
+// TODO: Should we support frg::format?
+namespace frg
+{
+    template<typename F>
+    void format_object(const std::string_view &object, format_options, F &formatter)
+    {
+        for (const auto c : object)
+            formatter.append(c);
+    }
+
+    template<typename F>
+    void format_object(const std::string &object, format_options, F &formatter)
+    {
+        formatter.append(object.c_str());
+    }
+} // namespace frg

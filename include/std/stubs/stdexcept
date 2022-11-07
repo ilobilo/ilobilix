@@ -3,6 +3,7 @@
 #pragma once
 
 #include <exception>
+#include <string>
 
 namespace std
 {
@@ -11,10 +12,16 @@ namespace std
 
     class runtime_error : public exception
     {
-        public:
-        runtime_error(auto) { }
-        runtime_error(const runtime_error &) noexcept = default;
+        private:
+        string _str;
 
+        public:
+        runtime_error(const string &what_arg) : _str(what_arg) { }
+        runtime_error(const char *what_arg) : _str(what_arg) { }
+
+        runtime_error(const runtime_error &) noexcept = default;
         runtime_error &operator=(const runtime_error &) noexcept = default;
+
+        const char *what() const noexcept { return this->_str.c_str(); }
     };
 } // namespace std

@@ -43,7 +43,7 @@ namespace elf
 
         void init()
         {
-            log::infoln("Initialising kernel symbol table...");
+            log::infoln("kernel symbol table: Initialising...");
 
             auto kfile = reinterpret_cast<uintptr_t>(kernel_file_request.response->kernel_file->address);
             auto header = reinterpret_cast<Elf64_Ehdr*>(kfile);
@@ -100,8 +100,8 @@ namespace elf
     namespace module
     {
         std::unordered_map<std::string_view, driver_t*> drivers;
-        std::vector<module_t*> modules;
-        // static uint64_t base_addr = 0;
+        std::vector<module_t> modules;
+        static uintptr_t base_addr = 0;
         static lock_t lock;
 
         static std::vector<driver_t*> get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
@@ -112,7 +112,7 @@ namespace elf
                 auto section = &sections[i];
                 if (section->sh_size != 0 && section->sh_size >= sizeof(driver_t) && !strcmp(DRIVER_SECTION, strtable + section->sh_name))
                 {
-                    uint64_t offset = section->sh_addr;
+                    auto offset = section->sh_addr;
                     while (offset < section->sh_addr + section->sh_size)
                     {
                         auto driver = reinterpret_cast<driver_t*>(offset);
@@ -120,17 +120,17 @@ namespace elf
 
                         if (drivers.contains(name))
                         {
-                            log::infoln("ELF: Driver with name \"{}\" already exists!", name);
+                            log::infoln("ELF: Driver with name '{}' already exists!", name);
                             goto next;
                         }
 
-                        log::infoln("ELF: Found driver: \"{}\"", name);
+                        log::infoln("ELF: Found driver: '{}'", name);
 
                         if (driver->depcount > 0)
                         {
                             log::infoln(" Dependencies: ");
                             for (size_t d = 0; d < driver->depcount; d++)
-                                log::infoln("  - \"{}\"", driver->deps[d]);
+                                log::infoln("  - '{}'", driver->deps[d]);
                         }
 
                         drivers[driver->name] = driver;
@@ -145,40 +145,39 @@ namespace elf
             return ret;
         }
 
-        uint64_t map(uint64_t size)
+        uintptr_t map(uintptr_t size)
         {
-            // Align to 1mib because on x86_64 OVMF aligning to 4kib causes #GPF
-            // if (base_addr == 0)
-            //     base_addr = align_up(tohh(pmm::mem_top), 0x40000000);
+            if (base_addr == 0)
+                base_addr = align_up(tohh(pmm::mem_top), 0x40000000);
 
-            // size = align_up(size, pmm::page_size);
+            size = align_up(size, pmm::page_size);
 
-            // uint64_t loadaddr = base_addr;
-            // base_addr += size;
+            uintptr_t loadaddr = base_addr;
+            base_addr += size;
 
-            // uint64_t paddr = pmm::alloc<uint64_t>(size / pmm::page_size);
-            // vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);
+            uintptr_t paddr = pmm::alloc<uintptr_t>(size / pmm::page_size);
+            vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);
 
-            // return loadaddr;
+            return loadaddr;
 
-            return malloc<uint64_t>(size);
+            // return malloc<uintptr_t>(size);
         }
 
-        void unmap(uint64_t loadaddr, uint64_t size)
+        void unmap(uintptr_t loadaddr, size_t size)
         {
-            // size = align_up(size, pmm::page_size);
-            // if (loadaddr == base_addr - size)
-            //     base_addr = loadaddr;
+            size = align_up(size, pmm::page_size);
+            if (loadaddr == base_addr - size)
+                base_addr = loadaddr;
 
-            // void *ptr = reinterpret_cast<void*>(vmm::kernel_pagemap->virt2phys(loadaddr));
-            // pmm::free(ptr, size / pmm::page_size);
-            // vmm::kernel_pagemap->unmap_range(loadaddr, size);
+            void *ptr = reinterpret_cast<void*>(vmm::kernel_pagemap->virt2phys(loadaddr));
+            pmm::free(ptr, size / pmm::page_size);
+            vmm::kernel_pagemap->unmap_range(loadaddr, size);
 
-            free(loadaddr);
+            // free(loadaddr);
         }
 
         [[clang::no_sanitize("alignment")]]
-        std::optional<std::vector<driver_t*>> load(uint64_t address, uint64_t size)
+        std::optional<std::vector<driver_t*>> load(uintptr_t address, size_t size)
         {
             auto header = reinterpret_cast<Elf64_Ehdr*>(address);
             if (memcmp(header->e_ident, ELFMAG, 4))
@@ -198,7 +197,7 @@ namespace elf
             }
 
             lockit(lock);
-            uint64_t loadaddr = map(size);
+            auto loadaddr = map(size);
             memcpy(reinterpret_cast<void*>(loadaddr), reinterpret_cast<void*>(address), size);
             header = reinterpret_cast<Elf64_Ehdr*>(loadaddr);
 
@@ -263,7 +262,7 @@ namespace elf
                             auto entry = syms::lookup(name);
                             if (entry == syms::empty_sym)
                             {
-                                log::errorln("ELF: Could not find kernel symbol \"{}\"", name);
+                                log::errorln("ELF: Could not find kernel symbol '{}'", name);
                                 unmap(loadaddr, size);
                                 return std::nullopt;
                             }
@@ -374,7 +373,7 @@ namespace elf
                 }
             }
 
-            auto mod = new module_t
+            module_t mod
             {
                 .addr = loadaddr,
                 .size = size,
@@ -383,9 +382,9 @@ namespace elf
 
             auto strtable = reinterpret_cast<char*>(loadaddr + sections[header->e_shstrndx].sh_offset);
             auto drvs = get_drivers(header, sections, strtable);
-            mod->has_drivers = drvs.empty() == false;
+            mod.has_drivers = drvs.empty() == false;
 
-            if (mod->has_drivers == false)
+            if (mod.has_drivers == false)
                 log::warnln("ELF: Could not find any drivers in the module!");
 
             modules.push_back(mod);
@@ -406,7 +405,7 @@ namespace elf
             if (node == nullptr)
                 return std::nullopt;
 
-            log::infoln("ELF: Loading modules from \"{}\"", directory);
+            log::infoln("ELF: Loading modules from '{}'", directory);
 
             node->fs->populate(node);
             std::vector<driver_t*> ret;
@@ -427,7 +426,7 @@ namespace elf
 
             if (ret.empty())
             {
-                log::errorln("ELF: Could not find any modules in \"{}\"", directory);
+                log::errorln("ELF: Could not find any modules in '{}'", directory);
                 return std::nullopt;
             }
 
@@ -439,7 +438,6 @@ namespace elf
             if (driver->initialised == true)
                 return true;
 
-            log::infoln("ELF: Running driver \"{}\"", std::string_view(driver->name));
             for (size_t i = 0; i < driver->depcount; i++)
             {
                 const auto &dep = driver->deps[i];
@@ -448,7 +446,7 @@ namespace elf
 
                 if (drivers.contains(dep) == false)
                 {
-                    log::errorln("ELF: Dependency \"{}\" of driver \"{}\" not found!", dep, driver->name);
+                    log::errorln("ELF: Dependency '{}' of driver '{}' not found!", dep, driver->name);
                     return false;
                 }
 
@@ -457,7 +455,7 @@ namespace elf
                 {
                     if (deps == false)
                     {
-                        log::errorln("ELF: Dependency \"{}\" of driver \"{}\" unresolved!", dep, driver->name);
+                        log::errorln("ELF: Dependency '{}' of driver '{}' unresolved!", dep, driver->name);
                         return false;
                     }
                     run(depdriver, deps);
@@ -466,20 +464,19 @@ namespace elf
 
             bool ret = false;
             if (driver->init)
+            {
+                log::infoln("ELF: Running driver '{}'", std::string_view(driver->name));
                 ret = driver->init();
-            else
-                log::errorln("ELF: Driver \"{}\" does not have init() function!", driver->name);
+            }
+            else log::errorln("ELF: Driver '{}' does not have init() function!", driver->name);
 
             return driver->initialised = ret;
         }
 
-        bool run_all(bool deps)
+        void run_all(bool deps)
         {
             for (const auto [name, driver] : drivers)
-                if (run(driver, deps) == false)
-                    return false;
-
-            return true;
+                run(driver, deps);
         }
 
         void destroy(driver_t *driver)
@@ -487,12 +484,12 @@ namespace elf
             if (driver->initialised == false)
                 return;
 
-            log::infoln("ELF: Destroying driver \"{}\"", driver->name);
+            log::infoln("ELF: Destroying driver '{}'", driver->name);
 
             if (driver->fini)
                 driver->fini();
             else
-                log::warnln("ELF: Driver \"{}\" does not have fini() function!", driver->name);
+                log::warnln("ELF: Driver '{}' does not have fini() function!", driver->name);
 
             driver->initialised = false;
         }
@@ -505,7 +502,7 @@ namespace elf
 
         void init()
         {
-            log::infoln("Initialising builtin drivers...");
+            log::infoln("ELF: Searching for builtin drivers...");
 
             auto kfile = reinterpret_cast<uintptr_t>(kernel_file_request.response->kernel_file->address);
             auto header = reinterpret_cast<Elf64_Ehdr*>(kfile);
@@ -514,10 +511,7 @@ namespace elf
 
             auto drvs = get_drivers(header, sections, strtable);
             if (drvs.empty())
-                log::errorln("Could not find any builtin drivers!");
-
-            elf::module::load(nullptr, "/lib/modules/");
-            elf::module::run_all();
+                log::errorln("ELF: Could not find any builtin drivers!");
         }
     } // namespace module
 

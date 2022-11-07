@@ -25,8 +25,6 @@ using tid_t = int;
 using time_t = long;
 using clockid_t = int;
 
-using errno_t = int;
-
 enum types
 {
     s_ifmt = 0170000,

@@ -1,0 +1,10 @@
+// Copyright (C) 2022  ilobilo
+
+#pragma once
+
+#include <wchar.h>
+
+namespace std
+{
+    using ::wint_t;
+} // namespace std

@@ -25,7 +25,7 @@ namespace timers::pit
 
     void init()
     {
-        log::infoln("Initialising PIT...");
+        log::infoln("PIT: Initialising...");
 
         uint64_t divisor = 1193180 / time::frequency;
 

@@ -1,47 +1,66 @@
 // Copyright (C) 2022  ilobilo
 
 #include <arch/x86_64/cpu/cpu.hpp>
-#include <arch/x86_64/mm/vmm.hpp>
 #include <init/kernel.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
+#include <mm/vmm.hpp>
 
 namespace vmm
 {
-    static constexpr uint64_t psize_4kb = 0x1000;
-    static constexpr uint64_t psize_2mb = 0x200000;
-    static constexpr uint64_t psize_1gb = 0x40000000;
+    enum
+    {
+        Present = (1 << 0),
+        Write = (1 << 1),
+        UserSuper = (1 << 2),
+        WriteThrough = (1 << 3), // PWT
+        CacheDisable = (1 << 4), // PCD
+        Accessed = (1 << 5),
+        LargerPages = (1 << 7),
+        PAT4k = (1 << 7), // PAT lvl1
+        Global = (1 << 8),
+        Custom0 = (1 << 9),
+        Custom1 = (1 << 10),
+        Custom2 = (1 << 11),
+        PATlg = (1 << 12), // PAT lvl2+
+        NoExec = (1UL << 63)
+    };
+    struct [[gnu::packed]] ptable { pdentry entries[512]; };
+    static bool gib1_pages = false;
 
-    static PTable *get_next_lvl(PTable *curr_lvl, size_t entry, bool allocate = true)
+    uintptr_t pa_mask = 0x000FFFFFFFFFF000;
+
+    static ptable *get_next_lvl(ptable *curr_lvl, size_t entry, bool allocate = true)
     {
         if (curr_lvl == nullptr)
             return nullptr;
 
-        PTable *ret = nullptr;
+        ptable *ret = nullptr;
 
         if (curr_lvl->entries[entry].getflags(Present))
-            ret = reinterpret_cast<PTable*>(curr_lvl->entries[entry].getaddr() << 12);
+            ret = reinterpret_cast<ptable*>(curr_lvl->entries[entry].getaddr());
         else if (allocate == true)
         {
-            ret = pmm::alloc<PTable*>();
-            curr_lvl->entries[entry].setaddr(reinterpret_cast<uint64_t>(ret) >> 12);
+            ret = pmm::alloc<ptable*>();
+            curr_lvl->entries[entry].setaddr(reinterpret_cast<uint64_t>(ret));
             curr_lvl->entries[entry].setflags(Present | Write | UserSuper, true);
         }
-        return ret;
+        else return nullptr;
+        return tohh(ret);
     }
 
-    static PDEntry *virt2pte(PTable *toplvl, uint64_t vaddr, bool allocate, uint64_t psize)
+    pdentry *pagemap::virt2pde(uint64_t vaddr, bool allocate, uint64_t psize)
     {
-        size_t pml5_entry = (vaddr & (static_cast<uint64_t>(0x1FF) << 48)) >> 48;
-        size_t pml4_entry = (vaddr & (static_cast<uint64_t>(0x1FF) << 39)) >> 39;
-        size_t pml3_entry = (vaddr & (static_cast<uint64_t>(0x1FF) << 30)) >> 30;
-        size_t pml2_entry = (vaddr & (static_cast<uint64_t>(0x1FF) << 21)) >> 21;
-        size_t pml1_entry = (vaddr & (static_cast<uint64_t>(0x1FF) << 12)) >> 12;
+        size_t pml5_entry = (vaddr & (0x1FFULL << 48)) >> 48;
+        size_t pml4_entry = (vaddr & (0x1FFULL << 39)) >> 39;
+        size_t pml3_entry = (vaddr & (0x1FFULL << 30)) >> 30;
+        size_t pml2_entry = (vaddr & (0x1FFULL << 21)) >> 21;
+        size_t pml1_entry = (vaddr & (0x1FFULL << 12)) >> 12;
 
-        PTable *pml4, *pml3, *pml2, *pml1;
+        ptable *pml4, *pml3, *pml2, *pml1;
 
-        pml4 = lvl5 ? get_next_lvl(toplvl, pml5_entry, allocate) : toplvl;
+        pml4 = lvl5 ? get_next_lvl(this->toplvl, pml5_entry, allocate) : this->toplvl;
         if (pml4 == nullptr)
             return nullptr;
 
@@ -49,14 +68,14 @@ namespace vmm
         if (pml3 == nullptr)
             return nullptr;
 
-        if (psize == psize_1gb)
+        if (psize == this->llpage_size)
             return &pml3->entries[pml3_entry];
 
         pml2 = get_next_lvl(pml3, pml3_entry, allocate);
         if (pml2 == nullptr)
             return nullptr;
 
-        if (psize == psize_2mb)
+        if (psize == this->lpage_size)
             return &pml2->entries[pml2_entry];
 
         pml1 = get_next_lvl(pml2, pml2_entry, allocate);
@@ -83,18 +102,18 @@ namespace vmm
         uint64_t ret = 0;
         switch (cache)
         {
-            case UNCACHABLE:
+            case uncachable:
                 break;
-            case WRITE_COMBINING:
+            case write_combining:
                 ret |= WriteThrough;
                 break;
-            case WRITE_THROUGH:
+            case write_through:
                 ret |= patbit;
                 break;
-            case WRITE_PROTECTED:
+            case write_protected:
                 ret |= patbit | WriteThrough;
                 break;
-            case WRITE_BACK:
+            case write_back:
                 ret |= patbit | CacheDisable;
                 break;
             default:
@@ -103,93 +122,96 @@ namespace vmm
         return ret;
     }
 
-    uintptr_t pagemap::virt2phys(uintptr_t vaddr, bool largepages)
+    uintptr_t pagemap::virt2phys(uintptr_t vaddr, size_t flags)
     {
-        PDEntry *pml_entry = virt2pte(reinterpret_cast<PTable*>(this->toplvl), vaddr, false, largepages ? this->large_page_size : this->page_size);
+        lockit(this->lock);
+
+        pdentry *pml_entry = this->virt2pde(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr || !pml_entry->getflags(Present))
             return 0;
 
-        return pml_entry->getaddr() << 12;
+        return pml_entry->getaddr();
     }
 
     bool pagemap::map(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
     {
         lockit(this->lock);
 
-        PDEntry *pml_entry = virt2pte(reinterpret_cast<PTable*>(this->toplvl), vaddr, true, (flags & lpages) ? this->large_page_size : this->page_size);
-        if (pml_entry == nullptr)
+        auto map_one = [this](uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache, size_t psize)
         {
-            log::errorln("VMM: Could not get page map entry!");
-            return false;
+            pdentry *pml_entry = this->virt2pde(vaddr, true, psize);
+            if (pml_entry == nullptr)
+            {
+                log::errorln("VMM: Could not get page map entry!");
+                return false;
+            }
+
+            auto realflags = flags2arch(flags) | cache2flags(cache, psize != this->page_size);
+
+            pml_entry->setaddr(paddr);
+            pml_entry->setflags(realflags, true);
+            return true;
+        };
+
+        auto psize = this->get_psize(flags);
+        if (psize == this->llpage_size && gib1_pages == false)
+        {
+            flags &= ~llpage;
+            flags |= lpage;
+            for (size_t i = 0; i < gib1; i += mib2)
+                if (!map_one(vaddr + i, paddr + i, flags, cache, mib2))
+                    return false;
+            return true;
         }
 
-        uint64_t realflags = Present;
-
-        if (flags & write)
-            realflags |= Write;
-        if (flags & user)
-            realflags |= UserSuper;
-        if (!(flags & exec))
-            realflags |= NoExec;
-        if (flags & lpages)
-            realflags |= LargerPages;
-
-        realflags |= cache2flags(cache, flags & lpages);
-
-        pml_entry->setaddr(paddr >> 12);
-        pml_entry->setflags(realflags, true);
-        return true;
+        return map_one(vaddr, paddr, flags, cache, psize);
     }
 
-    bool pagemap::remap(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t flags, caching cache)
-    {
-        uint64_t paddr = this->virt2phys(vaddr_old);
-        this->unmap(vaddr_old);
-        this->map(vaddr_new, paddr, flags, cache);
-
-        return true;
-    }
-
-    bool pagemap::unmap(uintptr_t vaddr, bool largepages)
+    bool pagemap::unmap(uintptr_t vaddr, size_t flags)
     {
         lockit(this->lock);
 
-        PDEntry *pml_entry = virt2pte(reinterpret_cast<PTable*>(this->toplvl), vaddr, false, largepages ? this->large_page_size : this->page_size);
-        if (pml_entry == nullptr)
+        auto unmap_one = [this](uintptr_t vaddr, size_t psize)
         {
-            log::errorln("VMM: Could not get page map entry!");
-            return false;
+            pdentry *pml_entry = this->virt2pde(vaddr, false, psize);
+            if (pml_entry == nullptr)
+            {
+                log::errorln("VMM: Could not get page map entry!");
+                return false;
+            }
+
+            pml_entry->value = 0;
+            cpu::invlpg(vaddr);
+            return true;
+        };
+
+        auto psize = this->get_psize(flags);
+        if (psize == this->llpage_size && gib1_pages == false)
+        {
+            flags &= ~llpage;
+            flags |= lpage;
+            for (size_t i = 0; i < gib1; i += mib2)
+                if (!unmap_one(vaddr + i, mib2))
+                    return false;
+            return true;
         }
 
-        pml_entry->value = 0;
-        cpu::invlpg(vaddr);
-        return true;
+        return unmap_one(vaddr, psize);
     }
 
     bool pagemap::setflags(uintptr_t vaddr, size_t flags, caching cache)
     {
         lockit(this->lock);
 
-        PDEntry *pml_entry = virt2pte(reinterpret_cast<PTable*>(this->toplvl), vaddr, true, (flags & lpages) ? this->large_page_size : this->page_size);
+        auto psize = this->get_psize(flags);
+        pdentry *pml_entry = this->virt2pde(vaddr, true, psize);
         if (pml_entry == nullptr)
         {
             log::errorln("VMM: Could not get page map entry!");
             return false;
         }
 
-        uint64_t realflags = Present;
-
-        if (flags & write)
-            realflags |= Write;
-        if (flags & user)
-            realflags |= UserSuper;
-        if (!(flags & exec))
-            realflags |= NoExec;
-        if (flags & lpages)
-            realflags |= LargerPages;
-
-        realflags |= cache2flags(cache, flags & lpages);
-
+        auto realflags = flags2arch(flags) | cache2flags(cache, psize != this->page_size);
         auto addr = pml_entry->getaddr();
 
         pml_entry->value = 0;
@@ -200,69 +222,34 @@ namespace vmm
 
     void pagemap::load()
     {
-        write_cr(3, fromhh(reinterpret_cast<uint64_t>(reinterpret_cast<PTable*>(this->toplvl))));
+        lockit(this->lock);
+        write_cr(3, fromhh(reinterpret_cast<uint64_t>(this->toplvl)));
     }
 
     void pagemap::save()
     {
-        this->toplvl = reinterpret_cast<PTable*>(tohh(read_cr(3)));
+        lockit(this->lock);
+        this->toplvl = reinterpret_cast<ptable*>(tohh(read_cr(3)));
     }
 
-    pagemap::pagemap(bool user)
+    pagemap::pagemap() : toplvl(new ptable)
     {
-        uint32_t a, b, c, d;
-        static bool gib1_pages = cpu::id(0x80000001, 0, a, b, c, d) && ((d & 1 << 26) == 1 << 26);
-
-        this->large_page_size = gib1_pages ? psize_1gb : psize_2mb;
-        this->page_size = psize_4kb;
-        this->toplvl = new PTable;
-
-        if (user == false)
-        {
-            for (size_t i = 256; i < 512; i++)
-                get_next_lvl(reinterpret_cast<PTable*>(this->toplvl), i, true);
-
-            for (uint64_t i = 0; i < 0x100000000; i += this->large_page_size)
-            {
-                this->map(i, i, rwx | lpages);
-                this->map(tohh(i), i, rwx | lpages);
-            }
-
-            for (size_t i = 0; i < memmap_request.response->entry_count; i++)
-            {
-                limine_memmap_entry *mmap = memmap_request.response->entries[i];
-
-                uint64_t base = align_down(mmap->base, this->page_size);
-                uint64_t top = align_up(mmap->base + mmap->length, this->page_size);
-                if (top < 0x100000000)
-                    continue;
-
-                caching cache = default_caching;
-                if (mmap->type == LIMINE_MEMMAP_FRAMEBUFFER)
-                    cache = WRITE_COMBINING;
-
-                for (uint64_t t = base; t < top; t += this->page_size)
-                {
-                    if (t < 0x100000000)
-                        continue;
-                    this->map(t, t, rwx, cache);
-                    this->map(tohh(t), t, rwx, cache);
-                }
-            }
-
-            for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += this->page_size)
-            {
-                uint64_t paddr = kernel_address_request.response->physical_base + i;
-                uint64_t vaddr = kernel_address_request.response->virtual_base + i;
-                this->map(vaddr, paddr, rwx);
-            }
-        }
-        else
-            for (size_t i = 256; i < 512; i++)
-                reinterpret_cast<PTable*>(this->toplvl)->entries[i] = reinterpret_cast<PTable*>(kernel_pagemap->toplvl)->entries[i];
+        this->llpage_size = gib1;
+        this->lpage_size = mib2;
+        this->page_size = kib4;
 
         if (kernel_pagemap == nullptr)
+        {
+            for (size_t i = 256; i < 512; i++)
+                get_next_lvl(this->toplvl, i, true);
+
             cpu::enablePAT();
+        }
+        else
+        {
+            for (size_t i = 256; i < 512; i++)
+                this->toplvl->entries[i] = kernel_pagemap->toplvl->entries[i];
+        }
     }
 
     bool is_canonical(uintptr_t addr)
@@ -271,5 +258,27 @@ namespace vmm
             return (addr <= 0x00FFFFFFFFFFFFFFULL) || (addr >= 0xFF00000000000000ULL);
         else
             return (addr <= 0x00007FFFFFFFFFFFULL) || (addr >= 0xFFFF800000000000ULL);
+    }
+
+    uintptr_t flags2arch(size_t flags)
+    {
+        uintptr_t ret = Present;
+        if (flags & write)
+            ret |= Write;
+        if (flags & user)
+            ret |= UserSuper;
+        if (!(flags & exec))
+            ret |= NoExec;
+        if (flags & global)
+            ret |= Global;
+        if (islpage(flags))
+            ret |= LargerPages;
+        return ret;
+    }
+
+    void arch_init()
+    {
+        uint32_t a, b, c, d;
+        gib1_pages = cpu::id(0x80000001, 0, a, b, c, d) && ((d & 1 << 26) == 1 << 26);
     }
 } // namespace vmm

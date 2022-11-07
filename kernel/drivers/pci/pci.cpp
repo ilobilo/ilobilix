@@ -280,7 +280,7 @@ namespace pci
 
     void init()
     {
-        log::infoln("Initialising PCI...");
+        log::infoln("PCI: Initialising...");
 
         if (pci::arch_init)
             pci::arch_init();

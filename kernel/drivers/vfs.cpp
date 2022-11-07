@@ -149,8 +149,6 @@ namespace vfs
         if (path == "/" || path.empty())
             return { current_node, current_node, "/" };
 
-        auto segments = path.segments();
-
         auto get_parent = [&current_node]
         {
             auto parent = current_node->parent;
@@ -163,6 +161,7 @@ namespace vfs
             return parent;
         };
 
+        auto segments = path.segments();
         for (auto [segment, type, is_last, _] : segments)
         {
             if (type != CWK_NORMAL)
@@ -263,9 +262,9 @@ namespace vfs
         fs->mounted_on = node;
 
         if (source.empty())
-            log::infoln("VFS: Mounted filesystem \"{}\" on \"{}\"", fs_name, target);
+            log::infoln("VFS: Mounted filesystem '{}' on '{}'", fs_name, target);
         else
-            log::infoln("VFS: Mounted  \"{}\" on \"{}\" with filesystem \"{}\"", source, target, fs_name);
+            log::infoln("VFS: Mounted  '{}' on '{}' with filesystem '{}'", source, target, fs_name);
 
         return true;
     }

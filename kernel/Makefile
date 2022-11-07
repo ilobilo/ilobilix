@@ -28,7 +28,7 @@ override CCFLAGS :=               \
 	-fno-pic -fno-pie             \
 	-Werror -Wall -Wextra         \
 	-Wno-error=\#warnings         \
-	-Wno-format-invalid-specifier \
+	-Wno-builtin-macro-redefined  \
 	-Ofast -pipe -MMD             \
 	-DLVL5_PAGING=$(LVL5_PAGING)
 
@@ -97,15 +97,15 @@ $(KERNEL): $(OBJ)
 
 %.c.o: %.c
 	@printf "CC\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(CFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
+	$(CC) $(CFLAGS) -D__FILE__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.cpp.o: %.cpp
 	@printf "CXX\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CXX) $(CXXFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
+	$(CXX) $(CXXFLAGS) -D__FILE__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 %.S.o: %.S
 	@printf "AS\t%s\n" $(<:$(ROOTDIR)/%=%)
-	$(CC) $(ASFLAGS) -D__FILENAME__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
+	$(CC) $(ASFLAGS) -D__FILE__='"$(<:$(ROOTDIR)/%=%)"' -c $< -o $@
 
 .PHONY: clean
 clean:

@@ -38,24 +38,24 @@ namespace elf
     {
         struct module_t
         {
-            uint64_t addr;
-            uint64_t size;
+            uintptr_t addr;
+            size_t size;
             bool has_drivers;
         };
         extern std::unordered_map<std::string_view, driver_t*> drivers;
-        extern std::vector<module_t*> modules;
+        extern std::vector<module_t> modules;
 
-        std::optional<std::vector<driver_t*>> load(uint64_t address, uint64_t size);
-        static inline std::optional<std::vector<driver_t*>> load(auto address, uint64_t size)
+        std::optional<std::vector<driver_t*>> load(uintptr_t address, size_t size);
+        static inline std::optional<std::vector<driver_t*>> load(auto address, size_t size)
         {
-            return load(reinterpret_cast<uint64_t>(address), size);
+            return load(reinterpret_cast<uintptr_t>(address), size);
         }
 
         std::optional<std::vector<driver_t*>> load(vfs::node_t *node);
         std::optional<std::vector<driver_t*>> load(vfs::node_t *parent, path_view_t directory);
 
         bool run(driver_t *drv, bool deps = true);
-        bool run_all(bool deps = true);
+        void run_all(bool deps = true);
 
         void destroy(driver_t *entry);
         void destroy_all();

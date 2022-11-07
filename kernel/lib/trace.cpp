@@ -15,14 +15,14 @@ namespace trace
         if (frame == nullptr)
             return;
 
-        auto print_name = [&prefix](uint64_t ip)
+        auto print_name = [&prefix](uintptr_t ip)
         {
             auto [entry, offset] = elf::syms::lookup(ip, STT_FUNC);
             if (entry != elf::syms::empty_sym)
                 log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, entry.name, offset);
         };
 
-        log::println("Stacktrace:");
+        log::println("{} Stacktrace:", prefix);
         if (fip != 0)
             print_name(fip);
 

@@ -21,6 +21,22 @@ extern "C"
         return 0;
     }
 
+    int fputws(const wchar_t *str, FILE *stream)
+    {
+        if (stream == stderr)
+            log::prints(log::error_prefix);
+
+        // TODO: ???
+        while (*str)
+        {
+            const char *cstr = reinterpret_cast<const char*>(str++);
+            for (size_t i = 0; i < sizeof(wchar_t) && *cstr; i++, cstr++)
+                log::printc(*cstr);
+        }
+
+        return 0;
+    }
+
     int fprintf(FILE *stream, const char *format, ...)
     {
         va_list args;

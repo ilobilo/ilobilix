@@ -35,7 +35,7 @@ extern "C"
         panic(cstring);
     }
 
-    [[noreturn]] void abort()
+    [[noreturn]] void abort() noexcept
     {
         panic("abort()");
     }

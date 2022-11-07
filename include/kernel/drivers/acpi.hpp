@@ -218,7 +218,8 @@ namespace acpi
         GenericAddressStructure X_GPE1Block;
     };
 
-    struct [[gnu::packed]] DMARHeader {
+    struct [[gnu::packed]] DMARHeader
+    {
         SDTHeader header;
         uint8_t host_address_width;
         uint8_t flags;

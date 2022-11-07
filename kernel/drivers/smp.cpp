@@ -58,7 +58,7 @@ namespace smp
 
     void init()
     {
-        log::infoln("Initialising SMP...");
+        log::infoln("SMP: Initialising...");
 
         auto cpu_entry = [](limine_smp_info *cpu)
         {

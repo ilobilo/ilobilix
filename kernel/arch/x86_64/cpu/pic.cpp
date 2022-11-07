@@ -47,7 +47,7 @@ namespace pic
 
     void init()
     {
-        log::infoln("Initialising PIC...");
+        log::infoln("PIC: Initialising...");
 
         auto a1 = io::in<uint8_t>(0x21);
         auto a2 = io::in<uint8_t>(0xA1);

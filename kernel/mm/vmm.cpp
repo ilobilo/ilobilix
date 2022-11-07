@@ -12,12 +12,51 @@ namespace vmm
 
     void init()
     {
-        log::infoln("Initialising VMM...");
+        log::infoln("VMM: Initialising...");
 
         if (vmm::arch_init)
             vmm::arch_init();
 
         kernel_pagemap = new pagemap();
+
+        auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
+        for (size_t i = 0; i < gib1 * 4; i += psize)
+        {
+            assert(kernel_pagemap->map(i, i, rwx | flags));
+            assert(kernel_pagemap->map(tohh(i), i, rw | flags));
+        }
+
+        for (size_t i = 0; i < memmap_request.response->entry_count; i++)
+        {
+            limine_memmap_entry *mmap = memmap_request.response->entries[i];
+
+            uint64_t base = align_down(mmap->base, kernel_pagemap->page_size);
+            uint64_t top = align_up(mmap->base + mmap->length, kernel_pagemap->page_size);
+            if (top < gib1 * 4)
+                continue;
+
+            caching cache = default_caching;
+            if (mmap->type == LIMINE_MEMMAP_FRAMEBUFFER)
+                cache = framebuffer;
+
+            for (uint64_t t = base; t < top; t += kernel_pagemap->page_size)
+            {
+                if (t < gib1 * 4)
+                    continue;
+
+                assert(kernel_pagemap->map(t, t, rwx, cache));
+                assert(kernel_pagemap->map(tohh(t), t, rw, cache));
+            }
+        }
+
+        // TODO: Correct perms
+        for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += kernel_pagemap->page_size)
+        {
+            uint64_t paddr = kernel_address_request.response->physical_base + i;
+            uint64_t vaddr = kernel_address_request.response->virtual_base + i;
+            assert(kernel_pagemap->map(vaddr, paddr, rwx));
+        }
+
         kernel_pagemap->load();
     }
 } // namespace vmm

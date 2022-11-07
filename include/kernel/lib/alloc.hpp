@@ -12,10 +12,10 @@ namespace heap
     struct slab_t
     {
         lock_t lock;
-        uint64_t firstfree;
-        uint64_t size;
+        uintptr_t firstfree;
+        size_t size;
 
-        void init(uint64_t size);
+        void init(size_t size);
         void *alloc();
         void free(void *ptr);
     };

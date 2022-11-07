@@ -34,6 +34,8 @@ void kernel_thread()
     term::late_init();
 
     elf::module::init();
+    elf::module::load(nullptr, "/lib/modules/");
+    elf::module::run_all();
 
     proc::dequeue();
     arch::halt();

@@ -13,7 +13,7 @@
 #include <string.h>
 
 const char *cmdline = nullptr;
-uint64_t hhdm_offset = 0;
+uintptr_t hhdm_offset = 0;
 bool lvl5 = LVL5_PAGING != 0;
 bool uefi = true;
 
