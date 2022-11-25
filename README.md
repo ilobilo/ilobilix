@@ -37,7 +37,7 @@ Follow these steps to build and run the os:
 
 Note: optionally you can add run_bios or run_efi to ninja arguments\
 Note: on aarch64, only run_efi is supported\
-Note: without specifying firmware type, if architecture supports bios mode, it will default to run_bios, else run_efi
+Note: if firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_efi
 
 ### Options
 |  Project options  | Default Value |               Description                |
