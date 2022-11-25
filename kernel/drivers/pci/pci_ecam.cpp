@@ -4,7 +4,6 @@
 #include <lib/panic.hpp>
 #include <lib/mmio.hpp>
 
-// #include <lib/mmio.hpp>
 // #include <mm/vmm.hpp>
 
 namespace pci::ecam

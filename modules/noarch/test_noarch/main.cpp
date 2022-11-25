@@ -1,13 +1,11 @@
 // Copyright (C) 2022  ilobilo
 
-#include <modules/module.hpp>
 #include <lib/log.hpp>
-
-#include <fmt/printf.h>
+#include <module.hpp>
 
 // Always put DRIVER() before init and fini functions
 // __init and __fini are currently just extern "C"
-// test1 depends on test2. multiple dependencies are supported
+// test3 depends on test1. multiple dependencies are supported
 DRIVER(test3, init, fini, "test1")
 
 __init bool init()
@@ -18,7 +16,7 @@ __init bool init()
 
 __fini bool fini()
 {
-    fmt::print("Goodbye from first {} test driver!\n", "noarch");
+    log::println("{}", fmt::format("Goodbye from first {} test driver!\n", "noarch"));
     return true;
 }
 
@@ -32,6 +30,6 @@ __init bool init4()
 
 __fini bool fini4()
 {
-    fmt::printf("Goodbye from second %s test driver!\n", "noarch");
+    log::println("Goodbye from second %s test driver!\n", "noarch");
     return true;
 }

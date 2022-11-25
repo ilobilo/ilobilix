@@ -56,31 +56,35 @@ namespace cpu
 
     void invlpg(uint64_t addr);
 
-    void clac();
     void stac();
+    void clac();
 
     void enableSSE();
+    void enablePAT();
+
     void enableSMEP();
     void enableSMAP();
     void enableUMIP();
-    void enablePAT();
 
-    template<typename Func, typename ...Args, typename Ret = std::invoke_result_t<Func, Args...>>
-        requires (!std::same_as<Ret, void>)
-    static Ret mem_as_user(Func &&func, Args &&...args)
+    struct as_user_t
     {
-        stac();
-        auto ret = func(args...);
-        clac();
-        return ret;
+        as_user_t() { stac(); }
+        ~as_user_t() { clac(); }
+    };
+
+    template<typename Func, typename ...Args>
+        requires (!std::same_as<std::invoke_result_t<Func, Args...>, void>)
+    static decltype(auto) as_user(Func &&func, Args &&...args)
+    {
+        as_user_t guard;
+        return func(std::forward<Args>(args)...);
     }
 
     template<typename Func, typename ...Args>
-    static void mem_as_user(Func &&func, Args &&...args)
+    static void as_user(Func &&func, Args &&...args)
     {
-        stac();
-        func(args...);
-        clac();
+        as_user_t guard;
+        func(std::forward<Args>(args)...);
     }
 
     #define read_gs(offset)                                                    \

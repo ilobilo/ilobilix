@@ -8,11 +8,26 @@ namespace arch
     [[noreturn]] void halt(bool ints)
     {
         if (ints == true)
+        {
             while (true)
                 asm volatile ("wfi");
+        }
         else
+        {
             while (true)
                 asm volatile ("msr daifclr, #0b1111; wfi");
+            __builtin_unreachable();
+        }
+    }
+
+    void halt_others()
+    {
+        // TODO
+    }
+
+    void dump_regs(cpu::registers_t *regs, const char *prefix)
+    {
+        // TODO
     }
 
     void wfi()

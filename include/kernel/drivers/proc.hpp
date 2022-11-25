@@ -3,6 +3,7 @@
 #pragma once
 
 #include <drivers/vfs.hpp>
+#include <drivers/elf.hpp>
 #include <cpu/cpu.hpp>
 #include <mm/vmm.hpp>
 
@@ -59,6 +60,8 @@ namespace proc
 
         process(process *old_proc) : process(old_proc->name, old_proc) { }
 
+        ~process();
+
         tid_t alloc_tid();
     };
 
@@ -95,8 +98,11 @@ namespace proc
         uintptr_t el0_base;
         #endif
 
-        thread(process *parent, uintptr_t pc, uintptr_t arg, bool user);
-        thread(process *parent, auto pc, auto arg, bool user) : thread(parent, uintptr_t(pc), uintptr_t(arg), user) { }
+        thread(process *parent, uintptr_t pc, uintptr_t arg);
+        thread(process *parent, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
+
+        thread(process *parent, auto pc, auto arg) : thread(parent, uintptr_t(pc), uintptr_t(arg)) { }
+        thread(process *parent, auto pc, auto arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : thread(parent, uintptr_t(pc), uintptr_t(arg), argv, envp, auxv) { }
 
         ~thread();
     };
@@ -133,6 +139,9 @@ namespace proc
 
     void exit(thread *thread);
     void exit();
+
+    void pexit(process *proc);
+    void pexit();
 
     std::pair<pid_t, tid_t> pid();
 

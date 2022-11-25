@@ -1,1 +1,0 @@
-This is a dummy file used to tell Makefile to put this module on initrd instead of directly linking it to the kernel

@@ -5,9 +5,14 @@
 #include <optional>
 #include <cstdint>
 
+namespace cpu { struct registers_t; }
 namespace arch
 {
     [[noreturn]] void halt(bool ints = true);
+    void halt_others();
+
+    void dump_regs(cpu::registers_t *regs, const char *prefix);
+
     void wfi();
     void pause();
 

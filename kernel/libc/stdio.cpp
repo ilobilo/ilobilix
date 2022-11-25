@@ -1,58 +1,48 @@
 // Copyright (C) 2022  ilobilo
 
+#include <printf/printf.h>
 #include <lib/log.hpp>
 #include <cstdlib>
 #include <cstdio>
 
 extern "C"
 {
+    static lock_t lock;
+
     int fputc(char c, FILE *stream)
     {
         log::printc(c);
         return c;
+        // return log::print("{}", c);
     }
 
     int fputs(const char *str, FILE *stream)
     {
-        if (stream == stderr)
-            log::prints(log::error_prefix);
-
-        log::prints(str);
-        return 0;
+        return log::print("{}{}", (stream == stderr) ? log::error_prefix : "", str);
     }
 
-    int fputws(const wchar_t *str, FILE *stream)
-    {
-        if (stream == stderr)
-            log::prints(log::error_prefix);
-
-        // TODO: ???
-        while (*str)
-        {
-            const char *cstr = reinterpret_cast<const char*>(str++);
-            for (size_t i = 0; i < sizeof(wchar_t) && *cstr; i++, cstr++)
-                log::printc(*cstr);
-        }
-
-        return 0;
-    }
+    int fputws(const wchar_t *str, FILE *stream) { return -1; }
 
     int fprintf(FILE *stream, const char *format, ...)
     {
-        va_list args;
-        va_start(args, format);
+        lockit(lock);
+
+        va_list arg;
+        va_start(arg, format);
 
         if (stream == stderr)
             log::prints(log::error_prefix);
 
-        int ret = vprintf(format, args);
+        int ret = vprintf(format, arg);
 
-        va_end(args);
+        va_end(arg);
         return ret;
     }
 
     size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
     {
+        lockit(lock);
+
         if (stream == stderr)
             log::prints(log::error_prefix);
 
@@ -63,10 +53,59 @@ extern "C"
         return nmemb;
     }
 
-    int vasprintf(char **str, const char *format, va_list args)
+    int vprintf(const char *format, va_list arg)
+    {
+        lockit(lock);
+        return vprintf_(format, arg);
+    }
+
+    int printf(const char *format, ...)
+    {
+        va_list arg;
+        va_start(arg, format);
+
+        int ret = vprintf(format, arg);
+
+        va_end(arg);
+        return ret;
+    }
+
+    int vsprintf(char *str, const char *format, va_list arg)
+    {
+        return vsprintf_(str, format, arg);
+    }
+
+    int sprintf(char *str, const char *format, ...)
+    {
+        va_list arg;
+        va_start(arg, format);
+
+        int ret = vsprintf(str, format, arg);
+
+        va_end(arg);
+        return ret;
+    }
+
+    int vsnprintf(char *str, size_t count, const char *format, va_list arg)
+    {
+        return vsnprintf_(str, count, format, arg);
+    }
+
+    int snprintf(char *str, size_t count, const char *format, ...)
+    {
+        va_list arg;
+        va_start(arg, format);
+
+        int ret = vsnprintf(str, count, format, arg);
+
+        va_end(arg);
+        return ret;
+    }
+
+    int vasprintf(char **str, const char *format, va_list arg)
     {
         va_list tmpa;
-        va_copy(tmpa, args);
+        va_copy(tmpa, arg);
 
         int ret = vsnprintf(NULL, 0, format, tmpa);
 
@@ -78,18 +117,18 @@ extern "C"
         if (*str == nullptr)
             return -1;
 
-        ret = vsprintf(*str, format, args);
+        ret = vsprintf(*str, format, arg);
         return ret;
     }
 
     int asprintf(char **str, const char *format, ...)
     {
-        va_list args;
-        va_start(args, format);
+        va_list arg;
+        va_start(arg, format);
 
-        int ret = vasprintf(str, format, args);
+        int ret = vasprintf(str, format, arg);
 
-        va_end(args);
+        va_end(arg);
         return ret;
     }
 } // extern "C"

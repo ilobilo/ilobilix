@@ -1,8 +1,5 @@
 // Copyright (C) 2022  ilobilo
 
-#define PRINTF_ALIAS_STANDARD_FUNCTION_NAMES_HARD 1
-#include <printf/printf.h>
-
 #include <cpp/term.hpp>
 #include <lib/misc.hpp>
 #include <lib/lock.hpp>

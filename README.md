@@ -9,48 +9,71 @@ Second attempt at making an OS
 ## Building And Running
 
 Make sure you have following programs installed:
-* Clang
+* meson
+* ninja
+* clang/clang++
 * lld
 * llvm
-* Make
-* Xorriso
-* Wget
-* Tar
-* Qemu x86-64
-* Qemu aarch64 (For aarch64 build)
+* xorriso
+* tar
+* qemu-system-x86_64
+* qemu-system-aarch64
 
-If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install them with this command:\
-``sudo apt install clang lld llvm make xorriso wget tar qemu-system-x86 qemu-system-arm``
+Note: currently only llvm, clang and lld are supported
+
+If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install most of them with this command:\
+``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``\
+For meson and ninja, first make sure you have python installed and then run:\
+``sudo python -m pip install meson ninja``
 
 Follow these steps to build and run the os:
 1. Clone this repo with:\
 ``git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/ilobilix``
 
 2. Go to the root directory of the cloned repo and run:\
-``make uefi -j$(nproc --all)`` To run in UEFI mode\
-``make bios -j$(nproc --all)`` To run in BIOS mode\
-``ARCH=aarch64 make -j$(nproc --all)`` To build and run aarch64 kernel
+``meson setup builddir --cross-file cross-files/meson-clang-(x86_64/aarch64).cross-file -Doptions=values``\
+3. Build and run the kernel:\
+``ninja -C builddir``
 
-Note: If you are on Termux, add ``VNC=1`` to arguments and connect to ``127.0.0.1:5901`` with VNC viewer
+Note: optionally you can add run_bios or run_efi to ninja arguments\
+Note: on aarch64, only run_efi is supported\
+Note: without specifying firmware type, if architecture supports bios mode, it will default to run_bios, else run_efi
 
 ### Options
-* ``MODUBSAN=1``: Enable UBSAN in modules
-* ``NOUBSAN=1``: Disable UBSAN
-* ``NOCLEAN=1``: Don't clean the source after compiling
-* ``NORUN=1``: Don't run the kernel, just compile
-* ``NOACCEL=1``: Disable accelerators
-* ``DEBUG=1``: Disable accelerators and enable QEMU logging
-* ``GDB=1``: If DEBUG is on, enable QEMU GDB
-* ``VNC=1``: Disable QEMU GUI window and run VNC on port 5901
-* ``ARCH=x86_64/aarch64``: Architecure to build the kernel for
-* ``CFLAGS``, ``CXXFLAGS``, ``ASFLAGS``, ``LDFLAGS``: Arguments for CC, CXX, AS and LD respectively (applies for both kernel and modules)
-* ``KERNEL_CFLAGS``, ``KERNEL_CXXFLAGS``, ``KERNEL_ASFLAGS``, ``KERNEL_LDFLAGS``: Same as previous, but for kernel
-* ``MODULE_CFLAGS``, ``MODULE_CXXFLAGS``, ``MODULE_ASFLAGS``, ``MODULE_LDFLAGS``: Same as previous, but for modules
+|  Project options  | Default Value |               Description                |
+| ----------------- | ------------- | ---------------------------------------- |
+| kernel_cflags     |               | Extra c compiler arguments for kernel    |
+| kernel_cxxflags   |               | Extra cpp compiler arguments for kernel  |
+| modules_cflags    |               | Extra c compiler arguments for modules   |
+| modules_cxxflags  |               | Extra cpp compiler arguments for modules |
+| kernel_ubsan      | true          | Enable ubsanitizer in kernel             |
+| modules_ubsan     | false         | Enable ubsanitizer in modules            |
+| 5lvl_paging       | false         | Enable 5 level paging in kernel          |
+| qemu_debug        | false         | Enable interrupt logging in qemu and starts monitor on telnet:127.0.0.1:12345. Enables 'noaccel' |
+| gdb               | false         | Add -s -S to qemu. Enables 'qemu_debug'  |
+| noaccel           | false         | Disable qemu accelerators                |
+| vnc               | false         | Start qemu VNC server on 127.0.0.1:5901  |
+<!-- ```
+Project options    Default Value                 Description
+-----------------  -------------  ----------------------------------------
+kernel_cflags                     Extra c compiler arguments for kernel
+kernel_cxxflags                   Extra cpp compiler arguments for kernel
+modules_cflags                    Extra c compiler arguments for modules
+modules_cxxflags                  Extra cpp compiler arguments for modules
+kernel_ubsan       true           Enable ubsanitizer in kernel
+modules_ubsan      false          Enable ubsanitizer in modules
+5lvl_paging        false          Enable 5 level paging in kernel
+qemu_debug         false          Enable interrupt logging in qemu and starts monitor on telnet:127.0.0.1:12345. Enables 'noaccel'
+gdb                false          Add -s -S to qemu. Enables 'qemu_debug'
+noaccel            false          Disable qemu accelerators
+vnc                false          Start VNC server on 127.0.0.1:5901
+``` -->
 
 ## Discord server
 https://discord.gg/fM5GK3RpS7
 
-## Resources/projects used and notable OSes:
+## Resources/projects:
+* meson: https://mesonbuild.com/
 * osdev wiki: https://wiki.osdev.org
 * osdev discord server: https://discord.gg/RnCtsqD
 * managarm: https://github.com/managarm/managarm
@@ -74,7 +97,7 @@ https://discord.gg/fM5GK3RpS7
 * unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
 * terminal: https://github.com/V01D-NULL/limine-terminal-port
 * ilar: https://github.com/ilobilo/ilar
-* ovmf: https://efi.akeo.ie/
+* ovmf: https://github.com/ilobilo/ovmf-binaries
 
 ## TODO
 
@@ -164,10 +187,11 @@ https://discord.gg/fM5GK3RpS7
 - [ ] NTFS -->
 
 ### Userspace
-- [ ] System calls
+- [x] System calls
+- [ ] MMAP
 - [ ] FDs
-- [ ] ELF
-- [ ] Userspace
+- [x] ELF
+- [x] Userspace
 - [ ] Libc
 - [ ] Bash
 - [ ] DOOM

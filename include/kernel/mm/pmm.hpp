@@ -25,5 +25,10 @@ namespace pmm
 
     void free(void *ptr, size_t count = 1);
 
+    inline void free(auto ptr, size_t count = 1)
+    {
+        return free(reinterpret_cast<void*>(ptr), count);
+    }
+
     void init();
 } // namespace pmm

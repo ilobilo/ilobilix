@@ -14,20 +14,11 @@ namespace proc
         return nullptr;
     }
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv)
     {
-        auto proc = thread->parent;
+        // auto proc = thread->parent;
 
-        if (thread->user == true)
-        {
-            uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-            uintptr_t vstack = proc->usr_stack_top - default_stack_size;
-
-            proc->pagemap->map_range(vstack, pstack, default_stack_size, vmm::rwu);
-            proc->usr_stack_top = vstack - pmm::page_size;
-
-            thread->stacks.push_back(pstack);
-        }
+        if (thread->user == true) { }
         else
         {
             uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
@@ -40,7 +31,7 @@ namespace proc
     void thread_delete(thread *thread)
     {
         for (const auto &stack : thread->stacks)
-            pmm::free(reinterpret_cast<void*>(stack), default_stack_size / pmm::page_size);
+            pmm::free(stack, default_stack_size / pmm::page_size);
     }
 
     void save_thread(thread *thread, cpu::registers_t *regs)

@@ -3,12 +3,15 @@
 #pragma once
 
 #ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
+extern "C" {
+// Required for syscall debugging
+enum errno_t : uintptr_t
+#else
 enum errno_t
+#endif
 {
-    ENOERR = 0,
     EPERM = 1,
     ENOENT = 2,
     ESRCH = 3,
@@ -144,6 +147,8 @@ enum errno_t
     ERFKILL = 132,
     EHWPOISON = 133
 };
+
+#define no_error ((errno_t)0)
 
 errno_t *__errno_location();
 #define errno (*__errno_location())

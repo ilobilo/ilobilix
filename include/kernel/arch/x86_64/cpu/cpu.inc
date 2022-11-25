@@ -1,5 +1,7 @@
 # Copyright (C) 2022  ilobilo
 
+.intel_syntax noprefix
+
 .macro pushall
     push rax
     push rbx

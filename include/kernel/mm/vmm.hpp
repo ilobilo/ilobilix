@@ -46,7 +46,7 @@ namespace vmm
 
     extern uintptr_t pa_mask;
 
-    struct pdentry
+    struct ptentry
     {
         uintptr_t value = 0;
 
@@ -112,7 +112,7 @@ namespace vmm
             return { this->page_size, 0 };
         }
 
-        pdentry *virt2pde(uint64_t vaddr, bool allocate, uint64_t psize);
+        ptentry *virt2pte(uint64_t vaddr, bool allocate, uint64_t psize);
 
         uintptr_t virt2phys(uintptr_t vaddr, size_t flags = 0);
 

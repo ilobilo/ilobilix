@@ -1,6 +1,6 @@
 // Copyright (C) 2022  ilobilo
 
-#include <arch/x86_64/drivers/timers/tsc.hpp>
+// #include <arch/x86_64/drivers/timers/tsc.hpp>
 #include <arch/x86_64/cpu/lapic.hpp>
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
@@ -29,9 +29,10 @@ namespace smp
         cpu::set_kernel_gs(cpu->extra_argument);
         cpu::set_gs(cpu->extra_argument);
 
-        this_cpu()->lapic.init();
+        cpuptr->lapic.init();
     }
 
+    extern "C" void syscall_entry();
     void cpu_init(limine_smp_info *cpu)
     {
         auto cpuptr = reinterpret_cast<cpu_t*>(cpu->extra_argument);
@@ -60,27 +61,32 @@ namespace smp
             write_cr(4, read_cr(4) | (1 << 18));
 
             assert(cpu::id(0x0D, 0, a, b, c, d), "CPUID failure");
-            this_cpu()->fpu_storage_size = c;
-            this_cpu()->fpu_restore = cpu::xrstor;
+            cpuptr->fpu_storage_size = c;
+            cpuptr->fpu_restore = cpu::xrstor;
 
             assert(cpu::id(0x0D, 1, a, b, c, d), "CPUID failure");
             if (a & 0x00000001)
-                this_cpu()->fpu_save = cpu::xsaveopt;
+                cpuptr->fpu_save = cpu::xsaveopt;
             else
-                this_cpu()->fpu_save = cpu::xsave;
+                cpuptr->fpu_save = cpu::xsave;
         }
         else if (d & 0x01000000)
         {
             write_cr(4, read_cr(4) | (1 << 9));
 
-            this_cpu()->fpu_storage_size = 512;
-            this_cpu()->fpu_save = cpu::fxsave;
-            this_cpu()->fpu_restore = cpu::fxrstor;
+            cpuptr->fpu_storage_size = 512;
+            cpuptr->fpu_save = cpu::fxsave;
+            cpuptr->fpu_restore = cpu::fxrstor;
         }
         else PANIC("No known SIMD save mechanism");
 
+        cpu::wrmsr(0xC0000080, cpu::rdmsr(0xC0000080) | (1 << 0)); // IA32_EFER enable syscall
+        cpu::wrmsr(0xC0000081, ((uint64_t(gdt::GDT_DATA) | 0x03) << 48) | (uint64_t(gdt::GDT_CODE) << 32)); // IA32_STAR ss and cs
+        cpu::wrmsr(0xC0000082, reinterpret_cast<uint64_t>(syscall_entry)); // IA32_LSTAR handler
+        cpu::wrmsr(0xC0000084, ~uint32_t(2)); // IA32_FMASK rflags mask
+
         if (cpuptr->arch_id != bsp_id)
-            this_cpu()->lapic.init();
+            cpuptr->lapic.init();
 
         // timers::tsc::init();
     }

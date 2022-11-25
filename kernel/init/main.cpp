@@ -65,6 +65,6 @@ void main()
     kernel_proc = new proc::process("Kernel Process");
     kernel_proc->pagemap = vmm::kernel_pagemap;
 
-    proc::enqueue(new proc::thread(kernel_proc, &kernel_thread, 0, false));
+    proc::enqueue(new proc::thread(kernel_proc, &kernel_thread, 0));
     proc::init(true);
 }

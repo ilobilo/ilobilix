@@ -2,14 +2,18 @@
 
 #pragma once
 
-#include <modules/module.hpp>
 #include <drivers/vfs.hpp>
+#include <module.hpp>
+#include <mm/vmm.hpp>
+#include <lib/elf.h>
+
 #include <unordered_map>
 #include <string_view>
-#include <lib/elf.h>
+#include <optional>
 #include <cstdint>
 #include <vector>
 #include <tuple>
+#include <span>
 
 namespace elf
 {
@@ -29,7 +33,7 @@ namespace elf
         extern std::vector<symentry_t> symbol_table;
 
         symentry_t lookup(std::string_view name);
-        std::tuple<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type);
+        std::pair<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type);
 
         void init();
     } // namespace syms
@@ -65,5 +69,14 @@ namespace elf
 
     namespace exec
     {
+        struct auxval
+        {
+            uint64_t at_entry;
+            uint64_t at_phdr;
+            uint64_t at_phent;
+            uint64_t at_phnum;
+        };
+        std::optional<std::pair<auxval, std::string>> load(vfs::resource *res, vmm::pagemap *pagemap, uintptr_t base);
+        uintptr_t prepare_stack(uintptr_t _stack, uintptr_t sp, std::span<std::string_view> argv, std::span<std::string_view> envp, auxval auxv);
     } // namespace exec
 } // namespace elf

@@ -1,9 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
-#include <modules/module.hpp>
 #include <lib/log.hpp>
-
-#include <fmt/printf.h>
+#include <module.hpp>
 
 // Always put DRIVER() before init and fini functions
 // __init and __fini are currently just extern "C"
@@ -18,7 +16,7 @@ __init bool init()
 
 __fini bool fini()
 {
-    fmt::print("Goodbye from first {} test driver!\n", "x86_64");
+    log::println("{}", fmt::format("Goodbye from first {} test driver!\n", "x86_64"));
     return true;
 }
 
@@ -32,6 +30,6 @@ __init bool init2()
 
 __fini bool fini2()
 {
-    fmt::printf("Goodbye from second %s test driver!\n", "x86_64");
+    log::println("Goodbye from second %s test driver!\n", "x86_64");
     return true;
 }

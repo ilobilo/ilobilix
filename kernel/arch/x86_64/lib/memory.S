@@ -1,5 +1,7 @@
 # Copyright (C) 2022  ilobilo
 
+.intel_syntax noprefix
+
 memcpy:
     mov rcx, rdx
     mov rax, rdi

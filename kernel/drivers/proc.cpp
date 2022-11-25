@@ -2,9 +2,10 @@
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <mm/pmm.hpp>
 #include <deque>
 
-#include <lib/log.hpp>
+// #include <lib/log.hpp>
 
 namespace proc
 {
@@ -12,7 +13,7 @@ namespace proc
     static lock_t pid_lock;
     static lock_t lock;
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg);
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
     void thread_delete(thread *thread);
 
     void save_thread(thread *thread, cpu::registers_t *regs);
@@ -125,6 +126,34 @@ namespace proc
         exit(this_thread());
     }
 
+    void pexit(process *proc)
+    {
+        lock.lock();
+        // log::infoln("Scheduler: Exiting process {}", proc->pid);
+
+        auto status = status::killed;
+        size_t running_on = 0;
+
+        for (const auto &thread : proc->threads)
+        {
+            if (thread->status == status::running)
+            {
+                status = status::running;
+                running_on = thread->running_on;
+            }
+            thread->status = status::killed;
+        }
+
+        lock.unlock();
+        if (status == status::running)
+            wake_up(running_on);
+    }
+
+    void pexit()
+    {
+        pexit(this_thread()->parent);
+    }
+
     process::process(std::string_view name) : name(name), pagemap(nullptr), next_tid(1), parent(nullptr), usr_stack_top(def_usr_stack_top)
     {
         this->root = vfs::get_root();
@@ -169,17 +198,72 @@ namespace proc
         return this->next_tid++;
     }
 
-    thread::thread(process *parent, uintptr_t pc, uintptr_t arg, bool user) : self(this), error(ENOERR), parent(parent), user(user), in_queue(false), status(status::dequeued)
+    process::~process()
+    {
+        vmm::kernel_pagemap->load();
+
+        auto pid1 = processes[1];
+        for (const auto &proc : this->children)
+        {
+            proc->parent = pid1;
+            pid1->children.push_back(proc);
+            this->children.erase(&proc);
+        }
+
+        for (const auto &thread : this->threads)
+            exit(thread);
+
+        processes.erase(this->pid);
+    }
+
+    static std::pair<uintptr_t, uintptr_t> map_user_stack(thread *thread, process *parent)
+    {
+        uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
+        uintptr_t vustack = parent->usr_stack_top - default_stack_size;
+
+        parent->pagemap->map_range(vustack, pstack, default_stack_size, vmm::rwu);
+        parent->usr_stack_top = vustack - pmm::page_size;
+
+        thread->stacks.push_back(pstack);
+        return { tohh(pstack) + default_stack_size, vustack + default_stack_size };
+    }
+
+    thread::thread(process *parent, uintptr_t pc, uintptr_t arg) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
 
-        thread_finalise(this, pc, arg);
+        if (this->user == true)
+            this->stack = map_user_stack(this, parent).second;
+
+        thread_finalise(this, pc, arg, std::span<std::string_view>(), std::span<std::string_view>(), elf::exec::auxval { });
+        parent->threads.push_back(this);
+    }
+
+    thread::thread(process *parent, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : self(this), error(no_error), parent(parent), user(true), in_queue(false), status(status::dequeued)
+    {
+        this->running_on = size_t(-1);
+        this->tid = this->parent->alloc_tid();
+
+        if (this->user == true)
+        {
+            auto [vstack, vustack] = map_user_stack(this, parent);
+            this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
+        }
+
+        thread_finalise(this, pc, arg, argv, envp, auxv);
+        parent->threads.push_back(this);
     }
 
     thread::~thread()
     {
-        // TODO: Delete proc too if this is the last thread
+        auto it = std::find(this->parent->threads.begin(), this->parent->threads.end(), this);
+        if (it != this->parent->threads.end())
+            this->parent->threads.erase(it);
+
+        if (this->parent->threads.empty())
+            delete this->parent;
+
         thread_delete(this);
     }
 
@@ -200,7 +284,6 @@ namespace proc
             new_thread->status = status::running;
 
         auto current_thread = this_thread();
-        // if (current_thread != nullptr)
         if (current_thread != nullptr && current_thread->status != status::killed)
         {
             if (current_thread->status == status::running && current_thread != this_cpu()->idle)
@@ -214,8 +297,8 @@ namespace proc
         reschedule(fixed_timeslice);
         load_thread(new_thread, regs);
 
-        if (current_thread != nullptr && current_thread->status == status::killed)
-            thread_delete(current_thread);
+        if (current_thread != nullptr && current_thread->status == status::killed && current_thread != this_cpu()->idle)
+            delete current_thread;
     }
 
     std::pair<pid_t, tid_t> pid()
@@ -238,7 +321,8 @@ namespace proc
         proc->name += std::to_string(this_cpu()->id);
         proc->pagemap = vmm::kernel_pagemap;
 
-        auto idle_thread = new thread(proc, (void (*)())([]() { arch::halt(); }), 0, false);
+        auto idle_thread = new thread(proc, (void (*)())([]() { arch::halt(); }), 0);
+        idle_thread->status = status::ready;
         this_cpu()->idle = idle_thread;
 
         if (start == true)

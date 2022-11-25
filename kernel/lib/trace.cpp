@@ -22,11 +22,12 @@ namespace trace
                 log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, entry.name, offset);
         };
 
-        log::println("{} Stacktrace:", prefix);
+        log::println("{}Stacktrace:", prefix);
         if (fip != 0)
             print_name(fip);
 
-        while (true)
+        // while (true)
+        for (size_t i = 0; i < 10; i++)
         {
             if (frame == nullptr || frame->ip == 0)
                 break;

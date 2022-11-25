@@ -52,8 +52,6 @@ namespace smp
 
             cpu_bsp_init(smp_info);
         }
-
-        initialised = true;
     }
 
     void init()
@@ -90,5 +88,7 @@ namespace smp
             }
             else cpu_entry(smp_info);
         }
+
+        initialised = true;
     }
 } // namespace smp

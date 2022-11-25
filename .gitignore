@@ -1,5 +1,10 @@
+initrd/lib/modules/*.ko
 .vscode
+
 serial.txt
 log.txt
-initrd.img.gz
-**/*.ko
+
+build*
+subprojects/*
+!subprojects/*.wrap
+!subprojects/packagefiles

@@ -137,7 +137,4 @@ struct irq_lock
 #define CONCAT_IMPL(x, y) x ## y
 #define CONCAT(x, y) CONCAT_IMPL(x, y)
 
-#define lockit_unique(name) frg::unique_lock<typeof(name)> CONCAT(lock##_, __COUNTER__)(name)
-#define lockit_shared(name) frg::shared_lock<typeof(name)> CONCAT(lock##_, __COUNTER__)(name)
-
-#define lockit(name) lockit_unique(name)
+#define lockit(name) frg::unique_lock<decltype(name)> CONCAT(lock ## _, __COUNTER__)(name)
