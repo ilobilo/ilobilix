@@ -100,14 +100,16 @@ namespace cpu
         asm volatile ("invlpg (%0)" :: "r"(addr));
     }
 
-    void clac()
-    {
-        asm volatile ("clac" ::: "cc");
-    }
-
     void stac()
     {
-        asm volatile ("stac" ::: "cc");
+        if (read_cr(4) & (1 << 21))
+            asm volatile ("stac" ::: "cc");
+    }
+
+    void clac()
+    {
+        if (read_cr(4) & (1 << 21))
+            asm volatile ("clac" ::: "cc");
     }
 
     void enableSSE()
@@ -116,15 +118,18 @@ namespace cpu
         write_cr(4, read_cr(4) | (3 << 9));
     }
 
+    void enablePAT()
+    {
+        wrmsr(0x277, custom_pat);
+    }
+
     void enableSMEP()
     {
         uint32_t a = 0, b = 0, c = 0, d = 0;
         if (cpu::id(7, 0, a, b, c, d))
         {
             if (b & CPUID_SMEP)
-            {
                 write_cr(4, read_cr(4) | (1 << 20));
-            }
         }
     }
 
@@ -147,14 +152,7 @@ namespace cpu
         if (cpu::id(7, 0, a, b, c, d))
         {
             if (c & CPUID_UMIP)
-            {
                 write_cr(4, read_cr(4) | (1 << 11));
-            }
         }
-    }
-
-    void enablePAT()
-    {
-        wrmsr(0x277, custom_pat);
     }
 } // namespace cpu

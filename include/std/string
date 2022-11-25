@@ -2,6 +2,8 @@
 
 #pragma once
 
+#pragma GCC system_header
+
 #include <initializer_list>
 #include <type_traits>
 #include <string_view>

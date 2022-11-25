@@ -9,14 +9,12 @@
 #include <init/kernel.hpp>
 #include <lib/panic.hpp>
 #include <lib/trace.hpp>
-#include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <cstdio>
 
 namespace idt
 {
     int_handler_t handlers[256];
-    static lock_t lock;
     uint8_t panic_int;
     IDTEntry idt[256];
     IDTPtr idtr;
@@ -107,22 +105,7 @@ namespace idt
 
     static void exception_handler(cpu::registers_t *regs)
     {
-        lockit(lock);
-
-        log::println();
-        log::errorln("Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
-        log::errorln("Address: 0x{:X}", regs->rip);
-
-        if (regs->int_no == 8 || (regs->int_no >= 10 && regs->int_no <= 14) || regs->int_no == 17 || regs->int_no == 21 || regs->int_no == 29 || regs->int_no == 30)
-            log::errorln("Error code: 0b{:b}", regs->error_code);
-
-        if (smp::initialised == true)
-            this_cpu()->lapic.ipi(panic_int | (0b11 << 18), 0);
-
-        trace::print(regs->rbp, regs->rip, log::error_prefix);
-
-        log::errorln("System halted!\n");
-        arch::halt(false);
+        panic(regs, regs->rbp, regs->rip, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
     }
 
     static void eoi(uint64_t int_no)
@@ -167,10 +150,7 @@ namespace idt
         handlers[INT_SYSCALL].reserve();
 
         auto [handler, vector] = allocate_handler(IRQ(16));
-        handler.set([](cpu::registers_t *)
-        {
-            arch::halt(false);
-        });
+        handler.set([](cpu::registers_t *) { arch::halt(false); });
         panic_int = vector;
     }
 } // namespace idt

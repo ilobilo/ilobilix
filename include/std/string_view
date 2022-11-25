@@ -2,6 +2,8 @@
 
 #pragma once
 
+#pragma GCC system_header
+
 #include <char_traits>
 #include <functional>
 #include <algorithm>

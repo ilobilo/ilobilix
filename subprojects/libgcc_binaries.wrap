@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/mintsuki/libgcc-binaries
+revision = trunk
+depth = 1
+patch_filename = libgcc_binaries.tar
+
+[provide]
+libgcc_binaries = libgcc_binaries_dep

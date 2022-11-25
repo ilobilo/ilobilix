@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/V01D-NULL/limine-terminal-port
+revision = master
+depth = 1
+patch_filename = limine_terminal.tar
+
+[provide]
+limine_terminal = limine_terminal_dep

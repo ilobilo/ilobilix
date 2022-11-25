@@ -16,9 +16,9 @@ namespace proc
         return reinterpret_cast<thread*>(read_gs(8));
     }
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv)
     {
-        auto proc = thread->parent;
+        // auto proc = thread->parent;
 
         thread->regs.rflags = 0x202;
         thread->regs.rip = pc;
@@ -38,14 +38,7 @@ namespace proc
             thread->regs.cs = gdt::GDT_USER_CODE | 0x03;
             thread->regs.ss = gdt::GDT_USER_DATA | 0x03;
 
-            uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-            uintptr_t vstack = proc->usr_stack_top - default_stack_size;
-
-            proc->pagemap->map_range(vstack, pstack, default_stack_size, vmm::rwu);
-            proc->usr_stack_top = vstack - pmm::page_size;
-
-            thread->regs.rsp = thread->stack = vstack + default_stack_size;
-            thread->stacks.push_back(pstack);
+            thread->regs.rsp = thread->stack;
 
             this_cpu()->fpu_restore(thread->fpu_storage);
 
@@ -70,7 +63,7 @@ namespace proc
         pmm::free(fromhh(thread->fpu_storage), thread->fpu_storage_pages);
 
         for (const auto &stack : thread->stacks)
-            pmm::free(reinterpret_cast<void*>(stack), default_stack_size / pmm::page_size);
+            pmm::free(stack, default_stack_size / pmm::page_size);
     }
 
     void save_thread(thread *thread, cpu::registers_t *regs)
@@ -90,7 +83,6 @@ namespace proc
         this_cpu()->fpu_restore(thread->fpu_storage);
         thread->parent->pagemap->load();
 
-        // After swapgs, user and kernel gs will switch places
         cpu::set_gs(reinterpret_cast<uint64_t>(thread));
         cpu::set_kernel_gs(thread->gs_base);
         cpu::set_fs(thread->fs_base);

@@ -4,15 +4,20 @@
 #include <arch/x86_64/drivers/timers/pit.hpp>
 #include <arch/x86_64/drivers/timers/rtc.hpp>
 
+#include <arch/x86_64/syscall/syscall.hpp>
+
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/cpu/pic.hpp>
+#include <arch/x86_64/cpu/cpu.hpp>
 #include <arch/x86_64/lib/io.hpp>
 
 #include <drivers/pci/pci.hpp>
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
+
+#include <lib/log.hpp>
 
 namespace arch
 {
@@ -24,6 +29,27 @@ namespace arch
         else
             while (true)
                 asm volatile ("cli; hlt");
+    }
+
+    void halt_others()
+    {
+        if (smp::initialised == true)
+            this_cpu()->lapic.ipi(idt::panic_int | (0b10 << 18), 0);
+    }
+
+    void dump_regs(cpu::registers_t *regs, const char *prefix)
+    {
+        log::println("{}CPU context:", prefix);
+        log::println("{}  R15: 0x{:016X}, R14: 0x{:016X}", prefix, regs->r15, regs->r14);
+        log::println("{}  R13: 0x{:016X}, R12: 0x{:016X}", prefix, regs->r13, regs->r12);
+        log::println("{}  R11: 0x{:016X}, R10: 0x{:016X}", prefix, regs->r11, regs->r10);
+        log::println("{}  R9:  0x{:016X}, R8:  0x{:016X}", prefix, regs->r9, regs->r8);
+        log::println("{}  RBP: 0x{:016X}, RDI: 0x{:016X}", prefix, regs->rbp, regs->rdi);
+        log::println("{}  RSI: 0x{:016X}, RDX: 0x{:016X}", prefix, regs->rsi, regs->rdx);
+        log::println("{}  RCX: 0x{:016X}, RBX: 0x{:016X}", prefix, regs->rcx, regs->rbx);
+        log::println("{0}  RAX: 0x{1:016X}, ERR: 0x{2:X} : 0b{2:b}", prefix, regs->rax, regs->error_code);
+        log::println("{}  RSP: 0x{:016X}, RIP: 0x{:016X}", prefix, regs->rsp, regs->rip);
+        log::println("{}  RFLAGS: 0x{:X}, CS: 0x{:X}, SS: 0x{:X}", prefix, regs->rflags, regs->cs, regs->ss);
     }
 
     void wfi()
@@ -82,6 +108,8 @@ namespace arch
 
         timers::pit::init();
         timers::hpet::init();
+
+        syscall::init();
 
         smp::init();
     }

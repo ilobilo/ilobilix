@@ -32,7 +32,7 @@ namespace vmm
         WT = (2 << 2),
     };
 
-    struct [[gnu::packed]] ttbr { pdentry entries[512]; };
+    struct [[gnu::packed]] ttbr { ptentry entries[512]; };
     struct ptable
     {
         ttbr *ttbr0;
@@ -104,7 +104,7 @@ namespace vmm
         __builtin_unreachable();
     }
 
-    pdentry *pagemap::virt2pde(uint64_t vaddr, bool allocate, uint64_t psize)
+    ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize)
     {
         size_t pml5_entry = (vaddr & (0xFULL << 48)) >> 48;
         size_t pml4_entry = (vaddr & (0x1FFULL << 39)) >> 39;
@@ -144,7 +144,7 @@ namespace vmm
     {
         lockit(this->lock);
 
-        pdentry *pml_entry = this->virt2pde(vaddr, false, this->get_psize(flags));
+        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr || !pml_entry->getflags(Valid))
             return 0;
 
@@ -155,7 +155,7 @@ namespace vmm
     {
         lockit(this->lock);
 
-        pdentry *pml_entry = this->virt2pde(vaddr, true, this->get_psize(flags));
+        ptentry *pml_entry = this->virt2pte(vaddr, true, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
             log::errorln("VMM: Could not get page map entry!");
@@ -174,7 +174,7 @@ namespace vmm
     {
         lockit(this->lock);
 
-        pdentry *pml_entry = this->virt2pde(vaddr, false, this->get_psize(flags));
+        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
             log::errorln("VMM: Could not get page map entry!");
@@ -190,7 +190,7 @@ namespace vmm
     {
         lockit(this->lock);
 
-        pdentry *pml_entry = this->virt2pde(vaddr, false, this->get_psize(flags));
+        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
             log::errorln("VMM: Could not get page map entry!");

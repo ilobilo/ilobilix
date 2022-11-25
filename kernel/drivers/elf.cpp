@@ -28,7 +28,7 @@ namespace elf
             return empty_sym;
         }
 
-        std::tuple<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type)
+        std::pair<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type)
         {
             auto prev = symbol_table.front();
             for (const auto &entry : symbol_table)
@@ -169,8 +169,7 @@ namespace elf
             if (loadaddr == base_addr - size)
                 base_addr = loadaddr;
 
-            void *ptr = reinterpret_cast<void*>(vmm::kernel_pagemap->virt2phys(loadaddr));
-            pmm::free(ptr, size / pmm::page_size);
+            pmm::free(vmm::kernel_pagemap->virt2phys(loadaddr), size / pmm::page_size);
             vmm::kernel_pagemap->unmap_range(loadaddr, size);
 
             // free(loadaddr);
@@ -517,5 +516,124 @@ namespace elf
 
     namespace exec
     {
+        std::optional<std::pair<auxval, std::string>> load(vfs::resource *res, vmm::pagemap *pagemap, uintptr_t base)
+        {
+            auxval auxv { 0, 0, 0, 0 };
+            std::string ld_path;
+
+            Elf64_Ehdr header;
+            if (res->read(&header, 0, sizeof(Elf64_Ehdr)) != sizeof(Elf64_Ehdr))
+                return std::nullopt;
+
+            if (memcmp(header.e_ident, ELFMAG, 4))
+                return std::nullopt;
+
+            if (header.e_ident[EI_CLASS] != ELFCLASS64 || header.e_ident[EI_DATA] != ELFDATA2LSB || header.e_ident[EI_OSABI] != ELFOSABI_SYSV || header.e_machine != EM_X86_64)
+                return std::nullopt;
+
+            for (size_t i = 0; i < header.e_phnum; i++)
+            {
+                Elf64_Phdr phdr;
+                if (res->read(&phdr, header.e_phoff + i * header.e_phentsize, sizeof(phdr)) != sizeof(phdr))
+                    return std::nullopt;
+
+                switch (phdr.p_type)
+                {
+                    case PT_LOAD:
+                    {
+                        size_t flags = vmm::read | vmm::user;
+                        if (phdr.p_flags & PF_W)
+                            flags |= vmm::write;
+                        if (phdr.p_flags & PF_X)
+                            flags |= vmm::exec;
+
+                        size_t misalign = phdr.p_vaddr & (pmm::page_size - 1);
+                        size_t pages = div_roundup(phdr.p_memsz + misalign, pmm::page_size);
+
+                        auto paddr = pmm::alloc<uintptr_t>(pages);
+                        if (!pagemap->map_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags))
+                        {
+                            pmm::free(paddr, pages);
+                            return std::nullopt;
+                        }
+
+                        if (res->read(reinterpret_cast<void*>(tohh(paddr + misalign)), phdr.p_offset, phdr.p_filesz) != ssize_t(phdr.p_filesz))
+                            return std::nullopt;
+
+                        break;
+                    }
+                    case PT_PHDR:
+                        auxv.at_phdr = phdr.p_vaddr + base;
+                        break;
+                    case PT_INTERP:
+                    {
+                        auto deleter = [](char *ptr) { free(ptr); };
+                        std::unique_ptr<char[], decltype(deleter)> ptr(malloc<char*>(phdr.p_filesz + 1), deleter);
+
+                        if (res->read(ptr.get(), phdr.p_offset, phdr.p_filesz) != ssize_t(phdr.p_filesz))
+                            return std::nullopt;
+                        ld_path = ptr.get();
+                        break;
+                    }
+                }
+            }
+
+            auxv.at_entry = header.e_entry + base;
+            auxv.at_phent = header.e_phentsize;
+            auxv.at_phnum = header.e_phnum;
+
+            return std::make_pair(auxv, ld_path);
+        }
+
+        uintptr_t prepare_stack(uintptr_t _stack, uintptr_t sp, std::span<std::string_view> argv, std::span<std::string_view> envp, auxval auxv)
+        {
+            auto top = reinterpret_cast<uintptr_t*>(_stack);
+            auto stack = top;
+
+            for (auto &env : envp)
+            {
+                stack = stack - env.length() - 1;
+                memcpy(stack, env.data(), env.length());
+            }
+
+            for (auto &arg : argv)
+            {
+                stack = stack - arg.length() - 1;
+                memcpy(stack, arg.data(), arg.length());
+            }
+
+            stack = reinterpret_cast<uintptr_t*>(align_down(reinterpret_cast<uintptr_t>(stack), 16));
+            if ((argv.size() + envp.size() + 1) & 1)
+                stack--;
+
+            *(--stack) = 0; *(--stack) = 0;
+            stack -= 2; stack[0] = AT_ENTRY, stack[1] = auxv.at_entry;
+            stack -= 2; stack[0] = AT_PHDR,  stack[1] = auxv.at_phdr;
+            stack -= 2; stack[0] = AT_PHENT, stack[1] = auxv.at_phent;
+            stack -= 2; stack[0] = AT_PHNUM, stack[1] = auxv.at_phnum;
+
+            uint64_t old_sp = sp;
+
+            *(--stack) = 0;
+            stack -= envp.size();
+            for (size_t i = 0; auto &env : envp)
+            {
+                old_sp -= env.length() + 1;
+                stack[i] = old_sp;
+                i++;
+            }
+
+            *(--stack) = 0;
+            stack -= argv.size();
+            for (size_t i = 0; auto &arg : argv)
+            {
+                old_sp -= arg.length() + 1;
+                stack[i] = old_sp;
+                i++;
+            }
+
+            *(--stack) = argv.size();
+            return sp - (top - stack);
+        }
     } // namespace exec
 } // namespace elf

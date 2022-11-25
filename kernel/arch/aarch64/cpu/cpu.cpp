@@ -30,26 +30,26 @@ namespace cpu
 
     static inline constexpr uint64_t tlbi(uint16_t asid, uintptr_t address)
     {
-	    return (uint64_t(asid) << 48) | (address >> 12);
+        return (uint64_t(asid) << 48) | (address >> 12);
     }
 
     void invlpg(uintptr_t address)
     {
         asm volatile (
             "dsb st; \n\t"
-			"tlbi vale1, %0;\n\t"
-			"dsb sy; isb"
+            "tlbi vale1, %0;\n\t"
+            "dsb sy; isb"
             :: "r"(tlbi(0, address))
-			: "memory");
+            : "memory");
     }
 
     void invlpg(uint16_t asid, uintptr_t address)
     {
         asm volatile (
             "dsb st; \n\t"
-			"tlbi vae1, %0;\n\t"
-			"dsb sy; isb"
+            "tlbi vae1, %0;\n\t"
+            "dsb sy; isb"
             :: "r"(tlbi(asid, address))
-			: "memory");
+            : "memory");
     }
 } // namespace cpu

@@ -26,7 +26,7 @@ namespace vmm
         PATlg = (1 << 12), // PAT lvl2+
         NoExec = (1UL << 63)
     };
-    struct [[gnu::packed]] ptable { pdentry entries[512]; };
+    struct [[gnu::packed]] ptable { ptentry entries[512]; };
     static bool gib1_pages = false;
 
     uintptr_t pa_mask = 0x000FFFFFFFFFF000;
@@ -50,7 +50,7 @@ namespace vmm
         return tohh(ret);
     }
 
-    pdentry *pagemap::virt2pde(uint64_t vaddr, bool allocate, uint64_t psize)
+    ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize)
     {
         size_t pml5_entry = (vaddr & (0x1FFULL << 48)) >> 48;
         size_t pml4_entry = (vaddr & (0x1FFULL << 39)) >> 39;
@@ -126,7 +126,7 @@ namespace vmm
     {
         lockit(this->lock);
 
-        pdentry *pml_entry = this->virt2pde(vaddr, false, this->get_psize(flags));
+        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr || !pml_entry->getflags(Present))
             return 0;
 
@@ -139,7 +139,7 @@ namespace vmm
 
         auto map_one = [this](uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache, size_t psize)
         {
-            pdentry *pml_entry = this->virt2pde(vaddr, true, psize);
+            ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
             if (pml_entry == nullptr)
             {
                 log::errorln("VMM: Could not get page map entry!");
@@ -173,7 +173,7 @@ namespace vmm
 
         auto unmap_one = [this](uintptr_t vaddr, size_t psize)
         {
-            pdentry *pml_entry = this->virt2pde(vaddr, false, psize);
+            ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
             if (pml_entry == nullptr)
             {
                 log::errorln("VMM: Could not get page map entry!");
@@ -204,7 +204,7 @@ namespace vmm
         lockit(this->lock);
 
         auto psize = this->get_psize(flags);
-        pdentry *pml_entry = this->virt2pde(vaddr, true, psize);
+        ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
         if (pml_entry == nullptr)
         {
             log::errorln("VMM: Could not get page map entry!");

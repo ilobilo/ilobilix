@@ -42,7 +42,7 @@ SECTIONS
         *(.bss .bss.*)
     } :data
 
-    /DISCARD/ : {
+    /* /DISCARD/ : {
         *(.note .note.*)
-    }
+    } */
 }
