@@ -22,8 +22,8 @@ namespace arch
     std::optional<uint64_t> time_ns();
     uint64_t epoch();
 
-    void shutdown(bool now);
-    void reboot(bool now);
+    [[noreturn]] void shutdown();
+    [[noreturn]] void reboot();
 
     void init();
 } // namespace arch

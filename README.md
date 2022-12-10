@@ -188,8 +188,8 @@ https://discord.gg/fM5GK3RpS7
 
 ### Userspace
 - [x] System calls
-- [ ] MMAP
-- [ ] FDs
+- [x] MMAP
+- [x] FDs
 - [x] ELF
 - [x] Userspace
 - [ ] Libc

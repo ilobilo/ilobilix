@@ -4,12 +4,14 @@
 
 #include <drivers/vfs.hpp>
 #include <drivers/elf.hpp>
+#include <drivers/fd.hpp>
 #include <cpu/cpu.hpp>
 #include <mm/vmm.hpp>
 
 namespace proc
 {
     static constexpr uintptr_t def_usr_stack_top = 0x70000000000;
+    static constexpr uintptr_t def_mmap_anon_base = 0x80000000000;
     static constexpr size_t fixed_timeslice = 6;
 
     enum class status
@@ -37,6 +39,9 @@ namespace proc
         vfs::node_t *root;
         vfs::node_t *cwd;
 
+        lock_t fd_lock;
+        std::unordered_map<size_t, vfs::fd*> fds;
+
         mode_t umask;
 
         gid_t gid;
@@ -51,9 +56,10 @@ namespace proc
         std::vector<thread*> threads;
         std::vector<process*> children;
 
+        uintptr_t mmap_anon_base;
         uintptr_t usr_stack_top;
 
-        process() : name(""), pagemap(nullptr), next_tid(1), parent(nullptr), usr_stack_top(def_usr_stack_top) { }
+        process() : name(""), pagemap(nullptr), next_tid(1), parent(nullptr), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top) { }
 
         process(std::string_view name);
         process(std::string_view name, process *old_proc);
@@ -63,6 +69,18 @@ namespace proc
         ~process();
 
         tid_t alloc_tid();
+
+        bool close_fd(size_t num);
+        size_t fd2num(vfs::fd *fd, size_t old_num, bool specific);
+        size_t res2num(vfs::resource *res, int flags, size_t old_num, bool specific);
+
+        size_t dupfd(size_t old_num, process *new_proc, size_t new_num, int flags, bool specific, bool cloexec);
+        inline size_t dupfd(size_t old_num, size_t new_num, int flags, bool specific, bool cloexec)
+        {
+            return this->dupfd(old_num, this, new_num, flags, specific, cloexec);
+        }
+
+        vfs::fd *num2fd(size_t num);
     };
 
     struct thread
@@ -145,6 +163,7 @@ namespace proc
 
     std::pair<pid_t, tid_t> pid();
 
+    extern bool initialised;
     [[noreturn]] void init(bool start = false);
 } // namespace proc
 

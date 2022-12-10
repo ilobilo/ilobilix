@@ -79,15 +79,14 @@ namespace vmm
         ttbr *ret = nullptr;
 
         if (curr_lvl->entries[entry].getflags(Valid | Table))
-            ret = reinterpret_cast<ttbr*>(curr_lvl->entries[entry].getaddr());
+            ret = reinterpret_cast<ttbr*>(tohh(curr_lvl->entries[entry].getaddr()));
         else if (allocate == true)
         {
-            ret = pmm::alloc<ttbr*>();
-            curr_lvl->entries[entry].setaddr(reinterpret_cast<uint64_t>(ret));
+            ret = new ttbr;
+            curr_lvl->entries[entry].setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
             curr_lvl->entries[entry].setflags(Valid | Table, true);
         }
-        else return nullptr;
-        return tohh(ret);
+        return ret;
     }
 
     static uint64_t cache2flags(caching cache)
@@ -146,7 +145,7 @@ namespace vmm
 
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr || !pml_entry->getflags(Valid))
-            return 0;
+            return invalid_addr;
 
         return pml_entry->getaddr();
     }
@@ -256,6 +255,11 @@ namespace vmm
         if (!islpage(flags))
             ret |= Page;
         return ret;
+    }
+
+    void arch_destroy_pmap(pagemap *pmap)
+    {
+        // TODO
     }
 
     void arch_init()

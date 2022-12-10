@@ -71,7 +71,16 @@ enum modes
 
 enum oflags
 {
-    o_accmode = (03 | 010000000),
+    o_async = 020000,
+    o_direct = 040000,
+    o_largefile = 0100000,
+    o_noatime = 01000000,
+    o_path = 010000000,
+    o_tmpfile = 020000000,
+    o_exec = o_path,
+    o_search = o_path,
+
+    o_accmode = (03 | o_path),
     o_rdonly = 00,
     o_wronly = 01,
     o_rdwr = 02,
@@ -83,19 +92,11 @@ enum oflags
     o_append = 02000,
     o_nonblock = 04000,
     o_dsync = 010000,
-    o_async = 020000,
-    o_direct = 040000,
-    o_directory = 0200000,
-    o_nofollow = 0400000,
-    o_cloexec = 02000000,
     o_sync = 04010000,
     o_rsync = 04010000,
-    o_largefile = 0100000,
-    o_noatime = 01000000,
-    o_tmpfile = 020000000,
-    o_exec = 010000000,
-    o_search = 010000000,
-    o_path = 010000000
+    o_directory = 0200000,
+    o_nofollow = 0400000,
+    o_cloexec = 02000000
 };
 
 enum atflags

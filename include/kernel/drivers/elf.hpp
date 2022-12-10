@@ -27,6 +27,7 @@ namespace elf
             uint8_t type;
 
             constexpr bool operator==(const symentry_t &) const = default;
+            constexpr bool operator<(const symentry_t &rhs) const { return this->addr < rhs.addr; }
         };
         static constexpr symentry_t empty_sym = { "<unknown>", UINTPTR_MAX, 0, STT_NOTYPE };
 

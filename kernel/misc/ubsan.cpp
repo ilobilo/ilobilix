@@ -61,13 +61,12 @@ extern "C"
 
     void __ubsan_handle_type_mismatch_v1(type_mismatch_v1_data *data, uintptr_t ptr)
     {
-        if (ptr == 0) print("use of NULL pointer", data->location);
-
+        if (ptr == 0)
+            print("use of nullptr", data->location);
         else if (ptr & ((1 << data->log_alignment) - 1))
-        {
-            print("use of misaligned pointer", data->location);
-        }
-        else print("no space for object", data->location);
+            print("unaligned access", data->location);
+        else
+            print("no space for object", data->location);
     }
 
     void __ubsan_handle_function_type_mismatch_v1(function_type_mismatch_v1_data *data, uintptr_t ptr, uintptr_t calleeRTTI, uintptr_t fnRTTI)

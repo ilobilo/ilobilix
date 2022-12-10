@@ -66,8 +66,8 @@ namespace arch
     }
 
     // TODO
-    void shutdown(bool now);
-    void reboot(bool now);
+    [[noreturn]] void shutdown();
+    [[noreturn]] void reboot();
 
     void init()
     {

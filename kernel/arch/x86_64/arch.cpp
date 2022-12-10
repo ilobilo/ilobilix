@@ -95,9 +95,33 @@ namespace arch
         return ::epoch(second(), minute(), hour(), day(), month(), year(), century());
     }
 
-    // TODO
-    void shutdown(bool now);
-    void reboot(bool now);
+    [[noreturn]] void shutdown()
+    {
+        acpi::poweroff();
+        halt(false);
+    }
+
+    [[noreturn]] void reboot()
+    {
+        // try acpi reboot twice
+        acpi::reboot();
+        pause();
+        acpi::reboot();
+        pause();
+
+        // ps2 reset
+        uint8_t good = 0b10;
+        while (good & 0b10)
+            good = io::in<uint8_t>(0x64);
+        io::out<uint8_t>(0x64, 0xFE);
+        pause();
+
+        // triple fault
+        idt::invalid.load();
+        asm volatile ("int3");
+
+        halt(false);
+    }
 
     void init()
     {

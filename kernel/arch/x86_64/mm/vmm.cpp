@@ -39,15 +39,14 @@ namespace vmm
         ptable *ret = nullptr;
 
         if (curr_lvl->entries[entry].getflags(Present))
-            ret = reinterpret_cast<ptable*>(curr_lvl->entries[entry].getaddr());
+            ret = reinterpret_cast<ptable*>(tohh(curr_lvl->entries[entry].getaddr()));
         else if (allocate == true)
         {
-            ret = pmm::alloc<ptable*>();
-            curr_lvl->entries[entry].setaddr(reinterpret_cast<uint64_t>(ret));
+            ret = new ptable;
+            curr_lvl->entries[entry].setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
             curr_lvl->entries[entry].setflags(Present | Write | UserSuper, true);
         }
-        else return nullptr;
-        return tohh(ret);
+        return ret;
     }
 
     ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize)
@@ -128,7 +127,7 @@ namespace vmm
 
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr || !pml_entry->getflags(Present))
-            return 0;
+            return invalid_addr;
 
         return pml_entry->getaddr();
     }
@@ -274,6 +273,27 @@ namespace vmm
         if (islpage(flags))
             ret |= LargerPages;
         return ret;
+    }
+
+    static void destroy_level(ptable *pml, size_t start, size_t end, size_t level)
+    {
+        if (level == 0)
+            return;
+
+        for (size_t i = start; i < end; i++)
+        {
+            auto next = get_next_lvl(pml, i, false);
+            if (next == nullptr)
+                continue;
+
+            destroy_level(next, 0, 512, level - 1);
+        }
+        delete pml;
+    }
+
+    void arch_destroy_pmap(pagemap *pmap)
+    {
+        destroy_level(pmap->toplvl, 0, 256, lvl5 ? 5 : 4);
     }
 
     void arch_init()

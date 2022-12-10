@@ -146,22 +146,6 @@ namespace acpi
         lai_acpi_reset();
     }
 
-    #if defined(__x86_64__)
-    static void sci_handler(cpu::registers_t *)
-    {
-        uint16_t event = lai_get_sci_event();
-        if (event & ACPI_POWER_BUTTON)
-        {
-            acpi::poweroff();
-
-            time::msleep(50);
-            io::out<uint16_t>(0xB004, 0x2000);
-            io::out<uint16_t>(0x604, 0x2000);
-            io::out<uint16_t>(0x4004, 0x3400);
-        }
-    }
-    #endif
-
     void enable()
     {
         ec_init();
@@ -174,8 +158,22 @@ namespace acpi
         if(madthdr->legacy_pic() == false && ioapic::initialised)
             ioapic::set(sci_int, sci_int + 0x20, ioapic::deliveryMode::FIXED, ioapic::destMode::PHYSICAL, ioapic::ACTIVE_HIGH_LOW | ioapic::EDGE_LEVEL, smp_request.response->bsp_lapic_id);
 
-        idt::handlers[sci_int + 0x20].set(sci_handler);
+        idt::handlers[sci_int + 0x20].set([](auto)
+        {
+            uint16_t event = lai_get_sci_event();
+            if (event & ACPI_POWER_BUTTON)
+            {
+                acpi::poweroff();
+
+                time::msleep(50);
+                io::out<uint16_t>(0xB004, 0x2000);
+                io::out<uint16_t>(0x604, 0x2000);
+                io::out<uint16_t>(0x4004, 0x3400);
+            }
+        });
         idt::unmask(sci_int);
+        #else
+        lai_enable_acpi(0);
         #endif
     }
 

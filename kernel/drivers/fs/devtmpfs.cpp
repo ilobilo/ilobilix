@@ -5,6 +5,7 @@
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
 #include <mm/pmm.hpp>
+#include <mm/vmm.hpp>
 
 namespace devtmpfs
 {
@@ -17,7 +18,7 @@ namespace devtmpfs
         size_t cap;
         uint8_t *data;
 
-        ssize_t read(void *buffer, off_t offset, size_t count)
+        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
         {
             lockit(this->lock);
 
@@ -29,7 +30,7 @@ namespace devtmpfs
             return real_count;
         }
 
-        ssize_t write(const void *buffer, off_t offset, size_t count)
+        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
         {
             lockit(this->lock);
 
@@ -53,12 +54,29 @@ namespace devtmpfs
             return count;
         }
 
+        void *mmap(size_t fpage, int flags)
+        {
+            lockit(this->lock);
+
+            void *ret = nullptr;
+            if (flags & MAP_SHARED)
+                ret = fromhh(this->data + fpage * pmm::page_size);
+            else
+            {
+                ret = pmm::alloc();
+                memcpy(tohh(ret), this->data + fpage * pmm::page_size, pmm::page_size);
+            }
+
+            return ret;
+        }
+
         resource(devtmpfs *fs, mode_t mode) : vfs::resource(fs)
         {
             if ((mode & s_ifmt) == s_ifreg)
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
+                this->can_mmap = true;
             }
 
             this->stat.st_size = 0;

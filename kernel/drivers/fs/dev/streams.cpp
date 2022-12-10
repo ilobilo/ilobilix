@@ -6,12 +6,12 @@ namespace streams
 {
     struct null : vfs::resource
     {
-        ssize_t read(void *buffer, off_t offset, size_t count)
+        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
         {
             return 0;
         }
 
-        ssize_t write(const void *buffer, off_t offset, size_t count)
+        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
         {
             return count;
         }
@@ -21,13 +21,13 @@ namespace streams
 
     struct full : vfs::resource
     {
-        ssize_t read(void *buffer, off_t offset, size_t count)
+        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
         {
             memset(buffer, 0, count);
             return count;
         }
 
-        ssize_t write(const void *buffer, off_t offset, size_t count)
+        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
         {
             errno = ENOSPC;
             return -1;
@@ -38,13 +38,13 @@ namespace streams
 
     struct zero : vfs::resource
     {
-        ssize_t read(void *buffer, off_t offset, size_t count)
+        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
         {
             memset(buffer, 0, count);
             return count;
         }
 
-        ssize_t write(const void *buffer, off_t offset, size_t count)
+        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
         {
             return count;
         }

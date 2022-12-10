@@ -30,6 +30,6 @@ __init bool init4()
 
 __fini bool fini4()
 {
-    log::println("Goodbye from second %s test driver!\n", "noarch");
+    log::println("Goodbye from second {} test driver!\n", "noarch");
     return true;
 }

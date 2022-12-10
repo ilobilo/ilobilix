@@ -5,11 +5,13 @@
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/cpu/pic.hpp>
 #include <drivers/acpi.hpp>
+#include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
 #include <init/kernel.hpp>
 #include <lib/panic.hpp>
 #include <lib/trace.hpp>
 #include <lib/log.hpp>
+#include <mm/vmm.hpp>
 #include <cstdio>
 
 namespace idt
@@ -18,6 +20,8 @@ namespace idt
     uint8_t panic_int;
     IDTEntry idt[256];
     IDTPtr idtr;
+
+    IDTPtr invalid { 0, 0 };
 
     std::pair<int_handler_t&, uint8_t> allocate_handler(uint8_t hint)
     {
@@ -105,6 +109,9 @@ namespace idt
 
     static void exception_handler(cpu::registers_t *regs)
     {
+        if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1) && vmm::page_fault(read_cr(2)))
+            return;
+
         panic(regs, regs->rbp, regs->rip, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
     }
 

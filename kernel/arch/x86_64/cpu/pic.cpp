@@ -9,14 +9,14 @@ namespace pic
 {
     void eoi(uint64_t int_no)
     {
-        if (int_no >= 40) io::out<uint8_t>(PIC2_COMMAND, PIC_EOI);
+        if (int_no >= 40)
+            io::out<uint8_t>(PIC2_COMMAND, PIC_EOI);
         io::out<uint8_t>(PIC1_COMMAND, PIC_EOI);
     }
 
     void mask(uint8_t irq)
     {
         uint16_t port = 0x21;
-
         if (irq >= 8)
         {
             port = 0xA1;
@@ -29,7 +29,6 @@ namespace pic
     void unmask(uint8_t irq)
     {
         uint16_t port = 0x21;
-
         if (irq >= 8)
         {
             port = 0xA1;

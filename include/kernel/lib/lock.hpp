@@ -4,6 +4,8 @@
 
 #include <frg/mutex.hpp>
 #include <arch/arch.hpp>
+#include <lib/types.hpp>
+#include <cassert>
 #include <atomic>
 
 struct ticket_lock
@@ -131,6 +133,58 @@ struct irq_lock
 
         this->lock();
         return true;
+    }
+};
+
+namespace proc { std::pair<pid_t, tid_t> pid(); }
+struct recursive_lock
+{
+    private:
+    std::optional<std::pair<pid_t, tid_t>> _owner;
+    std::atomic<size_t> _refcount;
+    lock_t _lock;
+
+    public:
+    constexpr recursive_lock() : _owner(std::nullopt), _refcount(0), _lock() { }
+
+    recursive_lock(const recursive_lock &) = delete;
+    recursive_lock &operator=(const recursive_lock &) = delete;
+
+    void lock()
+    {
+        auto pid = proc::pid();
+        frg::unique_lock<lock_t> guard(this->_lock);
+        if (this->_owner != pid)
+        {
+            while (this->_owner.has_value())
+                arch::pause();
+            this->_owner = pid;
+        }
+        this->_refcount++;
+    }
+
+    bool is_locked()
+    {
+        return this->_owner != proc::pid();
+    }
+
+    bool try_lock()
+    {
+        if (this->is_locked())
+            return false;
+
+        this->lock();
+        return true;
+    }
+
+    void unlock()
+    {
+        frg::unique_lock<lock_t> guard(this->_lock);
+        if (this->_owner != proc::pid() || this->_refcount == 0)
+            assert(!"invalid unlock");
+
+        if (this->_refcount-- == 1)
+            this->_owner = std::nullopt;
     }
 };
 
