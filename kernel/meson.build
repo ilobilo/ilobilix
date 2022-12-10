@@ -34,9 +34,11 @@ src = files(
     'drivers/smp.cpp',
     'drivers/term.cpp',
     'drivers/vfs.cpp',
+    'drivers/fd.cpp',
 
     'mm/pmm.cpp',
     'mm/vmm.cpp',
+    'mm/mmap.cpp',
 
     'misc/cxxabi.cpp',
     'misc/ubsan.cpp'

@@ -105,6 +105,8 @@ namespace idt
     extern IDTEntry idt[];
     extern IDTPtr idtr;
 
+    extern IDTPtr invalid;
+
     std::pair<int_handler_t&, uint8_t> allocate_handler(uint8_t hint = IRQ(0));
 
     void mask(uint8_t irq);

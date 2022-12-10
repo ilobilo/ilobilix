@@ -7,7 +7,7 @@
 
 namespace std
 {
-    inline const char *exception::what() const noexcept { return ""; }
+    inline const char *exception::what() const noexcept { return "std::exception"; }
     inline exception::~exception() noexcept { }
 
     class runtime_error : public exception

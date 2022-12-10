@@ -30,6 +30,6 @@ __init bool init2()
 
 __fini bool fini2()
 {
-    log::println("Goodbye from second %s test driver!\n", "x86_64");
+    log::println("Goodbye from second {} test driver!\n", "x86_64");
     return true;
 }

@@ -2,6 +2,7 @@
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <lib/panic.hpp>
 #include <mm/pmm.hpp>
 #include <deque>
 
@@ -154,7 +155,7 @@ namespace proc
         pexit(this_thread()->parent);
     }
 
-    process::process(std::string_view name) : name(name), pagemap(nullptr), next_tid(1), parent(nullptr), usr_stack_top(def_usr_stack_top)
+    process::process(std::string_view name) : name(name), pagemap(nullptr), next_tid(1), parent(nullptr), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top)
     {
         this->root = vfs::get_root();
         this->cwd = vfs::get_root();
@@ -173,7 +174,7 @@ namespace proc
         processes[this->pid] = this;
     }
 
-    process::process(std::string_view name, process *old_proc) : name(name), next_tid(1), parent(old_proc), usr_stack_top(old_proc->usr_stack_top)
+    process::process(std::string_view name, process *old_proc) : name(name), next_tid(1), parent(old_proc), mmap_anon_base(old_proc->mmap_anon_base), usr_stack_top(old_proc->usr_stack_top)
     {
         this->root = old_proc->root;
         this->cwd = old_proc->cwd;
@@ -213,7 +214,10 @@ namespace proc
         for (const auto &thread : this->threads)
             exit(thread);
 
-        processes.erase(this->pid);
+        delete this->pagemap;
+
+        lockit(pid_lock);
+        free_pid(this->pid);
     }
 
     static std::pair<uintptr_t, uintptr_t> map_user_stack(thread *thread, process *parent)
@@ -221,7 +225,9 @@ namespace proc
         uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
         uintptr_t vustack = parent->usr_stack_top - default_stack_size;
 
-        parent->pagemap->map_range(vustack, pstack, default_stack_size, vmm::rwu);
+        if (!parent->pagemap->mmap_range(vustack, pstack, default_stack_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS))
+            PANIC("Could not map user stack!");
+
         parent->usr_stack_top = vustack - pmm::page_size;
 
         thread->stacks.push_back(pstack);
@@ -311,6 +317,7 @@ namespace proc
     // Pid -1 and down are for idle processes
     static std::atomic<pid_t> idle_pids(-1);
 
+    bool initialised = false;
     [[noreturn]] void init(bool start)
     {
         arch_init(scheduler);
@@ -326,7 +333,7 @@ namespace proc
         this_cpu()->idle = idle_thread;
 
         if (start == true)
-            wake_up(0, true);
+            wake_up(0, initialised = true);
 
         arch::halt();
     }

@@ -18,6 +18,7 @@ namespace vfs
 
     #define return_err_func(err, ret...) { errno = err; return ret; }
     struct filesystem;
+    struct handle;
     struct resource
     {
         std::atomic<size_t> refcount;
@@ -25,12 +26,27 @@ namespace vfs
         lock_t lock;
         stat_t stat;
 
-        virtual ssize_t read(void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
-        virtual ssize_t write(const void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
+        bool can_mmap;
 
-        virtual int ioctl(uint64_t request, void *argp) return_err_func(EINVAL, -1)
+        virtual ssize_t read(handle *fd, void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
+        virtual ssize_t write(handle *fd, const void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
 
-        resource(filesystem *fs) : refcount(1), fs(fs), lock() { };
+        inline ssize_t read(void *buffer, off_t offset, size_t count)
+        {
+            return this->read(nullptr, buffer, offset, count);
+        }
+        inline ssize_t write(const void *buffer, off_t offset, size_t count)
+        {
+            return this->write(nullptr, buffer, offset, count);
+        }
+
+        virtual bool unref(handle *fd) { this->refcount--; return true; }
+        inline bool unref() { return this->unref(nullptr); }
+
+        virtual int ioctl(handle *fd, uint64_t request, void *argp) return_err_func(EINVAL, -1)
+        virtual void *mmap(size_t fpage, int flags) return_err_func(EINVAL, (void*)-1)
+
+        resource(filesystem *fs) : refcount(1), fs(fs), lock(), can_mmap(false) { };
         virtual ~resource() = default;
     };
 

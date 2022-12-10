@@ -20,20 +20,34 @@ namespace elf
 
         symentry_t lookup(std::string_view name)
         {
-            for (const auto entry : symbol_table)
-            {
-                if (entry.name == name)
-                    return entry;
-            }
-            return empty_sym;
+            auto i = std::find_if(symbol_table.begin(), symbol_table.end(), [&name](const symentry_t &entry) {
+                return entry.name == name;
+            });
+            return i == symbol_table.end() ? empty_sym : *i;
+
+            // for (const auto entry : symbol_table)
+            // {
+            //     if (entry.name == name)
+            //         return entry;
+            // }
+            // return empty_sym;
         }
 
         std::pair<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type)
         {
+            // auto eqi = std::equal_range(symbol_table.begin(), symbol_table.end(), symentry_t { .addr = addr },
+            //     [](const symentry_t &lhs, const symentry_t &rhs) { return lhs.addr < rhs.addr; });
+
+            // auto i = std::lower_bound(eqi.first, eqi.second, empty_sym,
+            //     [type](const symentry_t &lhs, const symentry_t &rhs) { return lhs.type != type; });
+
+            // if (i != symbol_table.end() && i->addr >= addr && i->type == type)
+            //     return { *(i - 1), addr - (i - 1)->addr };
+
             auto prev = symbol_table.front();
             for (const auto &entry : symbol_table)
             {
-                if (entry.addr >= addr && entry.type == type)
+                if (entry.addr >= addr && prev.type == type)
                     return { prev, entry.addr - prev.addr };
 
                 prev = entry;
@@ -85,15 +99,17 @@ namespace elf
                 });
             }
 
-            for (size_t i = 0; i < entries - 1; i++)
-            {
-                size_t mi = i;
-                for (size_t t = i + 1; t < entries; t++)
-                    if (symbol_table[t].addr < symbol_table[mi].addr)
-                        mi = t;
+            std::sort(symbol_table.begin(), symbol_table.end());
 
-                std::swap(symbol_table[i], symbol_table[mi]);
-            }
+            // for (size_t i = 0; i < entries - 1; i++)
+            // {
+            //     size_t mi = i;
+            //     for (size_t t = i + 1; t < entries; t++)
+            //         if (symbol_table[t].addr < symbol_table[mi].addr)
+            //             mi = t;
+
+            //     std::swap(symbol_table[i], symbol_table[mi]);
+            // }
         }
     } // namespace syms
 
@@ -541,17 +557,17 @@ namespace elf
                 {
                     case PT_LOAD:
                     {
-                        size_t flags = vmm::read | vmm::user;
+                        size_t flags = PROT_READ;
                         if (phdr.p_flags & PF_W)
-                            flags |= vmm::write;
+                            flags |= PROT_WRITE;
                         if (phdr.p_flags & PF_X)
-                            flags |= vmm::exec;
+                            flags |= PROT_EXEC;
 
                         size_t misalign = phdr.p_vaddr & (pmm::page_size - 1);
                         size_t pages = div_roundup(phdr.p_memsz + misalign, pmm::page_size);
 
                         auto paddr = pmm::alloc<uintptr_t>(pages);
-                        if (!pagemap->map_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags))
+                        if (!pagemap->mmap_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags, MAP_ANONYMOUS))
                         {
                             pmm::free(paddr, pages);
                             return std::nullopt;
@@ -567,11 +583,11 @@ namespace elf
                         break;
                     case PT_INTERP:
                     {
-                        auto deleter = [](char *ptr) { free(ptr); };
-                        std::unique_ptr<char[], decltype(deleter)> ptr(malloc<char*>(phdr.p_filesz + 1), deleter);
+                        std::unique_ptr<char[]> ptr(new char[phdr.p_filesz + 1]);
 
                         if (res->read(ptr.get(), phdr.p_offset, phdr.p_filesz) != ssize_t(phdr.p_filesz))
                             return std::nullopt;
+
                         ld_path = ptr.get();
                         break;
                     }

@@ -393,7 +393,7 @@ namespace vfs
         {
             lockit(node->lock);
 
-            node->res->refcount--;
+            node->res->unref();
             delete node;
 
             nparent->children.erase(basename);

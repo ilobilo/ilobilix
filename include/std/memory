@@ -8,6 +8,42 @@
 
 namespace std
 {
+    namespace detail
+    {
+        template<typename Type>
+        struct make_unique_t { using single_object = unique_ptr<Type>; };
+
+        template<typename Type>
+        struct make_unique_t<Type[]> { using array = unique_ptr<Type[]>; };
+
+        template<typename Type, size_t Bound>
+        struct make_unique_t<Type[Bound]> { struct invalid_type { }; };
+
+        template<typename Type>
+        using unique_ptr_t = typename make_unique_t<Type>::single_object;
+
+        template<typename Type>
+        using unique_ptr_array_t = typename make_unique_t<Type>::array;
+
+        template<typename Type>
+        using invalid_make_unique_t = typename make_unique_t<Type>::invalid_type;
+    } // namespace detail
+
+    template<typename Type, typename ...Args>
+    constexpr inline detail::unique_ptr_t<Type> make_unique(Args &&...args)
+    {
+        return unique_ptr<Type>(new Type(forward<Args>(args)...));
+    }
+
+    template<typename Type>
+    constexpr inline detail::unique_ptr_array_t<Type> make_unique(size_t num)
+    {
+        return unique_ptr<Type>(new remove_extent_t<Type>[num]());
+    }
+
+    template<typename Type, typename ...Args>
+    detail::invalid_make_unique_t<Type> make_unique(Args &&...) = delete;
+
     template<typename Type>
     struct allocator
     {
