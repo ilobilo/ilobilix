@@ -1,0 +1,213 @@
+diff -ruN a/config.sub b/config.sub
+--- a/config.sub	2022-08-19 12:09:52.128656687 +0400
++++ b/config.sub	2022-12-12 17:33:42.000000000 +0400
+@@ -1749,7 +1749,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | ilobilix* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff -ruN a/fixincludes/mkfixinc.sh b/fixincludes/mkfixinc.sh
+--- a/fixincludes/mkfixinc.sh	2022-08-19 12:09:52.160657095 +0400
++++ b/fixincludes/mkfixinc.sh	2022-12-12 18:00:45.000000000 +0400
+@@ -20,6 +20,7 @@
+     powerpcle-*-eabisim* | \
+     powerpcle-*-eabi* | \
+     *-*-vxworks7* | \
++    *-ilobilix* | \
+     *-musl* )
+ 	#  IF there is no include fixing,
+ 	#  THEN create a no-op fixer and exit
+diff -ruN a/gcc/config/aarch64/aarch64-ilobilix.h b/gcc/config/aarch64/aarch64-ilobilix.h
+--- a/gcc/config/aarch64/aarch64-ilobilix.h	1970-01-01 04:00:00.000000000 +0400
++++ b/gcc/config/aarch64/aarch64-ilobilix.h	2022-12-13 17:41:16.944394039 +0400
+@@ -0,0 +1,44 @@
++#undef GCC_AARCH64_ILOBILIX
++#define GCC_AARCH64_ILOBILIX 1
++
++#define GNU_USER_DYNAMIC_LINKER "/lib/x86_64-ilobilix/ld.so"
++
++#define ILOBILIX_TARGET_LINK_SPEC  "%{h*}		\
++   %{static:-Bstatic}				\
++   %{shared:-shared}				\
++   %{symbolic:-Bsymbolic}			\
++   %{!static:%{!static-pie:			\
++     %{rdynamic:-export-dynamic}		\
++     %{!shared:-dynamic-linker " GNU_USER_DYNAMIC_LINKER "}}} \
++   %{static-pie:-Bstatic -pie --no-dynamic-linker -z text} \
++   -X						\
++   -EL						\
++   -maarch64ilobilix"
++
++#if TARGET_FIX_ERR_A53_835769_DEFAULT
++#define CA53_ERR_835769_SPEC \
++  " %{!mno-fix-cortex-a53-835769:--fix-cortex-a53-835769}"
++#else
++#define CA53_ERR_835769_SPEC \
++  " %{mfix-cortex-a53-835769:--fix-cortex-a53-835769}"
++#endif
++
++#if TARGET_FIX_ERR_A53_843419_DEFAULT
++#define CA53_ERR_843419_SPEC \
++  " %{!mno-fix-cortex-a53-843419:--fix-cortex-a53-843419}"
++#else
++#define CA53_ERR_843419_SPEC \
++  " %{mfix-cortex-a53-843419:--fix-cortex-a53-843419}"
++#endif
++
++#define LINK_SPEC ILOBILIX_TARGET_LINK_SPEC \
++                  CA53_ERR_835769_SPEC \
++                  CA53_ERR_843419_SPEC
++
++#define GNU_USER_TARGET_MATHFILE_SPEC \
++  "%{Ofast|ffast-math|funsafe-math-optimizations:crtfastmath.o%s}"
++
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC   \
++  GNU_USER_TARGET_MATHFILE_SPEC " " \
++  GNU_USER_TARGET_ENDFILE_SPEC
+diff -ruN a/gcc/config/i386/i386-ilobilix.h b/gcc/config/i386/i386-ilobilix.h
+--- a/gcc/config/i386/i386-ilobilix.h	1970-01-01 04:00:00.000000000 +0400
++++ b/gcc/config/i386/i386-ilobilix.h	2022-12-12 19:47:13.226559158 +0400
+@@ -0,0 +1,10 @@
++#undef GCC_I386_ILOBILIX
++#define GCC_I386_ILOBILIX 1
++
++#define GNU_USER_LINK_EMULATION32 "elf_i386"
++#define GNU_USER_LINK_EMULATION64 "elf_x86_64"
++#define GNU_USER_LINK_EMULATIONX32 "elf32_x86_64"
++
++#define GNU_USER_DYNAMIC_LINKER32 "/lib/i386-ilobilix/ld.so"
++#define GNU_USER_DYNAMIC_LINKER64 "/lib/x86_64-ilobilix/ld.so"
++#define GNU_USER_DYNAMIC_LINKERX32 "/lib/x86_64-ilobilix-x32/ld.so"
+\ No newline at end of file
+diff -ruN a/gcc/config/ilobilix.h b/gcc/config/ilobilix.h
+--- a/gcc/config/ilobilix.h	1970-01-01 04:00:00.000000000 +0400
++++ b/gcc/config/ilobilix.h	2022-12-12 19:47:40.561503773 +0400
+@@ -0,0 +1,21 @@
++#undef TARGET_ILOBILIX
++#define TARGET_ILOBILIX 1
++
++#undef LIB_SPEC
++#define LIB_SPEC "-lc"
++
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "%{!shared:crt0.o%s} crti.o%s %{shared:crtbeginS.o%s;:crtbegin.o%s}"
++
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "%{shared:crtendS.o%s;:crtend.o%s} crtn.o%s"
++
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()        \
++  do {                                  \
++    builtin_define ("__ilobilix__");    \
++    builtin_define ("__unix__");        \
++    builtin_assert ("system=ilobilix"); \
++    builtin_assert ("system=unix");     \
++    builtin_assert ("system=posix");    \
++  } while(0);
+diff -ruN a/gcc/config.gcc b/gcc/config.gcc
+--- a/gcc/config.gcc	2022-08-19 12:09:52.552662114 +0400
++++ b/gcc/config.gcc	2022-12-12 20:49:10.230371279 +0400
+@@ -827,6 +827,12 @@
+ *-*-fuchsia*)
+   native_system_header_dir=/include
+   ;;
++*-*-ilobilix*)
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=provide
++  ;;
+ *-*-linux* | frv-*-*linux* | *-*-kfreebsd*-gnu | *-*-gnu* | *-*-kopensolaris*-gnu | *-*-uclinuxfdpiceabi)
+   extra_options="$extra_options gnu-user.opt"
+   gas=yes
+@@ -1136,6 +1142,13 @@
+ 	tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-netbsd"
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
++aarch64*-*-ilobilix*)
++	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h ilobilix.h glibc-stdint.h"
++	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-ilobilix.h"
++	tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-ilobilix"
++	tm_defines="${tm_defines}  TARGET_DEFAULT_ASYNC_UNWIND_TABLES=1"
++	TM_MULTILIB_CONFIG="lp64"
++	;;
+ aarch64*-*-linux*)
+ 	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h linux.h glibc-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-linux.h"
+@@ -2006,6 +2019,10 @@
+ 		;;
+ 	esac
+ 	;;
++x86_64-*-ilobilix*)
++    tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h gnu-user.h glibc-stdint.h \
++		 i386/x86-64.h i386/gnu-user-common.h i386/gnu-user64.h ilobilix.h i386/i386-ilobilix.h"
++    ;;
+ x86_64-*-linux* | x86_64-*-kfreebsd*-gnu)
+ 	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h gnu-user.h glibc-stdint.h \
+ 		 i386/x86-64.h i386/gnu-user-common.h i386/gnu-user64.h"
+diff -ruN a/libgcc/config.host b/libgcc/config.host
+--- a/libgcc/config.host	2022-08-19 12:09:54.664689148 +0400
++++ b/libgcc/config.host	2022-12-13 17:48:30.995579115 +0400
+@@ -271,6 +271,11 @@
+   tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip t-slibgcc t-slibgcc-fuchsia"
+   extra_parts="crtbegin.o crtend.o"
+   ;;
++*-*-ilobilix*)
++  extra_parts="$extra_parts crti.o crtbegin.o crtbeginS.o crtend.o crtendS.o crtn.o"
++  tmake_file="$tmake_file t-crtstuff-pic"
++  tmake_file="$tmake_file t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver t-libgcc-pic"
++  ;;
+ *-*-linux* | frv-*-*linux* | *-*-kfreebsd*-gnu | *-*-gnu* | *-*-kopensolaris*-gnu | *-*-uclinuxfdpiceabi)
+   tmake_file="$tmake_file t-crtstuff-pic t-libgcc-pic t-eh-dw2-dip t-slibgcc t-slibgcc-gld t-slibgcc-elf-ver t-linux"
+   extra_parts="crtbegin.o crtbeginS.o crtbeginT.o crtend.o crtendS.o"
+@@ -402,6 +407,13 @@
+ 	tmake_file="${tmake_file} ${cpu_type}/t-lse t-slibgcc-libgcc"
+ 	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp"
+ 	;;
++aarch64*-*-ilobilix*)
++	extra_parts="$extra_parts crtfastmath.o"
++	md_unwind_header=aarch64/aarch64-unwind.h
++	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
++	tmake_file="${tmake_file} ${cpu_type}/t-lse t-slibgcc-libgcc"
++	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp t-crtfm"
++	;;
+ aarch64*-*-linux*)
+ 	extra_parts="$extra_parts crtfastmath.o"
+ 	md_unwind_header=aarch64/linux-unwind.h
+@@ -751,6 +763,10 @@
+ 	;;
+ x86_64-*-openbsd*)
+ 	;;
++x86_64-*-ilobilix*)
++	extra_parts="$extra_parts crtprec32.o crtprec64.o crtprec80.o crtfastmath.o"
++	tmake_file="$tmake_file i386/t-crtpc t-crtfm i386/t-crtstuff t-dfprules"
++	;;
+ i[34567]86-*-linux*)
+ 	extra_parts="$extra_parts crtprec32.o crtprec64.o crtprec80.o crtfastmath.o"
+ 	tmake_file="${tmake_file} i386/t-crtpc t-crtfm i386/t-crtstuff t-dfprules"
+diff -ruN a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
+--- a/libstdc++-v3/crossconfig.m4	2022-08-19 12:09:55.420698825 +0400
++++ b/libstdc++-v3/crossconfig.m4	2022-12-12 17:51:21.000000000 +0400
+@@ -183,6 +183,17 @@
+ 	;;
+     esac
+     ;;
++  *-ilobilix*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    AC_DEFINE(_GLIBCXX_USE_DEV_RANDOM)
++    AC_DEFINE(_GLIBCXX_USE_RANDOM_TR1)
++    GCC_CHECK_TLS
++    AC_CHECK_FUNCS(aligned_alloc posix_memalign memalign _aligned_malloc)
++    AC_CHECK_FUNCS(timespec_get)
++    ;;
+   *-linux* | *-uclinux* | *-gnu* | *-kfreebsd*-gnu | *-cygwin* | *-solaris*)
+     GLIBCXX_CHECK_COMPILER_FEATURES
+     GLIBCXX_CHECK_LINKER_FEATURES

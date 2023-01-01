@@ -12,11 +12,17 @@ namespace syscall
         auto [pid, tid] = proc::pid();
 
         this->print(args, this->name);
+
+        errno = no_error;
         auto ret = reinterpret_cast<uintptr_t (*)(uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t)>
             (this->storage)(args[0], args[1], args[2], args[3], args[4], args[5]);
 
-        if (auto val = magic_enum::enum_cast<errno_t>(-ret); val.has_value())
+        auto val = magic_enum::enum_cast<errno_t>(errno);
+        if (intptr_t(ret) < 0 && val.has_value())
+        {
             log::infoln("syscall: [{}:{}] {} -> {}", pid, tid, this->name, val.value());
+            ret = -intptr_t(val.value());
+        }
         else
             log::infoln("syscall: [{}:{}] {} -> {}", pid, tid, this->name, ret);
         return ret;

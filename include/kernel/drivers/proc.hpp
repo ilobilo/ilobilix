@@ -70,17 +70,17 @@ namespace proc
 
         tid_t alloc_tid();
 
-        bool close_fd(size_t num);
-        size_t fd2num(vfs::fd *fd, size_t old_num, bool specific);
-        size_t res2num(vfs::resource *res, int flags, size_t old_num, bool specific);
+        bool close_fd(int num);
+        int fd2num(vfs::fd *fd, int old_num, bool specific);
+        int res2num(vfs::resource *res, int flags, int old_num, bool specific);
 
-        size_t dupfd(size_t old_num, process *new_proc, size_t new_num, int flags, bool specific, bool cloexec);
-        inline size_t dupfd(size_t old_num, size_t new_num, int flags, bool specific, bool cloexec)
+        int dupfd(int old_num, process *new_proc, int new_num, int flags, bool specific, bool cloexec);
+        inline int dupfd(int old_num, int new_num, int flags, bool specific, bool cloexec)
         {
             return this->dupfd(old_num, this, new_num, flags, specific, cloexec);
         }
 
-        vfs::fd *num2fd(size_t num);
+        vfs::fd *num2fd(int num);
     };
 
     struct thread

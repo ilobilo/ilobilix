@@ -30,7 +30,7 @@
     arch::halt(false);
 }
 
-[[noreturn]] void vpanic(cpu::registers_t *regs, uintptr_t bp, uintptr_t fip, std::string_view format, fmt::format_args args)
+[[noreturn]] void vpanic(cpu::registers_t *regs, uintptr_t bp, uintptr_t fip, std::string_view format, fmt::format_args args, bool trace)
 {
     arch::int_toggle(false);
     arch::halt_others();
@@ -44,8 +44,11 @@
     log::errorln();
     arch::dump_regs(regs, log::error_prefix);
 
-    log::errorln();
-    trace::print(bp, fip, log::error_prefix);
+    if (trace == true)
+    {
+        log::errorln();
+        trace::print(bp, fip, log::error_prefix);
+    }
 
     log::errorln();
     log::errorln("System halted!");

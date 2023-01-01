@@ -18,7 +18,7 @@ namespace vfs
 
     #define return_err_func(err, ret...) { errno = err; return ret; }
     struct filesystem;
-    struct handle;
+    struct fdhandle;
     struct resource
     {
         std::atomic<size_t> refcount;
@@ -28,8 +28,8 @@ namespace vfs
 
         bool can_mmap;
 
-        virtual ssize_t read(handle *fd, void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
-        virtual ssize_t write(handle *fd, const void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
+        virtual ssize_t read(fdhandle *fd, void *buffer, off_t offset, size_t count) return_err_func(ENOSYS, -1)
+        virtual ssize_t write(fdhandle *fd, const void *buffer, off_t offset, size_t count) return_err_func(ENOSYS, -1)
 
         inline ssize_t read(void *buffer, off_t offset, size_t count)
         {
@@ -40,10 +40,12 @@ namespace vfs
             return this->write(nullptr, buffer, offset, count);
         }
 
-        virtual bool unref(handle *fd) { this->refcount--; return true; }
+        virtual bool unref(fdhandle *fd) { this->refcount--; return true; }
         inline bool unref() { return this->unref(nullptr); }
 
-        virtual int ioctl(handle *fd, uint64_t request, void *argp) return_err_func(EINVAL, -1)
+        virtual bool trunc(fdhandle *fd, size_t length) return_err_func(ENOSYS, -1)
+
+        virtual int ioctl(fdhandle *fd, size_t request, uintptr_t argp) return_err_func(EINVAL, -1)
         virtual void *mmap(size_t fpage, int flags) return_err_func(EINVAL, (void*)-1)
 
         resource(filesystem *fs) : refcount(1), fs(fs), lock(), can_mmap(false) { };
@@ -81,7 +83,7 @@ namespace vfs
 
         ~node_t()
         {
-            if (this->res && this->res->refcount == 0)
+            if (this->res && this->res->refcount == 0 && this->res->stat.st_nlink == 0)
                 delete this->res;
         }
     };
@@ -118,8 +120,6 @@ namespace vfs
         virtual ssize_t read(node_t *node, void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
         virtual ssize_t write(node_t *node, const void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
 
-        virtual int ioctl(node_t *node, uint64_t request, void *argp) return_err_func(EINVAL, -1)
-
     };
     #undef return_err_func
 
@@ -138,7 +138,7 @@ namespace vfs
     node_t *create(node_t *parent, path_view_t path, mode_t mode);
     node_t *symlink(node_t *parent, path_view_t path, std::string_view target);
 
-    node_t *link(node_t *parent, path_view_t new_path, path_view_t old_path, int flags = 0);
+    node_t *link(node_t *old_parent, path_view_t old_path, node_t *new_parent, path_view_t new_path, int flags = 0);
     bool unlink(node_t *parent, path_view_t path, int flags = 0);
 
     std::optional<stat_t> stat(node_t *parent, path_view_t path, int flags);

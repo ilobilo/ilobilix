@@ -14,7 +14,7 @@ namespace proc
         return nullptr;
     }
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv)
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
     {
         // auto proc = thread->parent;
 

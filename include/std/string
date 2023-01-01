@@ -950,7 +950,8 @@ namespace std
         constexpr size_type copy(Char *dest, size_type count, size_type pos = 0) const
         {
             if (pos >= this->_length)
-                return *this;
+                return 0;
+
             if (pos + count > this->_length || count == npos)
                 count = this->_length - pos;
 

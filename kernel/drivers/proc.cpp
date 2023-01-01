@@ -14,7 +14,7 @@ namespace proc
     static lock_t pid_lock;
     static lock_t lock;
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg);
     void thread_delete(thread *thread);
 
     void save_thread(thread *thread, cpu::registers_t *regs);
@@ -182,12 +182,6 @@ namespace proc
         // this->pagemap = old_proc->pagemap.fork();
 
         this->gid = old_proc->gid;
-        this->sgid = old_proc->sgid;
-        this->egid = old_proc->egid;
-
-        this->uid = old_proc->uid;
-        this->suid = old_proc->suid;
-        this->euid = old_proc->euid;
 
         lockit(pid_lock);
         this->pid = alloc_pid();
@@ -203,6 +197,9 @@ namespace proc
     {
         vmm::kernel_pagemap->load();
 
+        for (auto [num, fd] : this->fds)
+            this->close_fd(num);
+
         auto pid1 = processes[1];
         for (const auto &proc : this->children)
         {
@@ -210,9 +207,6 @@ namespace proc
             pid1->children.push_back(proc);
             this->children.erase(&proc);
         }
-
-        for (const auto &thread : this->threads)
-            exit(thread);
 
         delete this->pagemap;
 
@@ -242,7 +236,7 @@ namespace proc
         if (this->user == true)
             this->stack = map_user_stack(this, parent).second;
 
-        thread_finalise(this, pc, arg, std::span<std::string_view>(), std::span<std::string_view>(), elf::exec::auxval { });
+        thread_finalise(this, pc, arg);
         parent->threads.push_back(this);
     }
 
@@ -257,7 +251,7 @@ namespace proc
             this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
         }
 
-        thread_finalise(this, pc, arg, argv, envp, auxv);
+        thread_finalise(this, pc, arg);
         parent->threads.push_back(this);
     }
 

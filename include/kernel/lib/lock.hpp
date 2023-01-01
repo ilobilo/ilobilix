@@ -136,7 +136,7 @@ struct irq_lock
     }
 };
 
-namespace proc { std::pair<pid_t, tid_t> pid(); }
+namespace proc { void yield(); std::pair<pid_t, tid_t> pid(); }
 struct recursive_lock
 {
     private:
@@ -157,7 +157,7 @@ struct recursive_lock
         if (this->_owner != pid)
         {
             while (this->_owner.has_value())
-                arch::pause();
+                proc::yield();
             this->_owner = pid;
         }
         this->_refcount++;

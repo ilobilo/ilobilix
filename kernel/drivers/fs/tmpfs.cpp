@@ -14,7 +14,7 @@ namespace tmpfs
         size_t cap;
         uint8_t *data;
 
-        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
+        ssize_t read(vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
         {
             lockit(this->lock);
 
@@ -26,7 +26,7 @@ namespace tmpfs
             return real_count;
         }
 
-        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
+        ssize_t write(vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
         {
             lockit(this->lock);
 
@@ -37,8 +37,7 @@ namespace tmpfs
                     new_cap *= 2;
 
                 auto tfs = static_cast<tmpfs*>(this->fs);
-                auto offset = new_cap - this->cap;
-                if (tfs->current_size + offset > tfs->max_size)
+                if (tfs->current_size + (new_cap - this->cap) > tfs->max_size)
                 {
                     errno = ENOSPC;
                     return -1;
@@ -56,6 +55,33 @@ namespace tmpfs
                 this->stat.st_blocks = div_roundup(offset + count, this->stat.st_blksize);
             }
             return count;
+        }
+
+        bool trunc(vfs::fdhandle *fd, size_t length)
+        {
+            lockit(this->lock);
+
+            if (length > this->cap)
+            {
+                auto new_cap = this->cap;
+                while (new_cap < length)
+                    new_cap *= 2;
+
+                auto tfs = static_cast<tmpfs*>(this->fs);
+                if (tfs->current_size + (new_cap - this->cap) > tfs->max_size)
+                {
+                    errno = ENOSPC;
+                    return -1;
+                }
+
+                this->data = realloc(this->data, new_cap);
+                this->cap = new_cap;
+            }
+
+            this->stat.st_size = off_t(length);
+            this->stat.st_blocks = div_roundup(this->stat.st_size, this->stat.st_blksize);
+
+            return true;
         }
 
         void *mmap(size_t fpage, int flags)

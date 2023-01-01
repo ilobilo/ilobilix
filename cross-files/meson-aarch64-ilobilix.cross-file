@@ -1,0 +1,12 @@
+[binaries]
+c = 'aarch64-ilobilix-gcc'
+cpp = 'aarch64-ilobilix-g++'
+ar = 'aarch64-ilobilix-ar'
+strip = 'aarch64-ilobilix-strip'
+pkgconfig = 'aarch64-ilobilix-pkg-config'
+
+[host_machine]
+system = 'ilobilix'
+cpu_family = 'aarch64'
+cpu = 'cortex-a72'
+endian = 'little'

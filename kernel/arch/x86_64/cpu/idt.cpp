@@ -109,10 +109,14 @@ namespace idt
 
     static void exception_handler(cpu::registers_t *regs)
     {
-        if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1) && vmm::page_fault(read_cr(2)))
-            return;
+        if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1))
+            if (vmm::page_fault(read_cr(2)))
+                return;
 
-        panic(regs, regs->rbp, regs->rip, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
+        if (regs->cs & 0x03)
+            panic(regs, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
+        else
+            panic(regs, regs->rbp, regs->rip, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
     }
 
     static void eoi(uint64_t int_no)

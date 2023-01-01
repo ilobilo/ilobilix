@@ -1,9 +1,10 @@
-initrd/lib/modules/*.ko
+initrd/*
 .vscode
 
 serial.txt
 log.txt
 
+ports
 build*
 subprojects/*
 !subprojects/*.wrap

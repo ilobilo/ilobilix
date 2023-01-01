@@ -3,6 +3,7 @@
 #include <drivers/elf.hpp>
 #include <lib/trace.hpp>
 #include <lib/log.hpp>
+#include <cxxabi.h>
 
 namespace trace
 {
@@ -18,8 +19,10 @@ namespace trace
         auto print_name = [&prefix](uintptr_t ip)
         {
             auto [entry, offset] = elf::syms::lookup(ip, STT_FUNC);
+            std::string_view name = __cxxabiv1::__cxa_demangle(entry.name.data(), nullptr, nullptr, nullptr) ?: entry.name;
+
             if (entry != elf::syms::empty_sym)
-                log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, entry.name, offset);
+                log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, name, offset);
         };
 
         log::println("{}Stacktrace:", prefix);

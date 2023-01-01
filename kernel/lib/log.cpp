@@ -12,21 +12,24 @@ namespace log
     {
         while (length--)
         {
-            term::printc(*str);
+            if (to_term == true)
+                term::printc(*str);
             serial::printc(*str++);
         }
     }
 
     void prints(const char *str)
     {
-        term::print(str);
+        if (to_term == true)
+            term::print(str);
         while (*str)
             serial::printc(*str++);
     }
 
     void printc(char c)
     {
-        term::printc(c);
+        if (to_term == true)
+            term::printc(c);
         serial::printc(c);
     }
 } // namespace log

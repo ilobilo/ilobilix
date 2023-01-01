@@ -52,7 +52,7 @@ namespace ustar
                         log::errorln("USTAR: Could not write to regular file '{}'", name);
                     break;
                 case LNKTYPE:
-                    node = vfs::link(nullptr, name, target);
+                    node = vfs::link(nullptr, name, nullptr, target);
                     if (node == nullptr)
                         log::errorln("USTAR: Could not create hardlink '{}'", name);
                     break;

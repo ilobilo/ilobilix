@@ -137,6 +137,9 @@ deps = [
     import('cmake').subproject('frozen').dependency('frozen'),
     dependency('libgcc_binaries', default_options : 'lib=' + libgcc),
     dependency('frigg', default_options : 'frigg_no_install=true'),
+    dependency('demangler', default_options : 'only_itanium=true'),
+    dependency('libstdcxx_headers'),
+    dependency('limine_terminal'),
     dependency('limine'),
     dependency('lai'),
     dependency('fmt'),
@@ -144,9 +147,7 @@ deps = [
     dependency('magic_enum'),
     dependency('smart_ptr'),
     dependency('veque'),
-    dependency('cwalk'),
-    dependency('limine_terminal'),
-    dependency('libstdcxx_headers')
+    dependency('cwalk')
 ]
 
 inc_deps = [ ]
@@ -170,8 +171,9 @@ initrd = custom_target('initrd',
     input : ext_mods,
     output : 'initrd.img.gz',
     command : [
-        'rm', '-rf', initrd_dir / 'lib/modules/*', '&&',
-        no_ext_mods ? [ ] : ['cp', '@INPUT@', initrd_dir / 'lib/modules/', '&&'],
+        'rm', '-rf', initrd_dir / 'usr/lib/modules', '&&',
+        'mkdir', initrd_dir / 'usr/lib/modules', '&&',
+        no_ext_mods ? [ ] : ['cp', '@INPUT@', initrd_dir / 'usr/lib/modules/', '&&'],
         'tar', '--format', 'posix', '-czf', '@OUTPUT@', '-C', initrd_dir, './'
     ],
     build_by_default : true,

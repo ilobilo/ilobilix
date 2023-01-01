@@ -34,8 +34,53 @@ void kernel_thread()
     term::late_init();
 
     elf::module::init();
-    elf::module::load(nullptr, "/lib/modules/");
+    elf::module::load(nullptr, "/usr/lib/modules/");
     elf::module::run_all();
+
+    // TMP start
+    printf("\033[2J\033[H");
+
+    auto run_prog = [](std::string_view prog)
+    {
+        auto node = std::get<1>(vfs::path2node(nullptr, prog));
+        assert(node);
+
+        auto pmap = new vmm::pagemap();
+        if (auto ret = elf::exec::load(node->res, pmap, 0); ret.has_value())
+        {
+            auto proc = new proc::process("Process");
+            proc->pagemap = pmap;
+
+            auto cons_node = std::get<1>(vfs::path2node(nullptr, "/dev/console"));
+            assert(cons_node);
+
+            proc->res2num(cons_node->res, 0, 0, true);
+            proc->res2num(cons_node->res, 0, 1, true);
+            proc->res2num(cons_node->res, 0, 2, true);
+
+            std::array argv { prog, "Hello, World"sv };
+            std::array envp { "TERM=vt100"sv };
+
+            auto [auxv, ld_path] = ret.value();
+            if (ld_path.empty() == false)
+            {
+                auto ld_node = std::get<1>(vfs::path2node(nullptr, ld_path))->reduce(true);
+                assert(ld_node);
+
+                if (auto ld_ret = elf::exec::load(ld_node->res, pmap, 0x40000000); ld_ret.has_value())
+                {
+                    auto [ld_auxv, _] = ld_ret.value();
+                    proc::enqueue(new proc::thread(proc, ld_auxv.at_entry, 0, argv, envp, auxv));
+                }
+                else assert(!"Could not load ld_path");
+            }
+            else proc::enqueue(new proc::thread(proc, auxv.at_entry, 0, argv, envp, auxv));
+        }
+        else assert(!"Could not load elf file");
+    };
+
+    run_prog("/bin/bash");
+    // TMP end
 
     proc::dequeue();
     arch::halt();

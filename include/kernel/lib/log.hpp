@@ -11,6 +11,7 @@ namespace log
     static constexpr auto warn_prefix = "[\033[33mWARN\033[0m] ";
     static constexpr auto error_prefix = "[\033[31mERROR\033[0m] ";
 
+    inline bool to_term = true;
     inline lock_t lock;
 
     void prints(const char *str, size_t length);

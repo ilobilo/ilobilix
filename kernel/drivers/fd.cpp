@@ -7,13 +7,14 @@
 
 namespace proc
 {
-    static bool internal_close_fd(process *proc, size_t num)
+    static bool internal_close_fd(process *proc, int num)
     {
+        if (num < 0)
+            return_err(false, EBADF);
+
         if (proc->fds.contains(num) == false)
-        {
-            errno = EBADF;
-            return false;
-        }
+            return_err(false, EBADF);
+
         auto fd = proc->fds[num];
         fd->handle->res->unref(fd->handle);
 
@@ -25,19 +26,22 @@ namespace proc
         return true;
     }
 
-    bool process::close_fd(size_t num)
+    bool process::close_fd(int num)
     {
         lockit(this->fd_lock);
         return internal_close_fd(this, num);
     }
 
-    size_t process::fd2num(vfs::fd *fd, size_t old_num, bool specific)
+    int process::fd2num(vfs::fd *fd, int old_num, bool specific)
     {
         lockit(this->fd_lock);
 
+        if (old_num < 0)
+            return_err(-1, EBADF);
+
         if (specific == false)
         {
-            for (size_t i = old_num; i < std::numeric_limits<size_t>::max(); i++)
+            for (int i = old_num; i < std::numeric_limits<int>::max(); i++)
             {
                 if (this->fds.contains(i) == false)
                 {
@@ -55,24 +59,22 @@ namespace proc
         return -1;
     }
 
-    size_t process::res2num(vfs::resource *res, int flags, size_t old_num, bool specific)
+    int process::res2num(vfs::resource *res, int flags, int old_num, bool specific)
     {
         auto fd = res2fd(res, flags);
         if (fd == nullptr)
             return -1;
+
         return this->fd2num(fd, old_num, specific);
     }
 
-    size_t process::dupfd(size_t old_num, process *new_proc, size_t new_num, int flags, bool specific, bool cloexec)
+    int process::dupfd(int old_num, process *new_proc, int new_num, int flags, bool specific, bool cloexec)
     {
         if (new_proc == nullptr)
             new_proc = this;
 
         if (specific && old_num == new_num && new_proc == this)
-        {
-            errno = EINVAL;
-            return -1;
-        }
+            return_err(-1, EINVAL);
 
         auto old_fd = this->num2fd(old_num);
         if (old_fd == nullptr)
@@ -86,9 +88,11 @@ namespace proc
             return -1;
         }
 
-        new_fd->flags = flags;
-        if (cloexec == true)
-            new_fd->flags &= o_cloexec;
+        new_fd->flags = flags & file_descriptor_flags;
+        if (cloexec == false)
+            new_fd->flags &= ~fd_cloexec;
+        else
+            new_fd->flags |= fd_cloexec;
 
         old_fd->handle->refcount++;
         old_fd->handle->res->refcount++;
@@ -96,15 +100,16 @@ namespace proc
         return new_num;
     }
 
-    vfs::fd *process::num2fd(size_t num)
+    vfs::fd *process::num2fd(int num)
     {
         lockit(this->fd_lock);
 
+        if (num < 0)
+            return_err(nullptr, EBADF);
+
         if (this->fds.contains(num) == false)
-        {
-            errno = EBADF;
-            return nullptr;
-        }
+            return_err(nullptr, EBADF);
+
         auto fd = this->fds[num];
         fd->handle->refcount++;
         return fd;
@@ -118,8 +123,8 @@ namespace vfs
         res->refcount++;
         return new vfs::fd
         {
-            new vfs::handle(res, flags),
-            flags & o_cloexec
+            new vfs::fdhandle(res, flags & file_status_flags),
+            flags & file_descriptor_flags
         };
     }
 } // namespace vfs

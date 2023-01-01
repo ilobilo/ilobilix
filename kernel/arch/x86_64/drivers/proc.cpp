@@ -16,7 +16,7 @@ namespace proc
         return reinterpret_cast<thread*>(read_gs(8));
     }
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv)
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
     {
         // auto proc = thread->parent;
 

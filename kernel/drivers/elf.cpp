@@ -576,6 +576,19 @@ namespace elf
                         if (res->read(reinterpret_cast<void*>(tohh(paddr + misalign)), phdr.p_offset, phdr.p_filesz) != ssize_t(phdr.p_filesz))
                             return std::nullopt;
 
+                        // uintptr_t vstart = align_down(phdr.p_vaddr, pmm::page_size);
+                        // uintptr_t vend = align_up(phdr.p_vaddr + phdr.p_memsz, pmm::page_size);
+                        // uintptr_t vfend = align_up(phdr.p_vaddr + phdr.p_filesz, pmm::page_size);
+
+                        // size_t misalign = phdr.p_vaddr - vstart;
+
+                        // if (pagemap->mmap(vstart + base, phdr.p_filesz + misalign, flags, MAP_PRIVATE | MAP_FIXED, res, phdr.p_offset + misalign) == MAP_FAILED)
+                        //     return std::nullopt;
+
+                        // if (vend > vfend)
+                        //     if (pagemap->mmap(vfend, vend - vfend, flags, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, NULL, 0) == MAP_FAILED)
+                        //         return std::nullopt;
+
                         break;
                     }
                     case PT_PHDR:
@@ -606,15 +619,15 @@ namespace elf
             auto top = reinterpret_cast<uintptr_t*>(_stack);
             auto stack = top;
 
-            for (auto &env : envp)
+            for (const auto &env : envp)
             {
-                stack = stack - env.length() - 1;
+                stack = reinterpret_cast<uintptr_t*>(reinterpret_cast<char*>(stack) - env.length() - 1);
                 memcpy(stack, env.data(), env.length());
             }
 
-            for (auto &arg : argv)
+            for (const auto &arg : argv)
             {
-                stack = stack - arg.length() - 1;
+                stack = reinterpret_cast<uintptr_t*>(reinterpret_cast<char*>(stack) - arg.length() - 1);
                 memcpy(stack, arg.data(), arg.length());
             }
 

@@ -25,6 +25,38 @@ using tid_t = int;
 using time_t = long;
 using clockid_t = int;
 
+enum prctls
+{
+    arch_set_gs = 0x1001,
+    arch_set_fs = 0x1002,
+    arch_get_fs = 0x1003,
+    arch_get_gs = 0x1004
+};
+
+enum seeks
+{
+    seek_set = 0,
+    seek_cur = 1,
+    seek_end = 2
+};
+
+enum fcntls
+{
+    f_dupfd_cloexec = 1030,
+    f_dupfd = 0,
+    f_getfd = 1,
+    f_setfd = 2,
+    f_getfl = 3,
+    f_setfl = 4,
+
+    f_setown = 8,
+    f_getown = 9,
+    f_setsig = 10,
+    f_getsig = 11,
+
+    fd_cloexec = 1
+};
+
 enum types
 {
     s_ifmt = 0170000,
@@ -96,7 +128,11 @@ enum oflags
     o_rsync = 04010000,
     o_directory = 0200000,
     o_nofollow = 0400000,
-    o_cloexec = 02000000
+    o_cloexec = 02000000,
+
+    file_creation_flags = o_creat | o_directory | o_excl | o_noctty | o_nofollow | o_trunc,
+    file_descriptor_flags = fd_cloexec,
+    file_status_flags = ~(file_creation_flags | file_descriptor_flags)
 };
 
 enum atflags

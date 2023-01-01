@@ -7,7 +7,7 @@
 namespace proc { struct process; }
 namespace vfs
 {
-    struct handle
+    struct fdhandle
     {
         lock_t lock;
         node_t *node;
@@ -18,13 +18,17 @@ namespace vfs
         int flags;
         bool dir;
 
-        constexpr handle(resource *res, int flags) : lock(), node(nullptr), res(res), refcount(1), offset(0), flags(flags & (~((o_creat | o_directory | o_excl | o_noctty | o_nofollow | o_trunc) | o_cloexec))), dir(false) { }
+        constexpr fdhandle(resource *res, int flags) : lock(), node(nullptr), res(res), refcount(1), offset(0), flags(flags & file_status_flags), dir(false) { }
     };
 
     struct fd
     {
-        handle *handle;
+        lock_t lock;
+        fdhandle *handle;
         int flags;
+
+        constexpr fd(fdhandle *handle, int flags) : handle(handle), flags(flags) { }
+        constexpr fd(const fd &rhs) : handle(rhs.handle), flags(rhs.flags) { }
     };
 
     fd *res2fd(resource *res, int flags);

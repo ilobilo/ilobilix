@@ -205,11 +205,15 @@ namespace vmm
         return true;
     }
 
+    static size_t counter = 0;
     void pagemap::load()
     {
         lockit(this->lock);
         write_ttbr_el1(0, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr0)));
-        write_ttbr_el1(1, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr1)));
+
+        // load ttbr1 once on every cpu
+        if (counter++ < smp_request.response->cpu_count)
+            write_ttbr_el1(1, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr1)));
     }
 
     void pagemap::save()
