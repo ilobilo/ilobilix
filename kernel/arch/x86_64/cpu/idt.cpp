@@ -42,7 +42,7 @@ namespace idt
             }
         }
 
-        PANIC("Out of interrupt handlers!");
+        PANIC("IDT: Out of interrupt handlers!");
     }
 
     void mask(uint8_t irq)
@@ -110,7 +110,7 @@ namespace idt
     static void exception_handler(cpu::registers_t *regs)
     {
         if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1))
-            if (vmm::page_fault(read_cr(2)))
+            if (vmm::page_fault(rdreg(cr2)))
                 return;
 
         if (regs->cs & 0x03)
@@ -143,7 +143,7 @@ namespace idt
             if (handler.eoi_first == false)
                 eoi(regs->int_no);
         }
-        else PANIC("Unknown interrupt!");
+        else PANIC("Unknown interrupt {}", regs->int_no);
     }
 
     extern "C" void *int_table[];

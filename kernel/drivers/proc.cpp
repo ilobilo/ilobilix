@@ -179,7 +179,7 @@ namespace proc
         this->root = old_proc->root;
         this->cwd = old_proc->cwd;
         this->umask = old_proc->umask;
-        // this->pagemap = old_proc->pagemap.fork();
+        this->pagemap = old_proc->pagemap->fork();
 
         this->gid = old_proc->gid;
 
@@ -263,6 +263,9 @@ namespace proc
 
         if (this->parent->threads.empty())
             delete this->parent;
+
+        for (const auto &stack : this->stacks)
+            pmm::free(stack, default_stack_size / pmm::page_size);
 
         thread_delete(this);
     }

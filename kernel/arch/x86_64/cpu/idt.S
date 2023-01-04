@@ -4,6 +4,8 @@
 
 .extern int_handler
 int_common_stub:
+    cld
+
     test qword ptr [rsp + 24], 0x03
     je 1f
     swapgs

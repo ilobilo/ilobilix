@@ -2,6 +2,7 @@
 
 #include <frg/macros.hpp>
 #include <arch/arch.hpp>
+#include <lib/panic.hpp>
 #include <lib/trace.hpp>
 #include <cpu/cpu.hpp>
 #include <lib/log.hpp>
@@ -9,10 +10,10 @@
 #include <cstddef>
 #include <utility>
 
-[[noreturn]] void panic(const char *file, int line, const char *func, const char *message)
+[[noreturn]] void vpanic(const char *file, int line, const char *func, std::string_view format, fmt::format_args args)
 {
     log::println();
-    log::errorln("{}", message);
+    log::errorln("{}", fmt::vformat(format, args));
     log::errorln("File: {}", file);
     log::errorln("Line: {}", line);
     log::errorln("Function: {}", func);

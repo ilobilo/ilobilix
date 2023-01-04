@@ -30,8 +30,6 @@ namespace proc
 
     void thread_delete(thread *thread)
     {
-        for (const auto &stack : thread->stacks)
-            pmm::free(stack, default_stack_size / pmm::page_size);
     }
 
     void save_thread(thread *thread, cpu::registers_t *regs)

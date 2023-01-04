@@ -157,74 +157,59 @@ namespace vmm
         std::optional<std::tuple<std::shared_ptr<mmap::local>, size_t, size_t>> addr2range(uintptr_t addr);
 
         ptentry *virt2pte(uint64_t vaddr, bool allocate, uint64_t psize);
-
         uintptr_t virt2phys(uintptr_t vaddr, size_t flags = 0);
 
         bool map(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching);
-        bool unmap(uintptr_t vaddr, size_t flags = 0);
+        bool unmap_nolock(uintptr_t vaddr, size_t flags = 0);
+        bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching);
+
+        inline bool unmap(uintptr_t vaddr, size_t flags = 0)
+        {
+            lockit(this->lock);
+            return this->unmap_nolock(vaddr, flags);
+        }
 
         inline bool remap(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t flags = default_flags, caching cache = default_caching)
         {
             uint64_t paddr = this->virt2phys(vaddr_old, flags);
-            if (!this->unmap(vaddr_old, flags))
-                return false;
-
-            if (!this->map(vaddr_new, paddr, flags, cache))
-                return false;
-
-            return true;
+            this->unmap(vaddr_old, flags);
+            return this->map(vaddr_new, paddr, flags, cache);
         }
 
-        bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching);
-
-        inline bool map_range(uintptr_t vaddr, uintptr_t paddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
+        inline void map_range(uintptr_t vaddr, uintptr_t paddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-            {
-                if (!this->map(vaddr + i, paddr + i, flags, cache))
-                    return false;
-            }
-            return true;
+                this->map(vaddr + i, paddr + i, flags, cache);
         }
 
-        inline bool unmap_range(uintptr_t vaddr, size_t size, size_t flags = 0)
+        inline void unmap_range(uintptr_t vaddr, size_t size, size_t flags = 0)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-            {
-                if (!this->unmap(vaddr + i, flags))
-                    return false;
-            }
-            return true;
+                this->unmap(vaddr + i, flags);
         }
 
-        inline bool remap_range(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t size, size_t flags = default_flags, caching cache = default_caching)
+        inline void remap_range(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t size, size_t flags = default_flags, caching cache = default_caching)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-            {
-                if (!this->remap(vaddr_old + i, vaddr_new + i, flags, cache))\
-                    return false;
-            }
-            return true;
+                this->remap(vaddr_old + i, vaddr_new + i, flags, cache);
         }
 
-        inline bool setflags_range(uintptr_t vaddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
+        inline void setflags_range(uintptr_t vaddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-            {
-                if (!this->setflags(vaddr + i, flags, cache))
-                    return false;
-            }
-            return true;
+                this->setflags(vaddr + i, flags, cache);
         }
 
         bool mmap_range(uintptr_t vaddr, uintptr_t paddr, size_t length, int prot, int flags);
 
         void *mmap(uintptr_t addr, size_t length, int prot, int flags, vfs::resource *res, off_t offset);
         bool munmap(uintptr_t addr, size_t length);
+
+        pagemap *fork();
 
         void load();
         void save();

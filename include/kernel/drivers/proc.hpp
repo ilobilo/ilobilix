@@ -92,6 +92,7 @@ namespace proc
 
         #if defined(__x86_64__)
         uintptr_t kstack;
+        uintptr_t pfstack;
         #endif
         // DO NOT MOVE: END
 

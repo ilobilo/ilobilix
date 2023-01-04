@@ -91,7 +91,7 @@ namespace vfs
         if (parent == nullptr)
             return_err(-1, ENOENT);
 
-        auto node = std::get<1>(path2node(parent, pathname))->reduce(follow);
+        auto node = std::get<1>(path2node(parent, pathname));
         if (node == nullptr)
         {
             if (errno == ELOOP)
@@ -104,6 +104,8 @@ namespace vfs
         }
         else if (flags & o_creat && flags & o_excl)
             return_err(-1, EEXIST);
+
+        node = node->reduce(follow);
 
         if (node == nullptr)
             return -1;

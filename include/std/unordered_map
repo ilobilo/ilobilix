@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <frg/allocation.hpp>
 #include <initializer_list>
 #include <functional>
 #include <algorithm>

@@ -21,11 +21,17 @@
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 
+#include <lib/log.hpp>
+
 proc::process *kernel_proc = nullptr;
 void kernel_thread()
 {
     tmpfs::init();
     vfs::mount(nullptr, "", "/", "tmpfs");
+
+    // Create if it doesn't exist
+    vfs::create(nullptr, "/tmp", 01777 | s_ifdir);
+    vfs::mount(nullptr, "", "/tmp", "tmpfs");
 
     devtmpfs::init();
     initrd::init();
@@ -37,10 +43,12 @@ void kernel_thread()
     elf::module::load(nullptr, "/usr/lib/modules/");
     elf::module::run_all();
 
-    // TMP start
     printf("\033[2J\033[H");
+    log::to_term = false;
 
-    auto run_prog = [](std::string_view prog)
+    // TMP start
+
+    auto run_prog = [](std::string_view prog, auto &&...args)
     {
         auto node = std::get<1>(vfs::path2node(nullptr, prog));
         assert(node);
@@ -58,7 +66,7 @@ void kernel_thread()
             proc->res2num(cons_node->res, 0, 1, true);
             proc->res2num(cons_node->res, 0, 2, true);
 
-            std::array argv { prog, "Hello, World"sv };
+            std::array argv { prog, std::string_view(args)... };
             std::array envp { "TERM=vt100"sv };
 
             auto [auxv, ld_path] = ret.value();
@@ -79,6 +87,9 @@ void kernel_thread()
         else assert(!"Could not load elf file");
     };
 
+    // run_prog("/bin/bash", "/bin/bashbug");
+    // run_prog("/bin/bash", "/test.sh");
+    // run_prog("/usr/bin/cat", "/etc/passwd", "/etc/group");
     run_prog("/bin/bash");
     // TMP end
 

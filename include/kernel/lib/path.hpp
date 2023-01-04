@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <frg/formatting.hpp>
 #include <fmt/format.h>
 #include <cwalk.h>
 #include <vector>
@@ -519,23 +518,6 @@ class path_t
         return lhs.compare(rhs) <=> 0;
     }
 };
-
-// TODO: Should we support frg::format?
-namespace frg
-{
-    template<typename F>
-    void format_object(const path_view_t &object, format_options, F &formatter)
-    {
-        for (const auto c : object)
-            formatter.append(c);
-    }
-
-    template<typename F>
-    void format_object(const path_t &object, format_options, F &formatter)
-    {
-        formatter.append(object.c_str());
-    }
-} // namespace frg
 
 template<>
 struct fmt::formatter<path_view_t> : formatter<std::string_view>

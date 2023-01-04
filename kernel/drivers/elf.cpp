@@ -616,8 +616,7 @@ namespace elf
 
         uintptr_t prepare_stack(uintptr_t _stack, uintptr_t sp, std::span<std::string_view> argv, std::span<std::string_view> envp, auxval auxv)
         {
-            auto top = reinterpret_cast<uintptr_t*>(_stack);
-            auto stack = top;
+            auto stack = reinterpret_cast<uintptr_t*>(_stack);
 
             for (const auto &env : envp)
             {
@@ -641,28 +640,26 @@ namespace elf
             stack -= 2; stack[0] = AT_PHENT, stack[1] = auxv.at_phent;
             stack -= 2; stack[0] = AT_PHNUM, stack[1] = auxv.at_phnum;
 
-            uint64_t old_sp = sp;
+            uintptr_t old_sp = sp;
 
             *(--stack) = 0;
             stack -= envp.size();
-            for (size_t i = 0; auto &env : envp)
+            for (size_t i = 0; const auto &env : envp)
             {
                 old_sp -= env.length() + 1;
-                stack[i] = old_sp;
-                i++;
+                stack[i++] = old_sp;
             }
 
             *(--stack) = 0;
             stack -= argv.size();
-            for (size_t i = 0; auto &arg : argv)
+            for (size_t i = 0; const auto &arg : argv)
             {
                 old_sp -= arg.length() + 1;
-                stack[i] = old_sp;
-                i++;
+                stack[i++] = old_sp;
             }
 
             *(--stack) = argv.size();
-            return sp - (top - stack);
+            return sp - (_stack - reinterpret_cast<uintptr_t>(stack));
         }
     } // namespace exec
 } // namespace elf

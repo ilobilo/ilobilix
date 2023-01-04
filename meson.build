@@ -32,10 +32,9 @@ qemu_args = [
     '-boot', 'order=d,menu=on,splash-time=100'
 ]
 
-# { arch : [ libgcc, ovmf, bios, qemu_args ] }
+# { arch : [ ovmf, bios, qemu_args ] }
 supported_archs = {
     'x86_64' : [
-        'x86_64-no-red-zone',
         'X64', true,
         [
             '-M', 'q35', '-audiodev', 'id=audio,driver=alsa',
@@ -49,7 +48,7 @@ supported_archs = {
         ]
     ],
     'aarch64' : [
-        'aarch64', 'AA64', false,
+        'AA64', false,
         ['-cpu', 'cortex-a72', '-M', 'virt', '-device', 'ramfb']
         # ['-M', 'virt', '-device', 'ramfb']
     ]
@@ -59,10 +58,9 @@ if not supported_archs.has_key(arch)
     error('Unknown architecture ' + arch)
 endif
 
-libgcc = supported_archs[arch][0]
-ovmf_id = supported_archs[arch][1]
-supports_bios = supported_archs[arch][2]
-qemu_args += supported_archs[arch][3]
+ovmf_id = supported_archs[arch][0]
+supports_bios = supported_archs[arch][1]
+qemu_args += supported_archs[arch][2]
 qemu = 'qemu-system-' + arch
 
 if get_option('vnc')
@@ -135,9 +133,9 @@ add_global_arguments([
 limine = subproject('limine')
 deps = [
     import('cmake').subproject('frozen').dependency('frozen'),
-    dependency('libgcc_binaries', default_options : 'lib=' + libgcc),
-    dependency('frigg', default_options : 'frigg_no_install=true'),
     dependency('demangler', default_options : 'only_itanium=true'),
+    dependency('frigg', default_options : 'frigg_no_install=true'),
+    dependency('compiler_rt_builtins'),
     dependency('libstdcxx_headers'),
     dependency('limine_terminal'),
     dependency('limine'),
@@ -171,9 +169,9 @@ initrd = custom_target('initrd',
     input : ext_mods,
     output : 'initrd.img.gz',
     command : [
-        'rm', '-rf', initrd_dir / 'usr/lib/modules', '&&',
-        'mkdir', initrd_dir / 'usr/lib/modules', '&&',
-        no_ext_mods ? [ ] : ['cp', '@INPUT@', initrd_dir / 'usr/lib/modules/', '&&'],
+        'rm', '-rf', initrd_dir / 'lib/modules', '&&',
+        'mkdir', initrd_dir / 'lib/modules', '&&',
+        no_ext_mods ? [ ] : ['cp', '@INPUT@', initrd_dir / 'lib/modules/', '&&'],
         'tar', '--format', 'posix', '-czf', '@OUTPUT@', '-C', initrd_dir, './'
     ],
     build_by_default : true,

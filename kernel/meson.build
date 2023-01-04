@@ -62,8 +62,8 @@ endif
 subdir('arch' / arch)
 
 kernel_elf = executable('ilobilix.elf', src,
-    include_directories : incs,
     dependencies : [deps, mod_deps],
+    include_directories : incs,
     c_args : [c_args, args],
     cpp_args : [cxx_args, args],
     link_args : ld_args,

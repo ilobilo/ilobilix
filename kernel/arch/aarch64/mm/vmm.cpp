@@ -39,7 +39,7 @@ namespace vmm
         ttbr *ttbr1;
     };
 
-    // TODO: Actually working 16 kib and 64 kib pages
+    // TODO: Is this correct?
 
     static constexpr size_t psize_4kib = 0x1000;
     static constexpr size_t psize_16kib = 0x4000;
@@ -143,11 +143,12 @@ namespace vmm
     {
         lockit(this->lock);
 
-        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
+        auto psize = this->get_psize(flags);
+        ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
         if (pml_entry == nullptr || !pml_entry->getflags(Valid))
             return invalid_addr;
 
-        return pml_entry->getaddr();
+        return pml_entry->getaddr() + (vaddr % psize);
     }
 
     bool pagemap::map(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
@@ -157,7 +158,7 @@ namespace vmm
         ptentry *pml_entry = this->virt2pte(vaddr, true, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -169,14 +170,12 @@ namespace vmm
         return true;
     }
 
-    bool pagemap::unmap(uintptr_t vaddr, size_t flags)
+    bool pagemap::unmap_nolock(uintptr_t vaddr, size_t flags)
     {
-        lockit(this->lock);
-
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -192,7 +191,7 @@ namespace vmm
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -242,7 +241,7 @@ namespace vmm
         else if (va_width == 48)
             return (addr <= 0x0000FFFFFFFFFFFFULL) || (addr >= 0xFFFF000000000000ULL);
 
-        PANIC("VMM: Unknown VA width!");
+        PANIC("VMM: Unknown VA width {}", va_width);
     }
 
     uintptr_t flags2arch(size_t flags)

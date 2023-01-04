@@ -91,7 +91,8 @@ namespace ioapic
     static ioapic &internal_ioapic_for_gsi(uint32_t gsi)
     {
         auto ret = ioapic_for_gsi(gsi);
-        if (ret == nullptr) PANIC("Couldn't find IOAPIC!");
+        if (ret == nullptr)
+            PANIC("Couldn't find IOAPIC for GSI {}", gsi);
 
         return *ret;
     }

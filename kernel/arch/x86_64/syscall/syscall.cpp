@@ -34,12 +34,14 @@ namespace syscall
         SYSCALL_ENTRY(33, "dup2", vfs::sys_dup2),
         SYSCALL_ENTRY(39, "getpid", proc::sys_getpid),
         SYSCALL_ENTRY(60, "exit", proc::sys_exit),
+        SYSCALL_ENTRY(63, "uname", proc::sys_uname),
         SYSCALL_ENTRY(72, "fcntl", vfs::sys_fcntl),
         SYSCALL_ENTRY(79, "getcwd", vfs::sys_getcwd),
         SYSCALL_ENTRY(86, "link", vfs::sys_link),
         SYSCALL_ENTRY(87, "unlink", vfs::sys_unlink),
         SYSCALL_ENTRY(89, "readlink", vfs::sys_readlink),
         SYSCALL_ENTRY(91, "fchmod", vfs::sys_fchmod),
+        SYSCALL_ENTRY(95, "umask", proc::sys_umask),
         SYSCALL_ENTRY(110, "getppid", proc::sys_getppid),
         SYSCALL_ENTRY(158, "arch_prctl", arch::sys_arch_prctl),
         SYSCALL_ENTRY(257, "openat", vfs::sys_openat),
@@ -55,7 +57,12 @@ namespace syscall
     extern "C" void syscall_handler(cpu::registers_t *regs)
     {
         if (auto entry = map.find(regs->rax); entry != map.end())
-            regs->rax = cpu::as_user([&entry](auto arg) { return entry->second.run(arg); }, std::array { regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9 });
+        {
+            regs->rax = cpu::as_user(
+                [&entry](auto arg) { return entry->second.run(arg); },
+                std::array { regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9 }
+            );
+        }
         else
         {
             log::errorln("Unknown syscall {}!", regs->rax);

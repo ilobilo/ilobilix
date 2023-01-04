@@ -13,7 +13,7 @@ namespace proc
 
     extern "C" thread *this_thread()
     {
-        return reinterpret_cast<thread*>(read_gs(8));
+        return reinterpret_cast<thread*>(rdreg(gs:8));
     }
 
     void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
@@ -30,6 +30,10 @@ namespace proc
         uintptr_t pkstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
         thread->kstack = tohh(pkstack) + default_stack_size;
         thread->stacks.push_back(pkstack);
+
+        uintptr_t ppfstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
+        thread->pfstack = tohh(ppfstack) + default_stack_size;
+        thread->stacks.push_back(ppfstack);
 
         thread->gs_base = reinterpret_cast<uintptr_t>(thread);
 
@@ -61,9 +65,6 @@ namespace proc
     void thread_delete(thread *thread)
     {
         pmm::free(fromhh(thread->fpu_storage), thread->fpu_storage_pages);
-
-        for (const auto &stack : thread->stacks)
-            pmm::free(stack, default_stack_size / pmm::page_size);
     }
 
     void save_thread(thread *thread, cpu::registers_t *regs)
@@ -80,6 +81,7 @@ namespace proc
     {
         thread->running_on = this_cpu()->id;
 
+        gdt::tss[this_cpu()->id].IST[1] = thread->pfstack;
         this_cpu()->fpu_restore(thread->fpu_storage);
         thread->parent->pagemap->load();
 
@@ -109,6 +111,7 @@ namespace proc
     void arch_init(void (*func)(cpu::registers_t *regs))
     {
         gdt::tss[this_cpu()->id].IST[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size)) + default_stack_size;
+        idt::idt[14].IST = 2;
 
         [[maybe_unused]]
         static auto once = [func]() -> bool

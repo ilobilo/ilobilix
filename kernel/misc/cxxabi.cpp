@@ -73,7 +73,7 @@ extern "C"
 
         void __cxa_guard_abort(uint64_t *guard)
         {
-            PANIC("__cxa_guard_abort()");
+            PANIC("__cxa_guard_abort({})", static_cast<void*>(guard));
         }
     }
 

@@ -76,7 +76,7 @@ namespace pmm
             lastindex = 0;
             ret = inner_alloc(i);
             if (ret == nullptr)
-                PANIC("Out of memory!");
+                PANIC("PMM: Out of memory!");
         }
         memset(tohh(ret), 0, count * page_size);
 
@@ -94,9 +94,8 @@ namespace pmm
         for (size_t i = page; i < page + count; i++)
             bitmap[i] = false;
 
-        // TODO: Should we remove this?
+        // TODO: Should I remove this?
         lastindex = std::min(lastindex, page);
-
         usedmem -= count * page_size;
     }
 

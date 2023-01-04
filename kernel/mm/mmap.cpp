@@ -73,8 +73,8 @@ namespace vmm
             if (addr < local->base || addr >= local->base + local->length)
                 continue;
 
-            size_t mpage = addr / pmm::page_size;
-            size_t fpage = local->offset / pmm::page_size + (mpage - local->base / pmm::page_size);
+            size_t mpage = addr / this->page_size;
+            size_t fpage = local->offset / this->page_size + (mpage - local->base / this->page_size);
             return std::tuple<std::shared_ptr<mmap::local>, size_t, size_t> { local, mpage, fpage };
         }
         return std::nullopt;
@@ -223,11 +223,13 @@ namespace vmm
                 local->length -= split_local->length;
             }
 
-            this->lock.unlock();
-            this->unmap_range(begin, len);
+            for (auto j = begin; j < end; j += this->page_size)
+                this->unmap_nolock(j);
 
             if (len == local->length)
                 this->ranges.erase(std::find(this->ranges.begin(), this->ranges.end(), local));
+
+            this->lock.unlock();
 
             if (len == local->length && global->locals.size() == 1)
             {
@@ -247,7 +249,7 @@ namespace vmm
                         pmm::free(paddr);
                     }
                 }
-                // else res->unmap();
+                // else res->unmmap();
             }
             else
             {
@@ -261,6 +263,67 @@ namespace vmm
         }
 
         return true;
+    }
+
+    pagemap *pagemap::fork()
+    {
+        lockit(this->lock);
+        auto new_pagemap = new pagemap;
+
+        for (const auto &local : this->ranges)
+        {
+            auto global = local->global;
+            auto new_local = std::make_shared<mmap::local>(*local);
+
+            if (global->res != nullptr)
+                global->res->refcount++;
+
+            if (local->flags & MAP_SHARED)
+            {
+                global->locals.push_back(new_local);
+                for (uintptr_t i = local->base; i < local->base + local->length; i += this->page_size)
+                {
+                    auto old_pte = this->virt2pte(i, false, this->page_size);
+                    if (old_pte == nullptr)
+                        continue;
+
+                    new_pagemap->virt2pte(i, true, new_pagemap->page_size)->value = old_pte->value;
+                }
+            }
+            else
+            {
+                auto new_global = std::make_shared<mmap::global>();
+                new_global->shadow = std::make_unique<pagemap>();
+                new_global->res = global->res;
+                new_global->base = global->base;
+                new_global->length = global->length;
+                new_global->offset = global->offset;
+                new_global->locals.push_back(new_local);
+
+                assert(local->flags & MAP_ANONYMOUS, "non anonymous pagemap fork()");
+                for (uintptr_t i = local->base; i < local->base + local->length; i += this->page_size)
+                {
+                    auto old_pte = this->virt2pte(i, false, this->page_size);
+                    if (old_pte == nullptr) // TODO: or is not valid
+                        continue;
+
+                    auto new_pte = new_pagemap->virt2pte(i, true, new_pagemap->page_size);
+                    auto new_spte = new_global->shadow->virt2pte(i, true, new_global->shadow->page_size);
+
+                    auto old_page = old_pte->getaddr();
+                    auto page = pmm::alloc<uintptr_t>(this->page_size / pmm::page_size);
+
+                    memcpy(reinterpret_cast<void*>(tohh(page)), reinterpret_cast<void*>(tohh(old_page)), this->page_size);
+                    new_pte->value = 0;
+                    new_pte->setflags(old_pte->getflags(), true);
+                    new_pte->setaddr(page);
+                    new_spte->value = new_pte->value;
+                }
+            }
+
+            new_pagemap->ranges.push_back(new_local);
+        }
+        return new_pagemap;
     }
 
     bool page_fault(uintptr_t addr)
@@ -278,7 +341,7 @@ namespace vmm
 
         void *page = nullptr;
         if (local->flags & MAP_ANONYMOUS)
-            page = pmm::alloc();
+            page = pmm::alloc(pagemap->page_size / pmm::page_size);
         else
         {
             auto res = local->global->res;
@@ -288,6 +351,6 @@ namespace vmm
         if (page == nullptr)
             return false;
 
-        return local->global->mmap_page(mpage * pmm::page_size + 1, reinterpret_cast<uintptr_t>(page), local->prot);
+        return local->global->mmap_page(mpage * pagemap->page_size + 1, reinterpret_cast<uintptr_t>(page), local->prot);
     }
 } // namespace vmm

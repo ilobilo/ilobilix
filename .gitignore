@@ -4,8 +4,8 @@ initrd/*
 serial.txt
 log.txt
 
-ports
 build*
+sources
 subprojects/*
 !subprojects/*.wrap
 !subprojects/packagefiles

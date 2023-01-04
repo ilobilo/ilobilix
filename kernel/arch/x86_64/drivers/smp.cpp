@@ -15,7 +15,7 @@ namespace smp
 {
     extern "C" cpu_t *this_cpu()
     {
-        return &cpus[read_gs(0)];
+        return &cpus[rdreg(gs:0)];
     }
 
     void cpu_bsp_init(limine_smp_info *cpu)
@@ -58,7 +58,7 @@ namespace smp
         cpu::id(1, 0, a, b, c, d);
         if (c & 0x08000000)
         {
-            write_cr(4, read_cr(4) | (1 << 18));
+            wrreg(cr4, rdreg(cr4) | (1 << 18));
 
             assert(cpu::id(0x0D, 0, a, b, c, d), "CPUID failure");
             cpuptr->fpu_storage_size = c;
@@ -72,7 +72,7 @@ namespace smp
         }
         else if (d & 0x01000000)
         {
-            write_cr(4, read_cr(4) | (1 << 9));
+            wrreg(cr4, rdreg(cr4) | (1 << 9));
 
             cpuptr->fpu_storage_size = 512;
             cpuptr->fpu_save = cpu::fxsave;

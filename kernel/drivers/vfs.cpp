@@ -278,7 +278,6 @@ namespace vfs
         lockit(lock);
 
         auto [nparent, node, basename] = path2node(parent, path);
-
         if (node != nullptr)
         {
             errno = EEXIST;
@@ -289,7 +288,6 @@ namespace vfs
             return nullptr;
 
         node = nparent->fs->create(nparent, basename, mode);
-
         if (node != nullptr)
         {
             lockit(nparent->lock);

@@ -1,6 +1,6 @@
-From 6880a5fe1891d6377d214618d5decdec86c28650 Mon Sep 17 00:00:00 2001
+From cdbbbf866620735890eba11c929e9cdd2295e786 Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Sun, 1 Jan 2023 21:00:55 +0400
+Date: Wed, 4 Jan 2023 20:17:36 +0400
 Subject: Add wip ilobilix sysdeps
 
 ---
@@ -9,7 +9,7 @@ Subject: Add wip ilobilix sysdeps
  sysdeps/ilobilix/aarch64/crt-src/crti.S       |  13 +
  sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
- sysdeps/ilobilix/generic/sysdeps.cpp          | 836 ++++++++++++++++++
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 823 ++++++++++++++++++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/blkcnt_t.h  |   1 +
@@ -52,12 +52,12 @@ Subject: Add wip ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/vm-flags.h  |   1 +
  sysdeps/ilobilix/include/abi-bits/wait.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
- sysdeps/ilobilix/include/ilobilix/syscall.h   | 140 +++
+ sysdeps/ilobilix/include/ilobilix/syscall.h   | 144 +++
  sysdeps/ilobilix/meson.build                  |  92 ++
  sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
- 53 files changed, 1210 insertions(+)
+ 53 files changed, 1201 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
@@ -220,10 +220,10 @@ index 00000000..62b1c3cb
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 00000000..273f074a
+index 00000000..0ad69d83
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
-@@ -0,0 +1,836 @@
+@@ -0,0 +1,823 @@
 +#include <bits/ensure.h>
 +#include <mlibc/allocator.hpp>
 +#include <mlibc/debug.hpp>
@@ -239,17 +239,11 @@ index 00000000..273f074a
 +#include <frg/hash.hpp>
 +#include <frg/hash_map.hpp>
 +
-+#define STRINGIFY_(X) #X
-+#define STRINGIFY(X) STRINGIFY_(X)
-+#define STUB_ONLY { \
-+	sys_libc_log("STUB_ONLY function on line " STRINGIFY(__LINE__) " was called"); \
-+	return 0; \
++#define STUB_ONLY(name)                               \
++{                                                     \
++	sys_libc_log("mlibc: sys_" #name "() is a stub"); \
++	return 0;                                         \
 +}
-+
-+// #define STUB_ONLY { \
-+// 	sys_libc_log("STUB_ONLY function on line " STRINGIFY(__LINE__) " was called"); \
-+// 	sys_libc_panic(); \
-+// }
 +
 +namespace mlibc {
 +
@@ -295,6 +289,14 @@ index 00000000..273f074a
 +	return __do_syscall(uintptr_t(args)...);
 +}
 +
++inline int syscall_error(intptr_t ret)
++{
++	auto v = static_cast<intptr_t>(ret);
++	if(static_cast<uintptr_t>(v) > -4096UL)
++		return -v;
++	return 0;
++}
++
 +void sys_libc_log(const char *message)
 +{
 +	size_t n = 0;
@@ -331,17 +333,17 @@ index 00000000..273f074a
 +	return 0;
 +}
 +
-+int sys_futex_wait(int *pointer, int expected, const struct timespec *time) STUB_ONLY
++int sys_futex_wait(int *pointer, int expected, const struct timespec *time) STUB_ONLY(futex_wait)
 +// {
 +// 	return do_syscall(SYS_futex_wait, pointer, expected, time);
 +// }
 +
-+int sys_futex_wake(int *pointer) STUB_ONLY
++int sys_futex_wake(int *pointer) STUB_ONLY(futex_wake)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_futex_wake, pointer);
 +
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++// 		return e;
 +
 +// 	int num_woken = ret;
 +
@@ -353,8 +355,8 @@ index 00000000..273f074a
 +{
 +	uintptr_t ret = do_syscall(SYS_openat, dirfd, path, flags, mode);
 +
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*fd = int(ret);
 +	return 0;
@@ -379,8 +381,8 @@ index 00000000..273f074a
 +int sys_close(int fd)
 +{
 +	uintptr_t ret = do_syscall(SYS_close, fd);
-+	if (int(ret) == -1)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +#ifndef MLIBC_BUILDING_RTDL
 +	open_dirs.remove(fd);
@@ -391,8 +393,8 @@ index 00000000..273f074a
 +int sys_seek(int fd, off_t offset, int whence, off_t *new_offset)
 +{
 +	uintptr_t ret = do_syscall(SYS_lseek, fd, offset, whence);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*new_offset = off_t(ret);
 +	return 0;
@@ -401,8 +403,8 @@ index 00000000..273f074a
 +int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read)
 +{
 +	uintptr_t ret = do_syscall(SYS_read, fd, buf, count);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*bytes_read = ssize_t(ret);
 +	return 0;
@@ -411,8 +413,8 @@ index 00000000..273f074a
 +int sys_vm_map(void *hint, size_t size, int prot, int flags, int fd, off_t offset, void **window)
 +{
 +	uintptr_t ret = do_syscall(SYS_mmap, hint, size, prot, flags, fd, offset);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*window = (void*)ret;
 +	return 0;
@@ -421,8 +423,8 @@ index 00000000..273f074a
 +int sys_vm_unmap(void *pointer, size_t size)
 +{
 +	uintptr_t ret = do_syscall(SYS_munmap, pointer, size);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +	return 0;
 +}
 +
@@ -479,9 +481,8 @@ index 00000000..273f074a
 +int sys_ioctl(int fd, unsigned long request, void *arg, int *result)
 +{
 +	uintptr_t ret = do_syscall(SYS_ioctl, fd, request, arg);
-+
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*result = int(ret);
 +	return 0;
@@ -498,62 +499,40 @@ index 00000000..273f074a
 +	return ENOTTY;
 +}
 +
++gid_t sys_getgid() STUB_ONLY(getgid)
++gid_t sys_getegid() STUB_ONLY(getegid)
++uid_t sys_getuid() STUB_ONLY(getuid)
++uid_t sys_geteuid() STUB_ONLY(geteuid)
 +pid_t sys_getpid()
 +{
 +	return pid_t(do_syscall(SYS_getpid));
 +}
-+
++pid_t sys_gettid() STUB_ONLY(gettid)
 +pid_t sys_getppid()
 +{
 +	return pid_t(do_syscall(SYS_getppid));
 +}
++pid_t sys_getpgid(pid_t pid, pid_t *pgid) STUB_ONLY(getpgid)
++pid_t sys_getsid(pid_t pid, pid_t *sid) STUB_ONLY(getsid)
 +
-+// uid_t sys_getuid()
-+// {
-+// 	return 0;
-+// }
++int sys_setpgid(pid_t pid, pid_t pgid) STUB_ONLY(setpgid)
++int sys_setuid(uid_t uid) STUB_ONLY(setuid)
++int sys_seteuid(uid_t euid) STUB_ONLY(seteuid)
++int sys_setgid(gid_t gid) STUB_ONLY(setgid)
++int sys_setegid(gid_t egid) STUB_ONLY(setegid)
 +
-+// uid_t sys_geteuid()
-+// {
-+// 	return 0;
-+// }
++// TODO
++int sys_ttyname(int, char *, size_t)
++{
++	return ENOSYS;
++}
 +
-+// gid_t sys_getgid()
-+// {
-+// 	return 0;
-+// }
-+
-+// int sys_setgid(gid_t)
-+// {
-+// 	return 0;
-+// }
-+
-+// pid_t sys_getpgid(pid_t, pid_t *)
-+// {
-+// 	return 0;
-+// }
-+
-+// gid_t sys_getegid()
-+// {
-+// 	return 0;
-+// }
-+
-+// int sys_setpgid(pid_t, pid_t)
-+// {
-+// 	return 0;
-+// }
-+
-+// int sys_ttyname(int, char *, size_t)
-+// {
-+// 	return ENOSYS;
-+// }
-+
-+int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY
++int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY(clock_get)
 +// {
 +// 	struct timespec buf;
 +// 	uintptr_t ret = do_syscall(SYS_getclock, clock, &buf);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +
 +// 	*secs = buf.tv_sec;
 +// 	*nanos = buf.tv_nsec;
@@ -563,9 +542,8 @@ index 00000000..273f074a
 +int sys_getcwd(char *buffer, size_t size)
 +{
 +	uintptr_t ret = do_syscall(SYS_getcwd, buffer, size);
-+
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	return 0;
 +}
@@ -588,8 +566,8 @@ index 00000000..273f074a
 +			__ensure(!"sys_stat: Invalid fsfdt");
 +			__builtin_unreachable();
 +	}
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +	return 0;
 +}
 +
@@ -635,14 +613,14 @@ index 00000000..273f074a
 +
 +// retry:
 +// 	uintptr_t ret = do_syscall(SYS_readdir, fdnum, state->buffer, &state->capacity);
-+// 	if (int(ret) < 0)
++//  if (auto e = syscall_error(ret); e)
 +//  {
-+// 		if (-int(ret) == ENOBUFS)
++// 		if (e == ENOBUFS)
 +//      {
 +// 			state->buffer = realloc(state->buffer, state->capacity);
 +// 			goto retry;
 +// 		}
-+//      else return -int(ret);
++//      else return e;
 +// 	}
 +
 +// 	size_t offset = 0;
@@ -667,16 +645,16 @@ index 00000000..273f074a
 +// int sys_pipe(int *fds, int flags)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_pipe, fds, flags);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return 0;
 +// }
 +
 +// int sys_chdir(const char *path)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_chdir, path);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return 0;
 +// }
 +
@@ -688,16 +666,16 @@ index 00000000..273f074a
 +// int sys_mkdirat(int dirfd, const char *path, mode_t mode)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return 0;
 +// }
 +
 +int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written)
 +{
 +	uintptr_t ret = do_syscall(SYS_write, fd, buf, count);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*bytes_written = ssize_t(ret);
 +	return 0;
@@ -706,8 +684,8 @@ index 00000000..273f074a
 +int sys_readlink(const char *path, void *data, size_t max_size, ssize_t *length)
 +{
 +	uintptr_t ret = do_syscall(SYS_readlinkat, AT_FDCWD, path, data, max_size);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	*length = ssize_t(ret);
 +	return 0;
@@ -721,8 +699,8 @@ index 00000000..273f074a
 +int sys_linkat(int olddirfd, const char *old_path, int newdirfd, const char *new_path, int flags)
 +{
 +	uintptr_t ret = do_syscall(SYS_linkat, olddirfd, old_path, newdirfd, new_path, flags);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	return 0;
 +}
@@ -730,8 +708,8 @@ index 00000000..273f074a
 +int sys_unlinkat(int fd, const char *path, int flags)
 +{
 +	uintptr_t ret = do_syscall(SYS_unlinkat, fd, path, flags);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	return 0;
 +}
@@ -739,8 +717,8 @@ index 00000000..273f074a
 +int sys_fchmodat(int fd, const char *pathname, mode_t mode, int flags)
 +{
 +	uintptr_t ret = do_syscall(SYS_fchmodat, fd, pathname, mode, flags);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +
 +	return 0;
 +}
@@ -758,8 +736,8 @@ index 00000000..273f074a
 +// int sys_rmdir(const char *pathname)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_rmdir, pathname);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++//  if (auto e = syscall_error(ret); e)
++//		return e;
 +
 +// 	return 0;
 +// }
@@ -767,8 +745,8 @@ index 00000000..273f074a
 +// int sys_socket(int domain, int type_and_flags, int proto, int *fd)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_socket, domain, type_and_flags, proto);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	*fd = int(ret);
 +// 	return 0;
 +// }
@@ -778,24 +756,24 @@ index 00000000..273f074a
 +// int sys_bind(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_bind, fd, addr_ptr, addr_length);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++//  if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return 0;
 +// }
 +
 +// int sys_connect(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_connect, fd, addr_ptr, addr_length);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return 0;
 +// }
 +
 +// int sys_accept(int fd, int *newfd, struct sockaddr *addr_ptr, socklen_t *addr_length)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_accept, fd, addr_ptr, addr_length);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	*newfd = int(ret);
 +// 	return 0;
 +// }
@@ -889,8 +867,8 @@ index 00000000..273f074a
 +// int sys_msg_recv(int sockfd, struct msghdr *hdr, int flags, ssize_t *length)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_recvmsg, sockfd, hdr, flags);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	*length = ssize_t(ret);
 +// 	return 0;
 +// }
@@ -898,8 +876,8 @@ index 00000000..273f074a
 +// int sys_peername(int fd, struct sockaddr *addr_ptr, socklen_t max_addr_length, socklen_t *actual_length)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_getpeername, fd, addr_ptr, &max_addr_length);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	*actual_length = max_addr_length;
 +// 	return 0;
 +// }
@@ -907,8 +885,8 @@ index 00000000..273f074a
 +// int sys_listen(int fd, int backlog)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_listen, fd, backlog);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return 0;
 +// }
 +
@@ -917,8 +895,8 @@ index 00000000..273f074a
 +// int sys_fork(pid_t *child)
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_fork);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	*child = pid_t(ret);
 +// 	return 0;
 +// }
@@ -926,16 +904,16 @@ index 00000000..273f074a
 +// int sys_execve(const char *path, char *const argv[], char *const envp[])
 +// {
 +// 	uintptr_t ret = do_syscall(SYS_exec, path, argv, envp);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	return ret;
 +// }
 +
 +int sys_fcntl(int fd, int request, va_list args, int *result)
 +{
 +	uintptr_t ret = do_syscall(SYS_fcntl, fd, request, va_arg(args, uint64_t));
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +	*result = int(ret);
 +	return 0;
 +}
@@ -944,8 +922,8 @@ index 00000000..273f074a
 +{
 +	(void)flags;
 +	uintptr_t ret = do_syscall(SYS_dup, fd);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +	*newfd = int(ret);
 +	return 0;
 +}
@@ -953,8 +931,8 @@ index 00000000..273f074a
 +int sys_dup2(int fd, int flags, int newfd)
 +{
 +	uintptr_t ret = do_syscall(SYS_dup3, fd, newfd, flags);
-+	if (int(ret) < 0)
-+		return -int(ret);
++	if (auto e = syscall_error(ret); e)
++		return e;
 +	return 0;
 +}
 +
@@ -981,11 +959,11 @@ index 00000000..273f074a
 +// 	}
 +// again:
 +// 	uintptr_t ret = do_syscall(SYS_waitpid, pid, status, flags);
-+// 	if (int(ret) < 0)
++// 	if (auto e = syscall_error(ret); e)
 +// 	{
-+// 		if (-int(ret) == EINTR)
++// 		if (e == EINTR)
 +// 			goto again;
-+// 		return -int(ret);
++// 		return e;
 +// 	}
 +// 	*ret_pid = pid_t(ret);
 +// 	return 0;
@@ -997,16 +975,16 @@ index 00000000..273f074a
 +
 +// int sys_umount2(const char *, int)
 +
-+// int sys_gethostname(char *buffer, size_t bufsize)
-+// {
-+// 	struct utsname utsname;
-+// 	if (int err = sys_uname(&utsname))
-+// 		return err;
-+// 	if (strlen(utsname.nodename) >= bufsize)
-+// 		return ENAMETOOLONG;
-+// 	strncpy(buffer, utsname.nodename, bufsize);
-+// 	return 0;
-+// }
++int sys_gethostname(char *buffer, size_t bufsize)
++{
++	struct utsname utsname;
++	if (int err = sys_uname(&utsname))
++		return err;
++	if (strlen(utsname.nodename) >= bufsize)
++		return ENAMETOOLONG;
++	strncpy(buffer, utsname.nodename, bufsize);
++	return 0;
++}
 +
 +// int sys_sethostname(const char *, size_t)
 +
@@ -1015,8 +993,8 @@ index 00000000..273f074a
 +// 	struct timespec time = { .tv_sec = *secs, .tv_nsec = *nanos };
 +// 	struct timespec rem = { .tv_sec = 0, .tv_nsec = 0 };
 +// 	uintptr_t ret = do_syscall(SYS_sleep, &time, &rem);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
 +// 	*secs = rem.tv_sec;
 +// 	*nanos = rem.tv_nsec;
 +// 	return 0;
@@ -1034,26 +1012,35 @@ index 00000000..273f074a
 +	return ENOSYS;
 +}
 +
-+// int sys_umask(mode_t mode, mode_t *old)
-+// {
-+// 	uintptr_t ret = do_syscall(SYS_umask, mode);
-+// 	*old = mode_t(ret);
-+// 	return 0;
-+// }
++int sys_umask(mode_t mode, mode_t *old)
++{
++	uintptr_t ret = do_syscall(SYS_umask, mode);
++	*old = mode_t(ret);
++	return 0;
++}
 +
-+// int sys_uname(struct utsname *buf)
-+// {
-+// 	uintptr_t ret = do_syscall(SYS_uname, buf);
-+// 	if (int(ret) < 0)
-+// 		return -int(ret);
-+// 	return 0;
-+// }
++int sys_uname(struct utsname *buf)
++{
++	uintptr_t ret = do_syscall(SYS_uname, buf);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
 +
 +int sys_fsync(int)
 +{
 +	mlibc::infoLogger() << "sys_fsync is a stub" << frg::endlog;
 +	return 0;
 +}
++
++
++int sys_getrlimit(int resource, struct rlimit *limit) STUB_ONLY(getrlimit)
++// {
++// 	uintptr_t ret = do_syscall(SYS_getrlimit, resource, limit);
++// 	if (auto e = syscall_error(ret); e)
++// 		return e;
++// 	return 0;
++// }
 +
 +// int sys_vm_protect(void *, size_t, int)
 +
@@ -1398,10 +1385,10 @@ index 00000000..66412d70
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
 new file mode 100644
-index 00000000..7efcfff1
+index 00000000..9b306514
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,144 @@
 +#ifndef _ILOBILIX__SYSCALL_H
 +#define _ILOBILIX__SYSCALL_H
 +
@@ -1424,12 +1411,14 @@ index 00000000..7efcfff1
 +#define SYS_dup2 33
 +#define SYS_getpid 39
 +#define SYS_exit 60
++#define SYS_uname 63
 +#define SYS_fcntl 72
 +#define SYS_getcwd 79
 +#define SYS_link 86
 +#define SYS_unlink 87
 +#define SYS_readlink 89
 +#define SYS_fchmod 91
++#define SYS_umask 95
 +#define SYS_getppid 110
 +#define SYS_arch_prctl 158
 +#define SYS_openat 257
@@ -1522,6 +1511,8 @@ index 00000000..7efcfff1
 +#define SYS_readlinkat 78
 +#define SYS_fstatat 79
 +#define SYS_exit 93
++#define SYS_uname 160
++#define SYS_umask 166
 +#define SYS_getpid 172
 +#define SYS_getppid 173
 +#define SYS_munmap 216

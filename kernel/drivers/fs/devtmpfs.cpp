@@ -201,6 +201,7 @@ namespace devtmpfs
     {
         vfs::register_fs(dev_fs = new devtmpfs());
 
+        // Create if it doesn't exist
         vfs::create(nullptr, "/dev", 0755 | s_ifdir);
         vfs::mount(nullptr, "", "/dev", "devtmpfs");
 

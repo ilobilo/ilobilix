@@ -1,6 +1,7 @@
 // Copyright (C) 2022  ilobilo
 
 #include <drivers/fs/devtmpfs.hpp>
+#include <drivers/term.hpp>
 
 namespace streams
 {
@@ -57,15 +58,18 @@ namespace streams
     {
         ssize_t read(vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
         {
-            memset(buffer, 0, count);
+            time::msleep(1000);
+            memset(buffer, '1', count);
             return count;
         }
 
         ssize_t write(vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
         {
-            printf("%.*s", int(count), static_cast<const char *>(buffer));
+            term::main_term->write(static_cast<const char *>(buffer), count);
             return count;
         }
+
+        int ioctl(vfs::fdhandle *fd, size_t request, uintptr_t argp) { return 0; }
 
         console() : vfs::resource(devtmpfs::dev_fs) { }
     };

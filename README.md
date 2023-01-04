@@ -16,23 +16,35 @@ Make sure you have following programs installed:
 * llvm
 * xorriso
 * tar
+* xbstrap
 * qemu-system-x86_64
 * qemu-system-aarch64
 
-Note: currently only llvm, clang and lld are supported
+Note: currently only llvm, clang and lld are supported\
+Note: you may need more tools to build the sysroot, such as flex, bison, automake, autoconf, etc
 
 If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install most of them with this command:\
 ``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``\
 For meson and ninja, first make sure you have python installed and then run:\
-``sudo python -m pip install meson ninja``
+``sudo python -m pip install meson ninja xbstrap``
 
 Follow these steps to build and run the os:
 1. Clone this repo with:\
 ``git clone --single-branch --branch=master --depth=1 https://github.com/ilobilo/ilobilix``
 
-2. Go to the root directory of the cloned repo and run:\
-``meson setup builddir --cross-file cross-files/meson-clang-(x86_64/aarch64).cross-file -Doptions=values``\
-3. Build and run the kernel:\
+2. Currently you have to manually build the sysroot:
+* Set the architecture in boostrap.yml
+* ``mkdir build-sysroot``
+* ``pushd build-sysroot``
+* ``xbstrap init ..``
+* ``xbstrap install base``
+* ``rsync -rl system-root ../initrd``
+* ``popd``
+
+3. Go to the root directory of the cloned repo and run:\
+``meson setup builddir --cross-file cross-files/meson-clang-(x86_64/aarch64).cross-file -Doptions=values``
+
+4. Build and run the kernel:\
 ``ninja -C builddir``
 
 Note: optionally you can add run_bios or run_efi to ninja arguments\
@@ -101,7 +113,7 @@ https://discord.gg/fM5GK3RpS7
 
 ## TODO
 
-### Misc
+- [x] Serial
 - [x] GDT
 - [x] IDT
 - [x] TSS
@@ -109,71 +121,17 @@ https://discord.gg/fM5GK3RpS7
 - [x] PCIe
 - [x] MSI
 - [ ] MSI-X
-- [x] Modules
+- [x] Modules x86_64
+- [ ] Modules aarch64
 - [ ] DTB
-
-### Memory
+- [ ] PS/2
 - [x] PMM
 - [x] VMM (5 and 4 level)
 - [x] Heap
-
-### ACPI
 - [x] ACPI
 - [x] LAPIC
 - [x] IOAPIC
 - [x] LAI
-
-<!-- ### Device drivers
-#### Audio
-- [ ] PC speaker
-- [ ] AC97
-- [ ] SB16
-
-#### I/O
-- [ ] PS/2 Keyboard
-- [ ] PS/2 Mouse
-- [x] COM
-
-#### VMs
-- [ ] VMWare Tools
-- [ ] VBox Guest Additions
-- [ ] Virtio
-
-#### Storage
-- [ ] FDC
-- [ ] IDE
-- [ ] SATA
-- [ ] NVMe
-- [ ] Virtio block
-
-#### Network
-- [ ] RTL8139
-- [ ] RTL8169
-- [ ] E1000
-- [ ] Virtio network
-
-#### USB
-- [ ] UHCI
-- [ ] OHCI
-- [ ] EHCI
-- [ ] XHCI -->
-
-### Timers
-- [x] HPET
-- [x] PIT
-- [x] RTC
-- [x] LAPIC Timer
-
-### Tasking
-- [x] SMP
-- [x] Scheduler
-- [ ] Signals
-
-<!-- ### Partition tables
-- [ ] MBR
-- [ ] GPT -->
-
-### Filesystems
 - [x] VFS
 - [x] TMPFS
 - [x] DEVTMPFS
@@ -181,31 +139,33 @@ https://discord.gg/fM5GK3RpS7
 - [ ] SYSFS
 - [x] USTAR
 - [x] ILAR
-<!-- - [ ] Ext2
-- [ ] Fat32
-- [ ] ISO9660
-- [ ] NTFS -->
-
-### Userspace
-- [x] System calls
+- [ ] EchFS
+- [ ] EXT2
+- [ ] FAT32
+- [x] HPET
+- [x] PIT
+- [x] RTC
+- [x] LAPIC Timer
+- [ ] Generic Timer
+- [x] SMP
+- [x] Scheduler x86_64
+- [ ] Scheduler aarch64
+- [x] System calls x86_64
+- [ ] System calls aarch64
 - [ ] Permissions
 - [x] MMAP
 - [x] FDs
+- [ ] CDEV
+- [ ] FBDEV
+- [ ] TTY/PTY
 - [x] ELF
 - [x] Userspace
-- [ ] Libc
-- [ ] Bash
+- [ ] Signals
+- [x] mlibc
+- [x] bash
+- [x] coreutils
+- [ ] readline
+- [ ] ncurses
 - [ ] DOOM
-
-### Network stack
-- [ ] Ethernet
-- [ ] ARP
-- [ ] IPv4
-- [ ] ICMPv4
-- [ ] TCP
-- [ ] UDP
-- [ ] DHCP
-- [ ] HTTP
-- [ ] Telnet
-- [ ] SSL
-- [ ] Or just LWIP
+- [ ] gcc
+- [ ] tcc

@@ -29,8 +29,8 @@ namespace gdt
             { 0x0000, 0, 0, 0x00, 0x00, 0 }, // Null
             { 0x0000, 0, 0, 0x9A, 0x20, 0 }, // Kernel code
             { 0x0000, 0, 0, 0x92, 0x00, 0 }, // Kernel data
-            { 0x0000, 0, 0, 0xFA, 0x20, 0 }, // User code
             { 0x0000, 0, 0, 0xF2, 0x00, 0 }, // User data
+            { 0x0000, 0, 0, 0xFA, 0x20, 0 }, // User code
             {
                 limit,
                 static_cast<uint16_t>(base),
