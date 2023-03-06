@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <printf/printf.h>
 #include <lib/log.hpp>
@@ -8,6 +8,10 @@
 extern "C"
 {
     static lock_t lock;
+
+    // Stubs for fmtlib
+    FILE *stdout = (FILE*)&stdout;
+    FILE *stderr = (FILE*)&stderr;
 
     int fputc(char c, FILE *stream)
     {

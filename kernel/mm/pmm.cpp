@@ -1,7 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <init/kernel.hpp>
 #include <lib/bitmap.hpp>
+#include <lib/alloc.hpp>
 #include <lib/panic.hpp>
 #include <lib/lock.hpp>
 #include <lib/misc.hpp>
@@ -109,20 +110,23 @@ namespace pmm
         for (size_t i = 0; i < memmap_count; i++)
         {
             uintptr_t top = memmaps[i]->base + memmaps[i]->length;
-
             mem_top = std::max(mem_top, top);
 
             switch (memmaps[i]->type)
             {
                 case LIMINE_MEMMAP_USABLE:
                     usablemem += memmaps[i]->length;
-                    mem_usable_top = std::max(mem_usable_top, top);
-                    [[fallthrough]];
-                case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-                case LIMINE_MEMMAP_KERNEL_AND_MODULES:
-                    totalmem += memmaps[i]->length;
                     break;
+                case LIMINE_MEMMAP_KERNEL_AND_MODULES:
+                case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: // TODO: <- are we going to free those structs?
+                    usedmem += memmaps[i]->length;
+                    break;
+                default:
+                    continue;
             }
+
+            totalmem += memmaps[i]->length;
+            mem_usable_top = std::max(mem_usable_top, top);
         }
 
         size_t bitmapSize = align_up((mem_usable_top / page_size) / 8, page_size);
@@ -155,6 +159,7 @@ namespace pmm
                 bitmap[(memmaps[i]->base + t) / page_size] = false;
         }
 
+        // safe address + hhdm where we can map stuff
         mem_top = align_up(mem_top, 0x40000000);
         heap::allocator.initialize();
     }

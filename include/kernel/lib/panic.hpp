@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -14,7 +14,6 @@ namespace cpu { struct registers_t; }
     vpanic(file, line, func, format, fmt::make_format_args(args...));
 }
 [[noreturn]] void panic(const char *message);
-
 
 [[noreturn]] void vpanic(cpu::registers_t *regs, uintptr_t bp, uintptr_t fip, std::string_view format, fmt::format_args args, bool trace = true);
 [[noreturn]] inline void panic(cpu::registers_t *regs, uintptr_t bp, uintptr_t fip, std::string_view format, auto &&...args)

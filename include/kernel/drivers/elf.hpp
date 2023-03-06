@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -39,7 +39,7 @@ namespace elf
         void init();
     } // namespace syms
 
-    namespace module
+    namespace modules
     {
         struct module_t
         {
@@ -66,7 +66,7 @@ namespace elf
         void destroy_all();
 
         void init();
-    } // namespace module
+    } // namespace modules
 
     namespace exec
     {

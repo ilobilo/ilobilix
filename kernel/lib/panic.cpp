@@ -1,5 +1,6 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
+#include <drivers/proc.hpp>
 #include <frg/macros.hpp>
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
@@ -17,6 +18,8 @@
     log::errorln("File: {}", file);
     log::errorln("Line: {}", line);
     log::errorln("Function: {}", func);
+
+    // trace::print(0, 0, log::error_prefix);
 
     log::errorln("System halted!");
     arch::halt(false);
@@ -41,6 +44,11 @@
 
     log::println();
     log::errorln("{}", fmt::vformat(format, args));
+    if (proc::initialised == true)
+    {
+        auto [pid, tid] = proc::pid();
+        log::errorln("Process ID: {}, Thread ID: {}", pid, tid);
+    }
 
     log::errorln();
     arch::dump_regs(regs, log::error_prefix);

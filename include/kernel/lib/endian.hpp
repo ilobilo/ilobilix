@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -7,7 +7,7 @@
 #include <bit>
 
 template<std::endian New, std::endian Old = std::endian::native, std::integral Type>
-inline constexpr Type convert_endian(Type num)
+constexpr inline Type convert_endian(Type num)
 {
     if constexpr (New == Old)
         return num;
@@ -16,13 +16,13 @@ inline constexpr Type convert_endian(Type num)
 }
 
 template<std::endian New, std::integral Type>
-inline constexpr Type to_endian(Type num)
+constexpr inline Type to_endian(Type num)
 {
     return convert_endian<New, std::endian::native>(num);
 }
 
 template<std::endian Old, std::integral Type>
-inline constexpr Type from_endian(Type num)
+constexpr inline Type from_endian(Type num)
 {
     return convert_endian<std::endian::native, Old>(num);
 }

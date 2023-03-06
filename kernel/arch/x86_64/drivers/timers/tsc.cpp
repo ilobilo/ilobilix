@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/drivers/timers/tsc.hpp>
 #include <arch/x86_64/cpu/cpu.hpp>

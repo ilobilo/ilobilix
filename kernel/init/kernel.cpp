@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 
 #include <drivers/serial.hpp>
@@ -6,7 +6,6 @@
 #include <drivers/smp.hpp>
 
 #include <init/kernel.hpp>
-#include <init/main.hpp>
 
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
@@ -143,20 +142,17 @@ extern "C" void _start()
     serial::early_init();
     term::early_init();
 
-    uefi = efi_system_table_request.response != nullptr;
-    #if LVL5_PAGING
+#if LVL5_PAGING
     lvl5 = _5_level_paging_request.response != nullptr;
-    #endif
+#endif
 
-    // #if defined(__aarch64__)
-    // assert(dtb_request.response, "Could not get dtb response!");
-    // #endif
+// #if defined(__aarch64__)
+//     assert(dtb_request.response, "Could not get dtb response!");
+// #endif
 
-    #if defined(__x86_64__)
-    if (uefi == true)
-    #endif
-        assert(framebuffer_request.response, "Could not get framebuffer response!");
+    uefi = efi_system_table_request.response != nullptr;
 
+    assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
     assert(memmap_request.response, "Could not get memmap response!");
     assert(rsdp_request.response, "Could not get rsdp response!");
@@ -170,6 +166,6 @@ extern "C" void _start()
     cmdline = kernel_file_request.response->kernel_file->cmdline;
     hhdm_offset = hhdm_request.response->offset;
 
-    main();
+    kmain();
     arch::halt();
 }

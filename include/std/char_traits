@@ -1,4 +1,9 @@
-// Copyright (C) 2022  ilobilo
+#ifndef __INTELLISENSE__
+#  error "Please use char_traits from libstdc++"
+#endif
+
+/*
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -147,3 +152,4 @@ namespace std
         static constexpr int_type not_eof(int_type e) { return eq_int_type(e, eof()) ? ~eof() : e; }
     };
 } // namespace std
+*/

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -33,3 +33,7 @@ extern volatile limine_kernel_address_request kernel_address_request;
 extern volatile limine_stack_size_request stack_size_request;
 
 limine_file *find_module(const char *name);
+
+namespace proc { struct process; }
+extern proc::process *kernel_proc;
+void kmain();

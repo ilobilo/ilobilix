@@ -38,7 +38,7 @@ Follow these steps to build and run the os:
 * ``pushd build-sysroot``
 * ``xbstrap init ..``
 * ``xbstrap install base``
-* ``rsync -rl system-root ../initrd``
+* ``rsync -rl system-root ../sysroot``
 * ``popd``
 
 3. Go to the root directory of the cloned repo and run:\
@@ -61,6 +61,7 @@ Note: if firmware type is not specified and architecture supports bios mode, run
 | kernel_ubsan      | true          | Enable ubsanitizer in kernel             |
 | modules_ubsan     | false         | Enable ubsanitizer in modules            |
 | 5lvl_paging       | false         | Enable 5 level paging in kernel          |
+| syscall_debug     | false         | Print syscall log on serial              |
 | qemu_debug        | false         | Enable interrupt logging in qemu and starts monitor on telnet:127.0.0.1:12345. Enables 'noaccel' |
 | gdb               | false         | Add -s -S to qemu. Enables 'qemu_debug'  |
 | noaccel           | false         | Disable qemu accelerators                |
@@ -124,7 +125,7 @@ https://discord.gg/fM5GK3RpS7
 - [x] Modules x86_64
 - [ ] Modules aarch64
 - [ ] DTB
-- [ ] PS/2
+- [x] PS/2
 - [x] PMM
 - [x] VMM (5 and 4 level)
 - [x] Heap
@@ -155,9 +156,10 @@ https://discord.gg/fM5GK3RpS7
 - [ ] Permissions
 - [x] MMAP
 - [x] FDs
-- [ ] CDEV
+- [x] CDEV
 - [ ] FBDEV
-- [ ] TTY/PTY
+- [x] TTY
+- [ ] PTY
 - [x] ELF
 - [x] Userspace
 - [ ] Signals

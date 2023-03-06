@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -55,7 +55,6 @@ namespace heap
         void free(void *ptr);
         size_t allocsize(void *ptr);
 
-
         template<typename Type = void*>
         Type malloc(size_t size)
         {
@@ -87,49 +86,3 @@ namespace heap
 
     extern frg::manual_box<slaballoc> allocator;
 } // namespace heap
-
-template<typename Type = void*>
-Type malloc(size_t size, bool phys = false)
-{
-    Type ret = heap::allocator->malloc<Type>(size);
-    if (phys == true)
-        ret = fromhh(ret);
-    return ret;
-}
-
-template<typename Type = void*>
-Type calloc(size_t num, size_t size, bool phys = false)
-{
-    Type ret = heap::allocator->calloc<Type>(num, size);
-    if (phys == true)
-        ret = fromhh(ret);
-    return ret;
-}
-
-auto realloc(auto oldptr, size_t size, bool phys = false)
-{
-    auto ret = heap::allocator->realloc(oldptr, size);
-    if (phys == true)
-        ret = fromhh(ret);
-    return ret;
-}
-
-void free(auto ptr, bool phys)
-{
-    heap::allocator->free(phys ? fromhh(ptr) : ptr);
-}
-
-size_t allocsize(auto ptr, bool phys)
-{
-    return heap::allocator->allocsize(phys ? fromhh(ptr) : ptr);
-}
-
-void free(auto ptr)
-{
-    free(ptr, not ishh(ptr));
-}
-
-size_t allocsize(auto ptr)
-{
-    return allocsize(ptr, not ishh(ptr));
-}

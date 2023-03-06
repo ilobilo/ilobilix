@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -11,8 +11,8 @@
 struct ticket_lock
 {
     private:
-    size_t _next_ticket;
-    size_t _serving_ticket;
+    std::atomic_size_t _next_ticket;
+    std::atomic_size_t _serving_ticket;
 
     public:
     constexpr ticket_lock() : _next_ticket(0), _serving_ticket(0) { }
@@ -22,21 +22,24 @@ struct ticket_lock
 
     void lock()
     {
-        auto ticket = __atomic_fetch_add(&this->_next_ticket, 1, __ATOMIC_RELAXED);
-        while (__atomic_load_n(&this->_serving_ticket, __ATOMIC_ACQUIRE) != ticket)
+        auto ticket = this->_next_ticket.fetch_add(1, std::memory_order_relaxed);
+        while (this->_serving_ticket.load(std::memory_order_acquire) != ticket)
             arch::pause();
     }
 
     void unlock()
     {
-        auto current = __atomic_load_n(&this->_serving_ticket, __ATOMIC_RELAXED);
-        __atomic_store_n(&this->_serving_ticket, current + 1, __ATOMIC_RELEASE);
+        if (this->is_locked() == false)
+            return;
+
+        auto current = this->_serving_ticket.load(std::memory_order_relaxed);
+        this->_serving_ticket.store(current + 1, std::memory_order_release);
     }
 
     bool is_locked()
     {
-        auto current = __atomic_load_n(&this->_serving_ticket, __ATOMIC_RELAXED);
-        auto next = __atomic_load_n(&this->_next_ticket, __ATOMIC_RELAXED);
+        auto current = this->_serving_ticket.load(std::memory_order_relaxed);
+        auto next = this->_next_ticket.load(std::memory_order_relaxed);
         return current != next;
     }
 
@@ -137,7 +140,7 @@ struct irq_lock
 };
 
 namespace proc { void yield(); std::pair<pid_t, tid_t> pid(); }
-struct recursive_lock
+struct smart_lock
 {
     private:
     std::optional<std::pair<pid_t, tid_t>> _owner;
@@ -145,10 +148,10 @@ struct recursive_lock
     lock_t _lock;
 
     public:
-    constexpr recursive_lock() : _owner(std::nullopt), _refcount(0), _lock() { }
+    constexpr smart_lock() : _owner(std::nullopt), _refcount(0), _lock() { }
 
-    recursive_lock(const recursive_lock &) = delete;
-    recursive_lock &operator=(const recursive_lock &) = delete;
+    smart_lock(const smart_lock &) = delete;
+    smart_lock &operator=(const smart_lock &) = delete;
 
     void lock()
     {

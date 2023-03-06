@@ -1,15 +1,16 @@
-From cdbbbf866620735890eba11c929e9cdd2295e786 Mon Sep 17 00:00:00 2001
+From 91779c895cc61f63ba94e7797a264a03cc2c514b Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Wed, 4 Jan 2023 20:17:36 +0400
+Date: Fri, 10 Feb 2023 00:56:26 +0400
 Subject: Add wip ilobilix sysdeps
 
 ---
  meson.build                                   |   4 +
+ meson.build.orig                              | 402 +++++++++
  sysdeps/ilobilix/aarch64/crt-src/crt0.S       |   9 +
  sysdeps/ilobilix/aarch64/crt-src/crti.S       |  13 +
  sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
- sysdeps/ilobilix/generic/sysdeps.cpp          | 823 ++++++++++++++++++
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 789 ++++++++++++++++++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/blkcnt_t.h  |   1 +
@@ -50,14 +51,16 @@ Subject: Add wip ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/uid_t.h     |   1 +
  sysdeps/ilobilix/include/abi-bits/utsname.h   |   1 +
  sysdeps/ilobilix/include/abi-bits/vm-flags.h  |   1 +
+ sysdeps/ilobilix/include/abi-bits/vt.h        |   1 +
  sysdeps/ilobilix/include/abi-bits/wait.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
- sysdeps/ilobilix/include/ilobilix/syscall.h   | 144 +++
- sysdeps/ilobilix/meson.build                  |  92 ++
+ sysdeps/ilobilix/include/ilobilix/syscall.h   | 158 ++++
+ sysdeps/ilobilix/meson.build                  |  93 +++
  sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
- 53 files changed, 1201 insertions(+)
+ 55 files changed, 1585 insertions(+)
+ create mode 100644 meson.build.orig
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
@@ -103,6 +106,7 @@ Subject: Add wip ilobilix sysdeps
  create mode 120000 sysdeps/ilobilix/include/abi-bits/uid_t.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/utsname.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/vm-flags.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/vt.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/wait.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/xattr.h
  create mode 100644 sysdeps/ilobilix/include/ilobilix/syscall.h
@@ -112,10 +116,10 @@ Subject: Add wip ilobilix sysdeps
  create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crtn.S
 
 diff --git a/meson.build b/meson.build
-index a8cd3fec..5d26dd4c 100644
+index 79a64707..8e6262f1 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -135,6 +135,10 @@ elif host_machine.system() == 'lyre'
+@@ -146,6 +146,10 @@ elif host_machine.system() == 'lyre'
  	rtdl_include_dirs += include_directories('sysdeps/lyre/include')
  	libc_include_dirs += include_directories('sysdeps/lyre/include')
  	subdir('sysdeps/lyre')
@@ -126,6 +130,414 @@ index a8cd3fec..5d26dd4c 100644
  elif host_machine.system() == 'lemon'
  	rtdl_include_dirs += include_directories('sysdeps/lemon/include')
  	libc_include_dirs += include_directories('sysdeps/lemon/include')
+diff --git a/meson.build.orig b/meson.build.orig
+new file mode 100644
+index 00000000..79a64707
+--- /dev/null
++++ b/meson.build.orig
+@@ -0,0 +1,402 @@
++project('mlibc', default_options: ['warning_level=2', 'cpp_std=c++20'])
++
++fs = import('fs')
++
++rtdl_include_dirs = [
++	include_directories('options/internal/include'),
++	include_directories('options/internal' / host_machine.cpu_family() + '-include'),
++	include_directories('options/rtdl/include'),
++]
++libc_include_dirs = [
++	include_directories('options/internal/include'),
++	include_directories('options/elf/include'),
++	include_directories('options/lsb/include'),
++	include_directories('options/rtdl/include'),
++	include_directories('options/internal' / host_machine.cpu_family() + '-include')
++]
++
++rtdl_sources = [ ]
++rtdl_dso_sources = [ ]
++libc_sources = [ ]
++libc_sublibs = [ ]
++
++libc_deps = [ ]
++rtdl_deps = [ ]
++
++headers_only = get_option('headers_only')
++no_headers = get_option('mlibc_no_headers')
++library_type = get_option('default_library')
++build_tests = get_option('build_tests')
++build_tests_host_libc = get_option('build_tests_host_libc')
++disable_ansi_option = get_option('disable_ansi_option')
++disable_posix_option = get_option('disable_posix_option')
++disable_linux_option = get_option('disable_linux_option')
++disable_iconv_option = get_option('disable_iconv_option')
++disable_intl_option = get_option('disable_intl_option')
++disable_glibc_option = get_option('disable_glibc_option')
++disable_crypt_option = get_option('disable_crypt_option')
++disable_bsd_option = get_option('disable_bsd_option')
++internal_conf = configuration_data()
++mlibc_conf = configuration_data()
++
++if not headers_only
++	cxxshim_dep = dependency('cxxshim', fallback: ['cxxshim', 'cxxshim_dep'])
++	libc_deps += cxxshim_dep
++	rtdl_deps += cxxshim_dep
++
++	frigg_dep = dependency(
++		'frigg',
++		default_options: ['frigg_no_install=true'],
++		fallback: ['frigg', 'frigg_dep'],
++	)
++	libc_deps += frigg_dep
++	rtdl_deps += frigg_dep
++
++	add_languages('c', 'cpp')
++	c_compiler = meson.get_compiler('c')
++
++	add_project_arguments('-Wno-unused-function', '-D__MLIBC_BUILDING_MLIBC', language: ['c', 'cpp'])
++	add_project_arguments('-nostdinc', '-fno-builtin', language: ['c', 'cpp'])
++	add_project_arguments('-Werror=misleading-indentation', language: ['c', 'cpp'])
++	add_project_arguments('-fno-rtti', '-fno-exceptions', language: 'cpp')
++	add_project_link_arguments('-nostdlib', language: ['c', 'cpp'])
++
++	searchdirs = run_command(c_compiler.cmd_array(), '-print-search-dirs',
++				check: true).stdout()
++	searchdirs_arr = searchdirs.split('\n')
++	searchline = 'install: '
++	ccdir = ''
++	if c_compiler.get_id() == 'clang'
++		searchline = 'libraries: ='
++	endif
++
++	foreach line : searchdirs_arr
++		if line.startswith(searchline)
++			ccdir = line.strip(searchline)
++			ccdir = ccdir.split(':')[0]
++			break
++		endif
++	endforeach
++
++	if ccdir == ''
++		error('could not find compiler-specific header directory')
++	endif
++
++	if c_compiler.get_id() == 'gcc' and fs.exists(ccdir / 'include-fixed')
++		rtdl_include_dirs += include_directories(ccdir / 'include-fixed')
++		libc_include_dirs += include_directories(ccdir / 'include-fixed')
++	endif
++
++	rtdl_include_dirs += include_directories(ccdir / 'include')
++	libc_include_dirs += include_directories(ccdir / 'include')
++endif
++
++internal_conf.set_quoted('MLIBC_SYSTEM_NAME', host_machine.system())
++internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', false)
++internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', false)
++internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', false)
++internal_conf.set10('MLIBC_DEBUG_ALLOCATOR', get_option('debug_allocator'))
++
++#----------------------------------------------------------------------------------------
++# Configuration based on sysdeps.
++#----------------------------------------------------------------------------------------
++
++# Process sysdeps first, as sysdeps might want to disable unsupported options.
++provides_bits_syscall_h = false
++if host_machine.system() == 'linux'
++	provides_bits_syscall_h = true
++	rtdl_include_dirs += include_directories('sysdeps/linux/include')
++	libc_include_dirs += include_directories('sysdeps/linux/include')
++
++	if get_option('linux_kernel_headers') == ''
++		error('linux_kernel_headers is not set')
++	endif
++
++	if not import('fs').is_dir(get_option('linux_kernel_headers'))
++		error('linux_kernel_headers is not set to a valid path')
++	endif
++
++	rtdl_include_dirs += include_directories(get_option('linux_kernel_headers'))
++	libc_include_dirs += include_directories(get_option('linux_kernel_headers'))
++
++	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
++	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
++	subdir('sysdeps/linux')
++elif host_machine.system() == 'aero'
++	rtdl_include_dirs += include_directories('sysdeps/aero/include')
++	libc_include_dirs += include_directories('sysdeps/aero/include')
++	subdir('sysdeps/aero')
++elif host_machine.system() == 'managarm'
++	# TODO: Adopt the include_directories() commands from the managarm meson.build.
++	rtdl_include_dirs += include_directories('sysdeps/managarm/include')
++	libc_include_dirs += include_directories('sysdeps/managarm/include')
++	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
++	internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', true)
++	subdir('sysdeps/managarm')
++elif host_machine.system() == 'ironclad'
++	# disable_linux_option = true
++	rtdl_include_dirs += include_directories('sysdeps/ironclad/include')
++	libc_include_dirs += include_directories('sysdeps/ironclad/include')
++	subdir('sysdeps/ironclad')
++elif host_machine.system() == 'vinix'
++	rtdl_include_dirs += include_directories('sysdeps/vinix/include')
++	libc_include_dirs += include_directories('sysdeps/vinix/include')
++	subdir('sysdeps/vinix')
++elif host_machine.system() == 'lyre'
++	rtdl_include_dirs += include_directories('sysdeps/lyre/include')
++	libc_include_dirs += include_directories('sysdeps/lyre/include')
++	subdir('sysdeps/lyre')
++elif host_machine.system() == 'lemon'
++	rtdl_include_dirs += include_directories('sysdeps/lemon/include')
++	libc_include_dirs += include_directories('sysdeps/lemon/include')
++	subdir('sysdeps/lemon')
++elif host_machine.system() == 'dripos'
++	disable_linux_option = true
++	rtdl_include_dirs += include_directories('sysdeps/dripos/include')
++	libc_include_dirs += include_directories('sysdeps/dripos/include')
++	subdir('sysdeps/dripos')
++else
++	error('No sysdeps defined for OS: ' + host_machine.system())
++endif
++
++#----------------------------------------------------------------------------------------
++# Configuration based on enabled options.
++#----------------------------------------------------------------------------------------
++
++mlibc_conf.set10('__MLIBC_ANSI_OPTION', not disable_ansi_option)
++mlibc_conf.set10('__MLIBC_POSIX_OPTION', not disable_posix_option)
++mlibc_conf.set10('__MLIBC_LINUX_OPTION', not disable_linux_option)
++mlibc_conf.set10('__MLIBC_INTL_OPTION', not disable_intl_option)
++mlibc_conf.set10('__MLIBC_ICONV_OPTION', not disable_iconv_option)
++mlibc_conf.set10('__MLIBC_GLIBC_OPTION', not disable_glibc_option)
++mlibc_conf.set10('__MLIBC_CRYPT_OPTION', not disable_crypt_option)
++mlibc_conf.set10('__MLIBC_BSD_OPTION', not disable_bsd_option)
++mlibc_conf.set10('__MLIBC_SYSDEP_HAS_BITS_SYSCALL_H', provides_bits_syscall_h)
++
++if not disable_ansi_option
++	rtdl_include_dirs += include_directories('options/ansi/include')
++	libc_include_dirs += include_directories('options/ansi/include')
++endif
++
++if not disable_posix_option
++	rtdl_include_dirs += include_directories('options/posix/include')
++	libc_include_dirs += include_directories('options/posix/include')
++endif
++
++if not disable_iconv_option
++	rtdl_include_dirs += include_directories('options/iconv/include')
++	libc_include_dirs += include_directories('options/iconv/include')
++endif
++
++if not disable_intl_option
++	libc_include_dirs += include_directories('options/intl/include')
++endif
++
++if not disable_linux_option
++	if get_option('linux_kernel_headers') == ''
++		error('linux_kernel_headers is not set')
++	endif
++
++	if not import('fs').is_dir(get_option('linux_kernel_headers'))
++		error('linux_kernel_headers is not set to a valid path')
++	endif
++
++	rtdl_include_dirs += include_directories('options/linux/include')
++	libc_include_dirs += include_directories('options/linux/include')
++	rtdl_include_dirs += include_directories(get_option('linux_kernel_headers'))
++	libc_include_dirs += include_directories(get_option('linux_kernel_headers'))
++endif
++
++if not disable_glibc_option
++	rtdl_include_dirs += include_directories('options/glibc/include')
++	libc_include_dirs += include_directories('options/glibc/include')
++endif
++
++if not disable_crypt_option
++	libc_include_dirs += include_directories('options/crypt/include')
++endif
++
++if not disable_bsd_option
++	libc_include_dirs += include_directories('options/bsd/include')
++endif
++
++rtdl_include_dirs += include_directories('options/elf/include')
++libc_include_dirs += include_directories('options/elf/include')
++libc_include_dirs += include_directories('.')
++
++#----------------------------------------------------------------------------------------
++
++configure_file(input: 'internal-config.h.in',
++	output: 'internal-config.h',
++	configuration: internal_conf)
++
++configure_file(input: 'mlibc-config.h.in',
++	output: 'mlibc-config.h',
++	configuration: mlibc_conf,
++	install: not no_headers,
++	install_dir: get_option('includedir'))
++
++internal_sources = [
++	'options/internal/generic/allocator.cpp',
++	'options/internal/generic/charcode.cpp',
++	'options/internal/generic/charset.cpp',
++	'options/internal/generic/debug.cpp',
++	'options/internal/generic/ensure.cpp',
++	'options/internal/generic/essential.cpp',
++	'options/internal/generic/frigg.cpp',
++	'options/internal/generic/global-config.cpp',
++	'options/internal/generic/inline-emitter.cpp',
++	'options/internal/generic/locale.cpp',
++	'options/internal/generic/sigset.cpp',
++	'options/internal/generic/strings.cpp',
++	'options/internal/generic/ubsan.cpp',
++	'options/internal/gcc/stack_protector.cpp',
++	'options/internal/gcc/guard-abi.cpp',
++	'options/internal/gcc/initfini.cpp',
++	'options/internal/gcc-extra/cxxabi.cpp',
++	'options/internal' / host_machine.cpu_family() / 'setjmp.S',
++	'options/internal' / host_machine.cpu_family() / 'fenv.S',
++]
++
++internal_dso_sources = [
++	'options/internal/gcc-extra/mlibc_crtbegin.S',
++	'options/internal' / host_machine.cpu_family() / 'mlibc_crtend.S',
++]
++
++if not no_headers
++	install_headers(
++		'options/internal/include/stdint.h'
++	)
++	install_headers(
++		'options/internal/include/bits/wchar_t.h',
++		'options/internal/include/bits/wchar.h',
++		'options/internal/include/bits/wint_t.h',
++		'options/internal/include/bits/size_t.h',
++		'options/internal/include/bits/types.h',
++		'options/internal/include/bits/ensure.h',
++		'options/internal/include/bits/machine.h',
++		'options/internal/include/bits/mbstate.h',
++		'options/internal/include/bits/nl_item.h',
++		'options/internal/include/bits/null.h',
++		'options/internal/include/bits/off_t.h',
++		'options/internal/include/bits/ssize_t.h',
++		'options/internal/include/bits/sigset_t.h',
++		'options/internal/include/bits/inline-definition.h',
++		subdir: 'bits'
++	)
++endif
++
++rtdl_sources += [
++	'options/internal/gcc/stack_protector.cpp',
++	'options/internal/gcc/guard-abi.cpp',
++	'options/internal/generic/allocator.cpp',
++	'options/internal/generic/debug.cpp',
++	'options/internal/generic/ensure.cpp',
++	'options/internal/generic/essential.cpp',
++	'options/internal/generic/inline-emitter.cpp',
++	'options/internal/generic/frigg.cpp',
++	'options/internal/generic/ubsan.cpp',
++	'options/rtdl/generic/main.cpp',
++	'options/rtdl/generic/linker.cpp',
++	'options/rtdl' / host_machine.cpu_family() / 'runtime.S'
++]
++
++rtdl_dso_sources += ['options/rtdl' / host_machine.cpu_family() / 'entry.S']
++
++subdir('options/elf')
++subdir('options/ansi')
++subdir('options/posix')
++subdir('options/lsb')
++subdir('options/glibc')
++subdir('options/linux')
++subdir('options/iconv')
++subdir('options/intl')
++subdir('options/crypt')
++subdir('options/bsd')
++
++rtlib_deps = []
++
++if not headers_only
++	if host_machine.cpu_family() == 'aarch64' or host_machine.cpu_family() == 'riscv64'
++		# Some architectures require us to link with libgcc or compiler_rt
++		libgcc = meson.get_compiler('c').find_library('gcc', required: false)
++
++		compiler_rt_name = 'libclang_rt.builtins-' + host_machine.cpu_family()
++		compiler_rt = meson.get_compiler('c').find_library(compiler_rt_name, required: false)
++
++		if libgcc.found()
++			rtlib_deps += libgcc
++		elif compiler_rt.found()
++			rtlib_deps += compiler_rt
++		else
++			error('neither libgcc nor ' + compiler_rt_name + ' was found')
++		endif
++	endif
++
++	ld_cpp_args = [
++		'-fvisibility=hidden',
++		'-fno-stack-protector',
++		'-DMLIBC_BUILDING_RTDL'
++	]
++
++	libc_all_sources = [
++		libc_sources,
++		internal_sources,
++		ansi_sources,
++		lsb_sources,
++	]
++
++	# Our library have different behaviour when built as static and shared libraries.
++	# Hence we need to rebuild the object files with a different define for each mode.
++	if library_type in ['static', 'both']
++		static_cpp_args = [
++			'-DMLIBC_STATIC_BUILD',
++			'-DFRIGG_HAVE_LIBC',
++		]
++		ld_static_lib = static_library('ld', rtdl_sources,
++			name_prefix: '',
++			cpp_args: ld_cpp_args + static_cpp_args,
++			include_directories: rtdl_include_dirs,
++			dependencies: rtdl_deps + rtlib_deps,
++			install: false
++		)
++		libc_static = static_library('c', libc_all_sources,
++			cpp_args: static_cpp_args + ['-fno-stack-protector'],
++			include_directories: libc_include_dirs,
++			dependencies: libc_deps + rtlib_deps,
++			link_with: [ld_static_lib],
++			link_whole: [libc_sublibs, ld_static_lib],
++			install: true
++		)
++	endif
++	if library_type in ['shared', 'both']
++		ld_shared_lib = shared_library('ld', rtdl_sources + rtdl_dso_sources,
++			name_prefix: '',
++			cpp_args: ld_cpp_args,
++			include_directories: rtdl_include_dirs,
++			dependencies: rtdl_deps + rtlib_deps,
++			install: true
++		)
++		libc_shared = shared_library('c', libc_all_sources + internal_dso_sources,
++			include_directories: libc_include_dirs,
++			dependencies: libc_deps + rtlib_deps,
++			link_with: [ld_shared_lib],
++			link_whole: libc_sublibs,
++			install: true
++		)
++	endif
++
++	library('pthread', 'dummy-libs/libpthread/src/dummy.cpp', install: true)
++	library('rt', 'dummy-libs/librt/src/dummy.cpp', install: true)
++	library('util', 'dummy-libs/libutil/src/dummy.cpp', install: true)
++	library('m', 'dummy-libs/libm/src/dummy.cpp', install: true)
++	if not disable_crypt_option
++		library('crypt', 'dummy-libs/libcrypt/src/dummy.cpp', install: true)
++	endif
++	library('resolv', 'dummy-libs/libresolv/src/dummy.cpp', install: true)
++	library('dl', 'dummy-libs/libdl/src/dummy.cpp', install: true)
++endif
++
++if build_tests
++	subdir('tests/')
++endif
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crt0.S b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 new file mode 100644
 index 00000000..91170a76
@@ -220,10 +632,10 @@ index 00000000..62b1c3cb
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 00000000..0ad69d83
+index 00000000..0603b3a4
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
-@@ -0,0 +1,823 @@
+@@ -0,0 +1,789 @@
 +#include <bits/ensure.h>
 +#include <mlibc/allocator.hpp>
 +#include <mlibc/debug.hpp>
@@ -236,8 +648,6 @@ index 00000000..0ad69d83
 +#include <stdlib.h>
 +#include <abi-bits/fcntl.h>
 +#include <ilobilix/syscall.h>
-+#include <frg/hash.hpp>
-+#include <frg/hash_map.hpp>
 +
 +#define STUB_ONLY(name)                               \
 +{                                                     \
@@ -247,44 +657,46 @@ index 00000000..0ad69d83
 +
 +namespace mlibc {
 +
-+uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6)
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6)
 +{
 +	return __syscall(n, a1, a2, a3, a4, a5, a6);
 +}
 +
-+uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
 +{
 +	return __syscall(n, a1, a2, a3, a4, a5);
 +}
 +
-+uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
 +{
 +	return __syscall(n, a1, a2, a3, a4);
 +}
 +
-+uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3)
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3)
 +{
 +	return __syscall(n, a1, a2, a3);
 +}
 +
-+uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2)
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2)
 +{
 +	return __syscall(n, a1, a2);
 +}
 +
-+uintptr_t __do_syscall(uintptr_t n, uintptr_t a1)
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1)
 +{
 +	return __syscall(n, a1);
 +}
 +
-+uintptr_t __do_syscall(uintptr_t n)
++inline uintptr_t __do_syscall(uintptr_t n)
 +{
 +	return __syscall(n);
 +}
 +
++// Perhaps move do_syscall in syscall.h
++
 +template<typename ...Args>
 +requires (sizeof...(Args) > 0 && sizeof...(Args) <= 7)
-+uintptr_t do_syscall(Args &&...args)
++inline uintptr_t do_syscall(Args &&...args)
 +{
 +	return __do_syscall(uintptr_t(args)...);
 +}
@@ -297,14 +709,25 @@ index 00000000..0ad69d83
 +	return 0;
 +}
 +
-+void sys_libc_log(const char *message)
++// void sys_libc_log(const char *message)
++// {
++// 	size_t n = 0;
++// 	while(message[n])
++// 		n++;
++// 	do_syscall(SYS_write, 2, message, n);
++// 	char lf = '\n';
++// 	do_syscall(SYS_write, 2, &lf, 1);
++// }
++
++void sys_libc_log(const char *_message)
 +{
-+	size_t n = 0;
-+	while(message[n])
-+		n++;
-+	do_syscall(SYS_write, 2, message, n);
-+	char lf = '\n';
-+	do_syscall(SYS_write, 2, &lf, 1);
++	auto len = strlen(_message);
++	char *message = static_cast<char*>(alloca(len + 1));
++
++	memcpy(message, _message, len);
++	message[len] = '\n';
++
++	do_syscall(SYS_write, 2, message, len + 1);
 +}
 +
 +void sys_libc_panic()
@@ -324,7 +747,7 @@ index 00000000..0ad69d83
 +{
 +#if defined(__x86_64__)
 +	do_syscall(SYS_arch_prctl, 0x1002 /* ARCH_SET_FS */, pointer);
-+#elif defined (__aarch64__)
++#elif defined(__aarch64__)
 +	uintptr_t thread_data = reinterpret_cast<uintptr_t>(pointer) + sizeof(Tcb) - 0x10;
 +	asm volatile ("msr tpidr_el0, %0" :: "r"(thread_data));
 +#else
@@ -340,7 +763,7 @@ index 00000000..0ad69d83
 +
 +int sys_futex_wake(int *pointer) STUB_ONLY(futex_wake)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_futex_wake, pointer);
++// 	auto ret = do_syscall(SYS_futex_wake, pointer);
 +
 +// 	if (auto e = syscall_error(ret); e)
 +// 		return e;
@@ -353,7 +776,7 @@ index 00000000..0ad69d83
 +
 +int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd)
 +{
-+	uintptr_t ret = do_syscall(SYS_openat, dirfd, path, flags, mode);
++	auto ret = do_syscall(SYS_openat, dirfd, path, flags, mode);
 +
 +	if (auto e = syscall_error(ret); e)
 +		return e;
@@ -367,32 +790,17 @@ index 00000000..0ad69d83
 +	return sys_openat(AT_FDCWD, path, flags, mode, fd);
 +}
 +
-+#ifndef MLIBC_BUILDING_RTDL
-+struct ReadDirState
-+{
-+	size_t offset;
-+	size_t capacity;
-+	void *buffer;
-+};
-+
-+static frg::hash_map<int, ReadDirState *, frg::hash<int>, MemoryAllocator> open_dirs { frg::hash<int> { }, getAllocator() };
-+#endif
-+
 +int sys_close(int fd)
 +{
-+	uintptr_t ret = do_syscall(SYS_close, fd);
++	auto ret = do_syscall(SYS_close, fd);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
-+
-+#ifndef MLIBC_BUILDING_RTDL
-+	open_dirs.remove(fd);
-+#endif
 +	return 0;
 +}
 +
 +int sys_seek(int fd, off_t offset, int whence, off_t *new_offset)
 +{
-+	uintptr_t ret = do_syscall(SYS_lseek, fd, offset, whence);
++	auto ret = do_syscall(SYS_lseek, fd, offset, whence);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -402,7 +810,7 @@ index 00000000..0ad69d83
 +
 +int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read)
 +{
-+	uintptr_t ret = do_syscall(SYS_read, fd, buf, count);
++	auto ret = do_syscall(SYS_read, fd, buf, count);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -412,7 +820,7 @@ index 00000000..0ad69d83
 +
 +int sys_vm_map(void *hint, size_t size, int prot, int flags, int fd, off_t offset, void **window)
 +{
-+	uintptr_t ret = do_syscall(SYS_mmap, hint, size, prot, flags, fd, offset);
++	auto ret = do_syscall(SYS_mmap, hint, size, prot, flags, fd, offset);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -422,7 +830,7 @@ index 00000000..0ad69d83
 +
 +int sys_vm_unmap(void *pointer, size_t size)
 +{
-+	uintptr_t ret = do_syscall(SYS_munmap, pointer, size);
++	auto ret = do_syscall(SYS_munmap, pointer, size);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +	return 0;
@@ -430,7 +838,7 @@ index 00000000..0ad69d83
 +
 +int sys_anon_allocate(size_t size, void **pointer)
 +{
-+	return sys_vm_map(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0, pointer);
++	return sys_vm_map(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0, pointer);
 +}
 +
 +int sys_anon_free(void *pointer, size_t size)
@@ -442,6 +850,22 @@ index 00000000..0ad69d83
 +#ifndef MLIBC_BUILDING_RTDL
 +
 +// int sys_kill(pid_t, int)
++
++int sys_fork(pid_t *child)
++{
++#if defined(__x86_64__)
++	// internally sys_fork uses sys_clone
++	auto ret = do_syscall(SYS_fork);
++#elif defined(__aarch64__)
++	auto ret = do_syscall(SYS_clone, SIGCHLD, 0);
++#else
++#	error "Missing architecture specific code."
++#endif
++	if (int e = syscall_error(ret); e)
++		return e;
++	*child = int(ret);
++	return 0;
++}
 +
 +int sys_tcgetattr(int fd, struct termios *attr)
 +{
@@ -480,7 +904,7 @@ index 00000000..0ad69d83
 +
 +int sys_ioctl(int fd, unsigned long request, void *arg, int *result)
 +{
-+	uintptr_t ret = do_syscall(SYS_ioctl, fd, request, arg);
++	auto ret = do_syscall(SYS_ioctl, fd, request, arg);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -530,7 +954,7 @@ index 00000000..0ad69d83
 +int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY(clock_get)
 +// {
 +// 	struct timespec buf;
-+// 	uintptr_t ret = do_syscall(SYS_getclock, clock, &buf);
++// 	auto ret = do_syscall(SYS_getclock, clock, &buf);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +
@@ -541,7 +965,7 @@ index 00000000..0ad69d83
 +
 +int sys_getcwd(char *buffer, size_t size)
 +{
-+	uintptr_t ret = do_syscall(SYS_getcwd, buffer, size);
++	auto ret = do_syscall(SYS_getcwd, buffer, size);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -591,72 +1015,39 @@ index 00000000..0ad69d83
 +	return sys_openat(AT_FDCWD, path, O_DIRECTORY, 0, handle);
 +}
 +
-+static ReadDirState *get_dir_state(int fdnum)
++int sys_read_entries(int handle, void *buffer, size_t max_size, size_t *bytes_read)
 +{
-+	ReadDirState *result;
-+	if (auto value = open_dirs.get(fdnum))
-+		result = *value;
-+	else
-+	{
-+		result = (ReadDirState *)malloc(sizeof(ReadDirState));
-+		result->offset = 0;
-+		result->capacity = 1024;
-+		result->buffer = malloc(result->capacity);
-+		open_dirs.insert(fdnum, result);
-+	}
-+	return result;
++	auto ret = do_syscall(SYS_getdents64, handle, buffer, max_size);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*bytes_read = int(ret);
++	return 0;
 +}
-+
-+// int sys_read_entries(int fdnum, void *buffer, size_t max_size, size_t *bytes_read)
-+// {
-+// 	ReadDirState *state = get_dir_state(fdnum);
-+
-+// retry:
-+// 	uintptr_t ret = do_syscall(SYS_readdir, fdnum, state->buffer, &state->capacity);
-+//  if (auto e = syscall_error(ret); e)
-+//  {
-+// 		if (e == ENOBUFS)
-+//      {
-+// 			state->buffer = realloc(state->buffer, state->capacity);
-+// 			goto retry;
-+// 		}
-+//      else return e;
-+// 	}
-+
-+// 	size_t offset = 0;
-+// 	while (offset < max_size)
-+//  {
-+// 		struct dirent *ent = (struct dirent *)((char *)state->buffer + state->offset);
-+// 		if (ent->d_reclen == 0)
-+// 			break;
-+
-+// 		if (offset + ent->d_reclen >= max_size)
-+// 			break;
-+
-+// 		memcpy((char *)buffer + offset, ent, ent->d_reclen);
-+// 		offset += ent->d_reclen;
-+// 		state->offset += ent->d_reclen;
-+// 	}
-+
-+// 	*bytes_read = offset;
-+// 	return 0;
-+// }
 +
 +// int sys_pipe(int *fds, int flags)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_pipe, fds, flags);
++// 	auto ret = do_syscall(SYS_pipe, fds, flags);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	return 0;
 +// }
 +
-+// int sys_chdir(const char *path)
-+// {
-+// 	uintptr_t ret = do_syscall(SYS_chdir, path);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return 0;
-+// }
++int sys_chdir(const char *path)
++{
++	auto ret = do_syscall(SYS_chdir, path);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_fchdir(int fd)
++{
++	auto ret = do_syscall(SYS_chdir, fd);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
 +
 +// int sys_mkdir(const char *path, mode_t mode)
 +// {
@@ -665,7 +1056,7 @@ index 00000000..0ad69d83
 +
 +// int sys_mkdirat(int dirfd, const char *path, mode_t mode)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
++// 	auto ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	return 0;
@@ -673,7 +1064,7 @@ index 00000000..0ad69d83
 +
 +int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written)
 +{
-+	uintptr_t ret = do_syscall(SYS_write, fd, buf, count);
++	auto ret = do_syscall(SYS_write, fd, buf, count);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -683,7 +1074,7 @@ index 00000000..0ad69d83
 +
 +int sys_readlink(const char *path, void *data, size_t max_size, ssize_t *length)
 +{
-+	uintptr_t ret = do_syscall(SYS_readlinkat, AT_FDCWD, path, data, max_size);
++	auto ret = do_syscall(SYS_readlinkat, AT_FDCWD, path, data, max_size);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -698,7 +1089,7 @@ index 00000000..0ad69d83
 +
 +int sys_linkat(int olddirfd, const char *old_path, int newdirfd, const char *new_path, int flags)
 +{
-+	uintptr_t ret = do_syscall(SYS_linkat, olddirfd, old_path, newdirfd, new_path, flags);
++	auto ret = do_syscall(SYS_linkat, olddirfd, old_path, newdirfd, new_path, flags);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -707,7 +1098,7 @@ index 00000000..0ad69d83
 +
 +int sys_unlinkat(int fd, const char *path, int flags)
 +{
-+	uintptr_t ret = do_syscall(SYS_unlinkat, fd, path, flags);
++	auto ret = do_syscall(SYS_unlinkat, fd, path, flags);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -716,7 +1107,7 @@ index 00000000..0ad69d83
 +
 +int sys_fchmodat(int fd, const char *pathname, mode_t mode, int flags)
 +{
-+	uintptr_t ret = do_syscall(SYS_fchmodat, fd, pathname, mode, flags);
++	auto ret = do_syscall(SYS_fchmodat, fd, pathname, mode, flags);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +
@@ -735,7 +1126,7 @@ index 00000000..0ad69d83
 +
 +// int sys_rmdir(const char *pathname)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_rmdir, pathname);
++// 	auto ret = do_syscall(SYS_rmdir, pathname);
 +//  if (auto e = syscall_error(ret); e)
 +//		return e;
 +
@@ -744,7 +1135,7 @@ index 00000000..0ad69d83
 +
 +// int sys_socket(int domain, int type_and_flags, int proto, int *fd)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_socket, domain, type_and_flags, proto);
++// 	auto ret = do_syscall(SYS_socket, domain, type_and_flags, proto);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	*fd = int(ret);
@@ -755,7 +1146,7 @@ index 00000000..0ad69d83
 +
 +// int sys_bind(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_bind, fd, addr_ptr, addr_length);
++// 	auto ret = do_syscall(SYS_bind, fd, addr_ptr, addr_length);
 +//  if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	return 0;
@@ -763,7 +1154,7 @@ index 00000000..0ad69d83
 +
 +// int sys_connect(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_connect, fd, addr_ptr, addr_length);
++// 	auto ret = do_syscall(SYS_connect, fd, addr_ptr, addr_length);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	return 0;
@@ -771,7 +1162,7 @@ index 00000000..0ad69d83
 +
 +// int sys_accept(int fd, int *newfd, struct sockaddr *addr_ptr, socklen_t *addr_length)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_accept, fd, addr_ptr, addr_length);
++// 	auto ret = do_syscall(SYS_accept, fd, addr_ptr, addr_length);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	*newfd = int(ret);
@@ -866,7 +1257,7 @@ index 00000000..0ad69d83
 +
 +// int sys_msg_recv(int sockfd, struct msghdr *hdr, int flags, ssize_t *length)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_recvmsg, sockfd, hdr, flags);
++// 	auto ret = do_syscall(SYS_recvmsg, sockfd, hdr, flags);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	*length = ssize_t(ret);
@@ -875,7 +1266,7 @@ index 00000000..0ad69d83
 +
 +// int sys_peername(int fd, struct sockaddr *addr_ptr, socklen_t max_addr_length, socklen_t *actual_length)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_getpeername, fd, addr_ptr, &max_addr_length);
++// 	auto ret = do_syscall(SYS_getpeername, fd, addr_ptr, &max_addr_length);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	*actual_length = max_addr_length;
@@ -884,7 +1275,7 @@ index 00000000..0ad69d83
 +
 +// int sys_listen(int fd, int backlog)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_listen, fd, backlog);
++// 	auto ret = do_syscall(SYS_listen, fd, backlog);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	return 0;
@@ -892,26 +1283,17 @@ index 00000000..0ad69d83
 +
 +// int sys_inotify_create(int, int *)
 +
-+// int sys_fork(pid_t *child)
-+// {
-+// 	uintptr_t ret = do_syscall(SYS_fork);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	*child = pid_t(ret);
-+// 	return 0;
-+// }
-+
-+// int sys_execve(const char *path, char *const argv[], char *const envp[])
-+// {
-+// 	uintptr_t ret = do_syscall(SYS_exec, path, argv, envp);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return ret;
-+// }
++int sys_execve(const char *path, char *const argv[], char *const envp[])
++{
++	auto ret = do_syscall(SYS_execve, path, argv, envp);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
 +
 +int sys_fcntl(int fd, int request, va_list args, int *result)
 +{
-+	uintptr_t ret = do_syscall(SYS_fcntl, fd, request, va_arg(args, uint64_t));
++	auto ret = do_syscall(SYS_fcntl, fd, request, va_arg(args, uint64_t));
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +	*result = int(ret);
@@ -921,7 +1303,7 @@ index 00000000..0ad69d83
 +int sys_dup(int fd, int flags, int *newfd)
 +{
 +	(void)flags;
-+	uintptr_t ret = do_syscall(SYS_dup, fd);
++	auto ret = do_syscall(SYS_dup, fd);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +	*newfd = int(ret);
@@ -930,7 +1312,7 @@ index 00000000..0ad69d83
 +
 +int sys_dup2(int fd, int flags, int newfd)
 +{
-+	uintptr_t ret = do_syscall(SYS_dup3, fd, newfd, flags);
++	auto ret = do_syscall(SYS_dup3, fd, newfd, flags);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +	return 0;
@@ -950,24 +1332,20 @@ index 00000000..0ad69d83
 +
 +// int sys_signalfd_create(sigset_t, int, int *)
 +
-+// int sys_waitpid(pid_t pid, int *status, int flags, struct rusage *ru, pid_t *ret_pid)
-+// {
-+// 	if (ru != NULL)
-+//  {
-+// 		mlibc::infoLogger() << "mlibc: struct rusage in sys_waitpid is unsupported" << frg::endlog;
-+// 		return ENOSYS;
-+// 	}
-+// again:
-+// 	uintptr_t ret = do_syscall(SYS_waitpid, pid, status, flags);
-+// 	if (auto e = syscall_error(ret); e)
-+// 	{
-+// 		if (e == EINTR)
-+// 			goto again;
-+// 		return e;
-+// 	}
-+// 	*ret_pid = pid_t(ret);
-+// 	return 0;
-+// }
++int sys_waitpid(pid_t pid, int *status, int flags, struct rusage *ru, pid_t *ret_pid)
++{
++	if (ru != NULL)
++	{
++		mlibc::infoLogger() << "mlibc: struct rusage in sys_waitpid is unsupported" << frg::endlog;
++		return ENOSYS;
++	}
++
++	auto ret = do_syscall(SYS_wait4, pid, status, flags, ru);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	*ret_pid = int(ret);
++	return 0;
++}
 +
 +// int sys_getgroups(size_t, const gid_t *, int *)
 +
@@ -992,7 +1370,7 @@ index 00000000..0ad69d83
 +// {
 +// 	struct timespec time = { .tv_sec = *secs, .tv_nsec = *nanos };
 +// 	struct timespec rem = { .tv_sec = 0, .tv_nsec = 0 };
-+// 	uintptr_t ret = do_syscall(SYS_sleep, &time, &rem);
++// 	auto ret = do_syscall(SYS_sleep, &time, &rem);
 +// 	if (auto e = syscall_error(ret); e)
 +//		return e;
 +// 	*secs = rem.tv_sec;
@@ -1014,14 +1392,14 @@ index 00000000..0ad69d83
 +
 +int sys_umask(mode_t mode, mode_t *old)
 +{
-+	uintptr_t ret = do_syscall(SYS_umask, mode);
++	auto ret = do_syscall(SYS_umask, mode);
 +	*old = mode_t(ret);
 +	return 0;
 +}
 +
 +int sys_uname(struct utsname *buf)
 +{
-+	uintptr_t ret = do_syscall(SYS_uname, buf);
++	auto ret = do_syscall(SYS_uname, buf);
 +	if (auto e = syscall_error(ret); e)
 +		return e;
 +	return 0;
@@ -1036,7 +1414,7 @@ index 00000000..0ad69d83
 +
 +int sys_getrlimit(int resource, struct rlimit *limit) STUB_ONLY(getrlimit)
 +// {
-+// 	uintptr_t ret = do_syscall(SYS_getrlimit, resource, limit);
++// 	auto ret = do_syscall(SYS_getrlimit, resource, limit);
 +// 	if (auto e = syscall_error(ret); e)
 +// 		return e;
 +// 	return 0;
@@ -1137,11 +1515,11 @@ index 00000000..791755c9
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/gid_t.h b/sysdeps/ilobilix/include/abi-bits/gid_t.h
 new file mode 120000
-index 00000000..abce6d69
+index 00000000..6a772180
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/gid_t.h
 @@ -0,0 +1 @@
-+../../../../abis/linux/gid_t.h
++../../../../abis/mlibc/gid_t.h
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/in.h b/sysdeps/ilobilix/include/abi-bits/in.h
 new file mode 120000
@@ -1367,6 +1745,14 @@ index 00000000..bbe258cf
 @@ -0,0 +1 @@
 +../../../../abis/linux/vm-flags.h
 \ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/vt.h b/sysdeps/ilobilix/include/abi-bits/vt.h
+new file mode 120000
+index 00000000..5798a4ac
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/vt.h
+@@ -0,0 +1 @@
++../../../../abis/linux/vt.h
+\ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/wait.h b/sysdeps/ilobilix/include/abi-bits/wait.h
 new file mode 120000
 index 00000000..feb2840c
@@ -1385,10 +1771,10 @@ index 00000000..66412d70
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
 new file mode 100644
-index 00000000..9b306514
+index 00000000..a6eea190
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,158 @@
 +#ifndef _ILOBILIX__SYSCALL_H
 +#define _ILOBILIX__SYSCALL_H
 +
@@ -1410,10 +1796,17 @@ index 00000000..9b306514
 +#define SYS_dup 32
 +#define SYS_dup2 33
 +#define SYS_getpid 39
++#define SYS_clone 56
++#define SYS_fork 57
++#define SYS_execve 59
 +#define SYS_exit 60
++#define SYS_wait4 61
 +#define SYS_uname 63
 +#define SYS_fcntl 72
++#define SYS_getdents 78
 +#define SYS_getcwd 79
++#define SYS_chdir 80
++#define SYS_fchdir 81
 +#define SYS_link 86
 +#define SYS_unlink 87
 +#define SYS_readlink 89
@@ -1421,6 +1814,7 @@ index 00000000..9b306514
 +#define SYS_umask 95
 +#define SYS_getppid 110
 +#define SYS_arch_prctl 158
++#define SYS_getdents64 217
 +#define SYS_openat 257
 +#define SYS_fstatat 262
 +#define SYS_unlinkat 263
@@ -1501,10 +1895,13 @@ index 00000000..9b306514
 +#define SYS_ioctl 29
 +#define SYS_unlinkat 35
 +#define SYS_linkat 37
++#define SYS_chdir 49
++#define SYS_fchdir 50
 +#define SYS_fchmod 52
 +#define SYS_fchmodat 53
 +#define SYS_openat 56
 +#define SYS_close 57
++#define SYS_getdents64 61
 +#define SYS_lseek 62
 +#define SYS_read 63
 +#define SYS_write 64
@@ -1516,7 +1913,10 @@ index 00000000..9b306514
 +#define SYS_getpid 172
 +#define SYS_getppid 173
 +#define SYS_munmap 216
++#define SYS_clone 220
++#define SYS_execve 221
 +#define SYS_mmap 222
++#define SYS_wait4 260
 +
 +static inline uintptr_t __syscall0(uintptr_t n) { return -1; }
 +static inline uintptr_t __syscall1(uintptr_t n, uintptr_t a1) { return -1; }
@@ -1535,10 +1935,10 @@ index 00000000..9b306514
 +#endif
 diff --git a/sysdeps/ilobilix/meson.build b/sysdeps/ilobilix/meson.build
 new file mode 100644
-index 00000000..c3d3efaa
+index 00000000..00662560
 --- /dev/null
 +++ b/sysdeps/ilobilix/meson.build
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,93 @@
 +
 +rtdl_dso_sources += files(
 +	'generic/sysdeps.cpp'
@@ -1557,10 +1957,10 @@ index 00000000..c3d3efaa
 +		'include/abi-bits/errno.h',
 +		'include/abi-bits/fcntl.h',
 +		'include/abi-bits/in.h',
-+		'include/abi-bits/reboot.h',
-+		'include/abi-bits/resource.h',
 +		'include/abi-bits/stat.h',
 +		'include/abi-bits/signal.h',
++		'include/abi-bits/reboot.h',
++		'include/abi-bits/resource.h',
 +		'include/abi-bits/socket.h',
 +		'include/abi-bits/termios.h',
 +		'include/abi-bits/time.h',
@@ -1577,6 +1977,7 @@ index 00000000..c3d3efaa
 +		'include/abi-bits/wait.h',
 +		'include/abi-bits/limits.h',
 +		'include/abi-bits/utsname.h',
++		'include/abi-bits/vt.h',
 +		'include/abi-bits/ptrace.h',
 +		'include/abi-bits/poll.h',
 +		'include/abi-bits/epoll.h',

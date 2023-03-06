@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <init/kernel.hpp>
@@ -142,7 +142,8 @@ namespace vmm
             ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
             if (pml_entry == nullptr)
             {
-                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
+                if (print_errors)
+                    log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
                 return false;
             }
 
@@ -174,7 +175,8 @@ namespace vmm
             ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
             if (pml_entry == nullptr)
             {
-                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
+                if (print_errors)
+                    log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
                 return false;
             }
 
@@ -205,7 +207,8 @@ namespace vmm
         ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -220,13 +223,11 @@ namespace vmm
 
     void pagemap::load()
     {
-        lockit(this->lock);
         wrreg(cr3, fromhh(reinterpret_cast<uint64_t>(this->toplvl)));
     }
 
     void pagemap::save()
     {
-        lockit(this->lock);
         this->toplvl = reinterpret_cast<ptable*>(tohh(rdreg(cr3)));
     }
 

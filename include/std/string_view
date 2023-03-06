@@ -1,4 +1,12 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
+
+#pragma once
+
+#include_next <string_view>
+using namespace std::literals::string_view_literals;
+
+/*
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -183,7 +191,9 @@ namespace std
         constexpr size_type copy(Char *dest, size_type count, size_type pos = 0) const
         {
             assert(pos <= this->_length, "string_view::copy: pos out of range");
-            return Traits::copy(dest, this->_pointer + pos, min(count, this->_length - pos));
+            auto len = min(count, this->_length - pos);
+            Traits::copy(dest, this->_pointer + pos, len);
+            return len;
         }
 
         constexpr basic_string_view substr(size_type pos = 0, size_type count = npos) const
@@ -465,7 +475,7 @@ namespace std
         public:
         size_t operator()(const string_view &str) const
         {
-            return detail::hash_impl::hash(str.data(), str.length());
+            return _hash(str.data(), str.length());
         }
     };
 
@@ -475,16 +485,16 @@ namespace std
         public:
         size_t operator()(const wstring_view &str) const
         {
-            return detail::hash_impl::hash(str.data(), str.length());
+            return _hash(str.data(), str.length());
         }
     };
 
 #if SV_RANGES
     template<typename Char, typename Traits>
-    inline constexpr bool ranges::enable_borrowed_range<basic_string_view<Char, Traits>> = true;
+    constexpr inline bool ranges::enable_borrowed_range<basic_string_view<Char, Traits>> = true;
 
     template<typename Char, typename Traits>
-    inline constexpr bool ranges::enable_view<basic_string_view<Char, Traits>> = true;
+    constexpr inline bool ranges::enable_view<basic_string_view<Char, Traits>> = true;
 
     template<typename R>
     basic_string_view(R &&) -> basic_string_view<ranges::range_value_t<R>>;
@@ -511,3 +521,4 @@ namespace std
 } // namespace std
 
 using namespace std::literals::string_view_literals;
+*/

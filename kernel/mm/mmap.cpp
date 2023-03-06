@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <drivers/vfs.hpp>
@@ -41,11 +41,11 @@ namespace vmm
         {
             size_t flags = user;
 
-            if (prot & PROT_READ)
+            if (prot & prot_read)
                 flags |= read;
-            if (prot & PROT_WRITE)
+            if (prot & prot_write)
                 flags |= write;
-            if (prot & PROT_EXEC)
+            if (prot & prot_exec)
                 flags |= exec;
 
             if (!this->shadow->map(vaddr, paddr, flags))
@@ -92,7 +92,7 @@ namespace vmm
 
     bool pagemap::mmap_range(uintptr_t vaddr, uintptr_t paddr, size_t length, int prot, int flags)
     {
-        flags |= MAP_ANONYMOUS;
+        flags |= mmap::map_anonymous;
 
         auto aligned_vaddr = align_down(vaddr, this->page_size);
         auto aligned_length = align_up(length + (vaddr - aligned_vaddr), this->page_size);
@@ -130,23 +130,23 @@ namespace vmm
         if (length == 0)
         {
             errno = EINVAL;
-            return MAP_FAILED;
+            return mmap::map_failed;
         }
         length = align_up(length, this->page_size);
 
-        if (!(flags & MAP_ANONYMOUS) && res && !res->can_mmap)
+        if (!(flags & mmap::map_anonymous) && res && !res->can_mmap)
         {
             errno = ENODEV;
-            return MAP_FAILED;
+            return mmap::map_failed;
         }
 
         auto proc = this_thread()->parent;
 
         uintptr_t base = 0;
-        if (flags & MAP_FIXED)
+        if (flags & mmap::map_fixed)
         {
             if (!this->munmap(addr, length))
-                return MAP_FAILED;
+                return mmap::map_failed;
             base = addr;
         }
         else
@@ -178,7 +178,7 @@ namespace vmm
         this->lock.unlock();
 
         if (res != nullptr)
-            res->refcount++;
+            res->ref();
 
         return reinterpret_cast<void*>(base);
     }
@@ -188,7 +188,7 @@ namespace vmm
         if (length == 0)
         {
             errno = EINVAL;
-            return MAP_FAILED;
+            return mmap::map_failed;
         }
         length = align_up(length, this->page_size);
 
@@ -227,13 +227,13 @@ namespace vmm
                 this->unmap_nolock(j);
 
             if (len == local->length)
-                this->ranges.erase(std::find(this->ranges.begin(), this->ranges.end(), local));
+                remove_from(this->ranges, local);
 
             this->lock.unlock();
 
             if (len == local->length && global->locals.size() == 1)
             {
-                if (local->flags & MAP_ANONYMOUS)
+                if (local->flags & mmap::map_anonymous)
                 {
                     for (auto j = global->base; j < global->base + global->length; j += this->page_size)
                     {
@@ -276,9 +276,9 @@ namespace vmm
             auto new_local = std::make_shared<mmap::local>(*local);
 
             if (global->res != nullptr)
-                global->res->refcount++;
+                global->res->ref();
 
-            if (local->flags & MAP_SHARED)
+            if (local->flags & mmap::map_shared)
             {
                 global->locals.push_back(new_local);
                 for (uintptr_t i = local->base; i < local->base + local->length; i += this->page_size)
@@ -300,11 +300,11 @@ namespace vmm
                 new_global->offset = global->offset;
                 new_global->locals.push_back(new_local);
 
-                assert(local->flags & MAP_ANONYMOUS, "non anonymous pagemap fork()");
+                assert(local->flags & mmap::map_anonymous, "non anonymous pagemap fork()");
                 for (uintptr_t i = local->base; i < local->base + local->length; i += this->page_size)
                 {
                     auto old_pte = this->virt2pte(i, false, this->page_size);
-                    if (old_pte == nullptr) // TODO: or is not valid
+                    if (old_pte == nullptr || !old_pte->getflags(flags2arch(0) /* valid flags */))
                         continue;
 
                     auto new_pte = new_pagemap->virt2pte(i, true, new_pagemap->page_size);
@@ -340,7 +340,7 @@ namespace vmm
         auto [local, mpage, fpage] = a2r.value();
 
         void *page = nullptr;
-        if (local->flags & MAP_ANONYMOUS)
+        if (local->flags & mmap::map_anonymous)
             page = pmm::alloc(pagemap->page_size / pmm::page_size);
         else
         {

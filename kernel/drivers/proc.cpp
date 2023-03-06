@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
@@ -11,7 +11,6 @@
 namespace proc
 {
     std::unordered_map<pid_t, process*> processes;
-    static lock_t pid_lock;
     static lock_t lock;
 
     void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg);
@@ -90,16 +89,11 @@ namespace proc
     void block(thread *thread)
     {
         lock.lock();
-        // log::infoln("Scheduler: Blocking thread {}:{}", thread->parent->pid, thread->tid);
-
-        auto status = thread->status;
-        auto running_on = thread->running_on;
-
         thread->status = status::blocked;
-
         lock.unlock();
-        if (status == status::running)
-            wake_up(running_on);
+
+        if (this_thread() == thread)
+            yield();
     }
 
     void block()
@@ -110,57 +104,84 @@ namespace proc
     void exit(thread *thread)
     {
         lock.lock();
-        // log::infoln("Scheduler: Exiting thread {}:{}", thread->parent->pid, thread->tid);
-
-        auto status = thread->status;
-        auto running_on = thread->running_on;
-
         thread->status = status::killed;
-
         lock.unlock();
-        if (status == status::running)
-            wake_up(running_on);
+
+        if (this_thread() == thread)
+        {
+            yield();
+            arch::halt();
+        }
     }
 
-    void exit()
+    [[noreturn]] void exit()
     {
         exit(this_thread());
+        std::unreachable();
     }
 
-    void pexit(process *proc)
+    void pexit(process *proc, int code)
     {
-        lock.lock();
-        // log::infoln("Scheduler: Exiting process {}", proc->pid);
+        arch::int_toggle(false);
 
-        auto status = status::killed;
-        size_t running_on = 0;
+        proc->fd_table.reset();
 
+        // if (proc->tty != nullptr && proc->tty->proc == proc)
+        //     proc->tty->proc = nullptr;
+
+        for (const auto &child : proc->children)
+        {
+            child->parent = proc->parent;
+            proc->parent->children.push_back(child);
+        }
+        proc->children.clear();
+
+        for (const auto &zombie : proc->zombies)
+        {
+            zombie->parent = proc->parent;
+            proc->parent->zombies.push_back(zombie);
+        }
+        proc->zombies.clear();
+
+        remove_from(proc->parent->children, proc);
+        proc->parent->zombies.push_back(proc);
+
+        proc->status = code;
+        proc->exited = true;
+
+        auto me = this_thread();
         for (const auto &thread : proc->threads)
         {
-            if (thread->status == status::running)
-            {
-                status = status::running;
-                running_on = thread->running_on;
-            }
+            auto status = thread->status;
             thread->status = status::killed;
+            if (thread != me && status == status::running)
+                wake_up(thread->running_on);
         }
+        // proc->threads.clear(); // threads will remove themselves itself from threads vector
 
-        lock.unlock();
-        if (status == status::running)
-            wake_up(running_on);
+        proc->event.trigger();
+
+        free_pid(proc->pid);
+
+        arch::int_toggle(true);
+        if (this_thread()->parent == proc)
+        {
+            vmm::kernel_pagemap->load();
+            yield();
+            arch::halt();
+        }
     }
 
-    void pexit()
+    [[noreturn]] void pexit(int code)
     {
-        pexit(this_thread()->parent);
+        pexit(this_thread()->parent, code);
+        std::unreachable();
     }
 
-    process::process(std::string_view name) : name(name), pagemap(nullptr), next_tid(1), parent(nullptr), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top)
+    process::process(std::string_view name) :
+        name(name), pagemap(nullptr), next_tid(1), root(vfs::get_root()), cwd(vfs::get_root()), umask(s_iwgrp | s_iwoth),
+        fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top)
     {
-        this->root = vfs::get_root();
-        this->cwd = vfs::get_root();
-        this->umask = s_iwgrp | s_iwoth;
-
         this->gid = 0;
         this->sgid = 0;
         this->egid = 0;
@@ -169,23 +190,7 @@ namespace proc
         this->suid = 0;
         this->euid = 0;
 
-        lockit(pid_lock);
-        this->pid = alloc_pid();
-        processes[this->pid] = this;
-    }
-
-    process::process(std::string_view name, process *old_proc) : name(name), next_tid(1), parent(old_proc), mmap_anon_base(old_proc->mmap_anon_base), usr_stack_top(old_proc->usr_stack_top)
-    {
-        this->root = old_proc->root;
-        this->cwd = old_proc->cwd;
-        this->umask = old_proc->umask;
-        this->pagemap = old_proc->pagemap->fork();
-
-        this->gid = old_proc->gid;
-
-        lockit(pid_lock);
-        this->pid = alloc_pid();
-        processes[this->pid] = this;
+        this->pid = alloc_pid(this);
     }
 
     tid_t process::alloc_tid()
@@ -193,33 +198,12 @@ namespace proc
         return this->next_tid++;
     }
 
-    process::~process()
-    {
-        vmm::kernel_pagemap->load();
-
-        for (auto [num, fd] : this->fds)
-            this->close_fd(num);
-
-        auto pid1 = processes[1];
-        for (const auto &proc : this->children)
-        {
-            proc->parent = pid1;
-            pid1->children.push_back(proc);
-            this->children.erase(&proc);
-        }
-
-        delete this->pagemap;
-
-        lockit(pid_lock);
-        free_pid(this->pid);
-    }
-
     static std::pair<uintptr_t, uintptr_t> map_user_stack(thread *thread, process *parent)
     {
         uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
         uintptr_t vustack = parent->usr_stack_top - default_stack_size;
 
-        if (!parent->pagemap->mmap_range(vustack, pstack, default_stack_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS))
+        if (!parent->pagemap->mmap_range(vustack, pstack, default_stack_size, vmm::mmap::prot_read | vmm::mmap::prot_write, vmm::mmap::map_anonymous))
             PANIC("Could not map user stack!");
 
         parent->usr_stack_top = vustack - pmm::page_size;
@@ -228,13 +212,16 @@ namespace proc
         return { tohh(pstack) + default_stack_size, vustack + default_stack_size };
     }
 
+    thread::thread(process *parent) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
+    {
+        this->running_on = size_t(-1);
+        this->tid = this->parent->alloc_tid();
+    }
+
     thread::thread(process *parent, uintptr_t pc, uintptr_t arg) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
-
-        if (this->user == true)
-            this->stack = map_user_stack(this, parent).second;
 
         thread_finalise(this, pc, arg);
         parent->threads.push_back(this);
@@ -245,11 +232,8 @@ namespace proc
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
 
-        if (this->user == true)
-        {
-            auto [vstack, vustack] = map_user_stack(this, parent);
-            this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
-        }
+        auto [vstack, vustack] = map_user_stack(this, parent);
+        this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
 
         thread_finalise(this, pc, arg);
         parent->threads.push_back(this);
@@ -262,12 +246,26 @@ namespace proc
             this->parent->threads.erase(it);
 
         if (this->parent->threads.empty())
-            delete this->parent;
+        {
+            if (this->parent->exited == false)
+                pexit(this->parent, 0);
+
+            delete this->parent->pagemap;
+        }
 
         for (const auto &stack : this->stacks)
             pmm::free(stack, default_stack_size / pmm::page_size);
 
         thread_delete(this);
+    }
+
+    static void enqueue_notready(thread *thread)
+    {
+        lockit(lock);
+        thread->in_queue = true;
+        if (thread->status == status::running)
+            thread->status = status::ready;
+        expired->push_front(thread);
     }
 
     static void scheduler(cpu::registers_t *regs)
@@ -277,6 +275,17 @@ namespace proc
         {
             if (new_thread->status == status::killed)
                 delete new_thread;
+
+            if (new_thread->events.empty() == false)
+            {
+                if (new_thread->timeout > 0 && size_t(new_thread->timeout) <= time::time_ms())
+                {
+                    new_thread->timeout = 0;
+                    event::trigger(new_thread->events[0]);
+                    continue;
+                }
+                else enqueue_notready(new_thread);
+            }
 
             new_thread = next_thread();
         }
@@ -289,13 +298,14 @@ namespace proc
         auto current_thread = this_thread();
         if (current_thread != nullptr && current_thread->status != status::killed)
         {
-            if (current_thread->status == status::running && current_thread != this_cpu()->idle)
-                enqueue(current_thread);
+            if (current_thread != this_cpu()->idle)
+                enqueue_notready(current_thread);
+
+            // if (current_thread->status == status::running && current_thread != this_cpu()->idle)
+            //     enqueue(current_thread);
 
             save_thread(current_thread, regs);
         }
-
-        // log::infoln("Scheduler: Running '{}' {}:{} on CPU: {}", new_thread->parent->name.c_str(), new_thread->parent->pid, new_thread->tid, this_cpu()->id);
 
         reschedule(fixed_timeslice);
         load_thread(new_thread, regs);

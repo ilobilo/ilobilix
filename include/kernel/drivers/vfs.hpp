@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -11,45 +11,77 @@
 #include <memory>
 #include <tuple>
 
+namespace proc { struct process; }
 namespace vfs
 {
-    static constexpr mode_t default_file_mode = 0666;
-    static constexpr mode_t default_folder_mode = 0777;
+    struct filesystem;
+    struct resource;
+    struct fdhandle;
+    struct node_t;
+
+    inline bool stub_ref(resource *res);
+    inline bool stub_unref(resource *res);
 
     #define return_err_func(err, ret...) { errno = err; return ret; }
-    struct filesystem;
-    struct fdhandle;
+    struct cdev_t
+    {
+        virtual bool open(resource *res, fdhandle *fd, proc::process *proc) return_err_func(ENOSYS, true);
+
+        virtual ssize_t read(resource *res, fdhandle *fd, void *buffer, off_t offset, size_t count) return_err_func(ENOSYS, -1)
+        virtual ssize_t write(resource *res, fdhandle *fd, const void *buffer, off_t offset, size_t count) return_err_func(ENOSYS, -1)
+
+        virtual bool ref(resource *res, fdhandle *fd) { return stub_ref(res); }
+        virtual bool unref(resource *res, fdhandle *fd) { return stub_unref(res); }
+
+        virtual bool trunc(resource *res, fdhandle *fd, size_t length) return_err_func(ENOSYS, -1)
+
+        virtual int ioctl(resource *res, fdhandle *fd, size_t request, uintptr_t argp) return_err_func(ENOTTY, -1)
+        virtual void *mmap(resource *res, size_t fpage, int flags) return_err_func(ENOSYS, (void*)-1)
+    };
+
     struct resource
     {
+        std::unordered_map<std::string_view, node_t*> children;
+
         std::atomic<size_t> refcount;
         filesystem *fs;
         lock_t lock;
         stat_t stat;
 
+        cdev_t *cdev;
+
         bool can_mmap;
 
-        virtual ssize_t read(fdhandle *fd, void *buffer, off_t offset, size_t count) return_err_func(ENOSYS, -1)
-        virtual ssize_t write(fdhandle *fd, const void *buffer, off_t offset, size_t count) return_err_func(ENOSYS, -1)
+        inline bool open(fdhandle *fd, proc::process *proc) { return this->cdev->open(this, fd, proc); }
+
+        inline ssize_t read(fdhandle *fd, void *buffer, off_t offset, size_t count)
+            { return this->cdev->read(this, fd, buffer, offset, count); }
+
+        inline ssize_t write(fdhandle *fd, const void *buffer, off_t offset, size_t count)
+            { return this->cdev->write(this, fd, buffer, offset, count); }
 
         inline ssize_t read(void *buffer, off_t offset, size_t count)
-        {
-            return this->read(nullptr, buffer, offset, count);
-        }
+            { return this->cdev->read(this, nullptr, buffer, offset, count); }
+
         inline ssize_t write(const void *buffer, off_t offset, size_t count)
-        {
-            return this->write(nullptr, buffer, offset, count);
-        }
+            { return this->cdev->write(this, nullptr, buffer, offset, count); }
 
-        virtual bool unref(fdhandle *fd) { this->refcount--; return true; }
-        inline bool unref() { return this->unref(nullptr); }
+        inline bool ref(fdhandle *fd) { return this->cdev->ref(this, fd); }
+        inline bool ref() { return this->cdev->ref(this, nullptr); }
 
-        virtual bool trunc(fdhandle *fd, size_t length) return_err_func(ENOSYS, -1)
+        inline bool unref(fdhandle *fd) { return this->cdev->unref(this, fd); }
+        inline bool unref() { return this->cdev->unref(this, nullptr); }
 
-        virtual int ioctl(fdhandle *fd, size_t request, uintptr_t argp) return_err_func(EINVAL, -1)
-        virtual void *mmap(size_t fpage, int flags) return_err_func(EINVAL, (void*)-1)
+        inline bool trunc(fdhandle *fd, size_t length)
+            { return this->cdev->trunc(this, fd, length); }
 
-        resource(filesystem *fs) : refcount(1), fs(fs), lock(), can_mmap(false) { };
-        virtual ~resource() = default;
+        inline int ioctl(fdhandle *fd, size_t request, uintptr_t argp)
+            { return this->cdev->ioctl(this, fd, request, argp); }
+
+        inline void *mmap(size_t fpage, int flags)
+            { return this->cdev->mmap(this, fpage, flags); }
+
+        resource(filesystem *fs, cdev_t *cdev) : refcount(1), fs(fs), lock(), cdev(cdev), can_mmap(false) { };
     };
 
     struct node_t
@@ -68,13 +100,12 @@ namespace vfs
 
         node_t *mountgate;
         node_t *parent;
-        std::unordered_map<std::string_view, node_t*> children;
 
         node_t *reduce(bool symlinks, bool automount = true);
         path_t to_path();
 
-        std::optional<types> type();
-        std::optional<mode_t> mode();
+        types type();
+        mode_t mode();
 
         bool empty();
 
@@ -107,9 +138,8 @@ namespace vfs
         virtual node_t *mount(node_t *source, node_t *parent, std::string_view name, void *data) return_err_func(EINVAL, nullptr)
         virtual bool unmount() return_err_func(EINVAL, false)
 
-        virtual void sync() return_err_func(EINVAL)
-
         virtual bool populate(node_t *node, std::string_view single = "") return_err_func(EINVAL, false)
+        virtual bool sync(resource *res) return_err_func(EINVAL, false)
 
         virtual node_t *create(node_t *parent, std::string_view name, mode_t mode) return_err_func(EINVAL, nullptr)
         virtual node_t *symlink(node_t *parent, std::string_view name, std::string_view target) return_err_func(EINVAL, nullptr)
@@ -117,11 +147,22 @@ namespace vfs
         virtual node_t *link(node_t *parent, std::string_view name, node_t *old_node) return_err_func(EINVAL, nullptr)
         virtual bool unlink(node_t *node) return_err_func(EINVAL, false)
 
-        virtual ssize_t read(node_t *node, void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
-        virtual ssize_t write(node_t *node, const void *buffer, off_t offset, size_t count) return_err_func(EINVAL, -1)
+        virtual node_t *mknod(node_t *parent, std::string_view name, dev_t dev, mode_t mode) return_err_func(EINVAL, nullptr)
 
     };
     #undef return_err_func
+
+    inline bool stub_ref(resource *res)
+    {
+        res->refcount++;
+        return true;
+    }
+
+    inline bool stub_unref(resource *res)
+    {
+        res->refcount--;
+        return true;
+    }
 
     node_t *get_root();
 

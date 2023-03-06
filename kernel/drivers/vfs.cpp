@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/fs/devtmpfs.hpp>
 #include <drivers/proc.hpp>
@@ -15,7 +15,7 @@ namespace vfs
     node_t *get_root()
     {
         auto thread = this_thread();
-        return thread ? thread->parent->root : root_node;
+        return thread ? thread->parent->root.get() : root_node;
     }
 
     node_t *node_t::internal_reduce(bool symlinks, bool automount, size_t cnt)
@@ -64,26 +64,20 @@ namespace vfs
         return ret.empty() ? ret += "/" : ret;
     }
 
-    std::optional<types> node_t::type()
+    types node_t::type()
     {
-        if (this->res == nullptr)
-            return std::nullopt;
-
-        return types(this->res->stat.st_mode & s_ifmt);
+        return this->res->stat.type();
     }
 
-    std::optional<mode_t> node_t::mode()
+    mode_t node_t::mode()
     {
-        if (this->res == nullptr)
-            return std::nullopt;
-
-        return mode_t(this->res->stat.st_mode & ~s_ifmt);
+        return this->res->stat.mode();
     }
 
     bool node_t::empty()
     {
         this->fs->populate(this);
-        return this->children.empty();
+        return this->res->children.empty();
     }
 
     std::optional<std::string> filesystem::get_value(std::string_view key)
@@ -130,7 +124,7 @@ namespace vfs
             return;
 
         if (node->type() == s_ifdir)
-            for (auto [name, child] : node->children)
+            for (auto [name, child] : node->res->children)
                 recursive_delete(child, resources);
 
         if (resources == true)
@@ -175,10 +169,10 @@ namespace vfs
                 continue;
             }
 
-            if (current_node->children.contains(segment))
+            if (current_node->res->children.contains(segment))
             {
                 found:;
-                auto node = current_node->children[segment]->reduce(false, is_last ? automount : true);
+                auto node = current_node->res->children[segment]->reduce(false, is_last ? automount : true);
 
                 if (is_last == true)
                     return { current_node, node, node->name };
@@ -291,7 +285,7 @@ namespace vfs
         if (node != nullptr)
         {
             lockit(nparent->lock);
-            nparent->children[node->name] = node;
+            nparent->res->children[node->name] = node;
         }
 
         return node;
@@ -317,7 +311,7 @@ namespace vfs
         if (node != nullptr)
         {
             lockit(nparent->lock);
-            nparent->children[node->name] = node;
+            nparent->res->children[node->name] = node;
         }
 
         return node;
@@ -354,10 +348,10 @@ namespace vfs
             lockit(new_tparent->lock);
 
             // TODO: ???
-            new_node->res->refcount++;
+            new_node->res->ref();
             new_node->res->stat.st_nlink++;
 
-            new_tparent->children[new_node->name] = new_node;
+            new_tparent->res->children[new_node->name] = new_node;
         }
 
         return new_node;
@@ -400,7 +394,7 @@ namespace vfs
             node->res->stat.st_nlink--;
 
             delete node;
-            nparent->children.erase(basename);
+            nparent->res->children.erase(basename);
         }
 
         return ret;

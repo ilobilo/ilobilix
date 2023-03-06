@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/elf.hpp>
 #include <init/kernel.hpp>
@@ -113,7 +113,7 @@ namespace elf
         }
     } // namespace syms
 
-    namespace module
+    namespace modules
     {
         std::unordered_map<std::string_view, driver_t*> drivers;
         std::vector<module_t> modules;
@@ -166,8 +166,6 @@ namespace elf
             if (base_addr == 0)
                 base_addr = align_up(tohh(pmm::mem_top), 0x40000000);
 
-            size = align_up(size, pmm::page_size);
-
             uintptr_t loadaddr = base_addr;
             base_addr += size;
 
@@ -175,20 +173,15 @@ namespace elf
             vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);
 
             return loadaddr;
-
-            // return malloc<uintptr_t>(size);
         }
 
         void unmap(uintptr_t loadaddr, size_t size)
         {
-            size = align_up(size, pmm::page_size);
             if (loadaddr == base_addr - size)
                 base_addr = loadaddr;
 
             pmm::free(vmm::kernel_pagemap->virt2phys(loadaddr), size / pmm::page_size);
             vmm::kernel_pagemap->unmap_range(loadaddr, size);
-
-            // free(loadaddr);
         }
 
         [[clang::no_sanitize("alignment")]]
@@ -212,8 +205,12 @@ namespace elf
             }
 
             lockit(lock);
+
+            auto realsize = size;
+            size = align_up(size, pmm::page_size);
+
             auto loadaddr = map(size);
-            memcpy(reinterpret_cast<void*>(loadaddr), reinterpret_cast<void*>(address), size);
+            memcpy(reinterpret_cast<void*>(loadaddr), reinterpret_cast<void*>(address), realsize);
             header = reinterpret_cast<Elf64_Ehdr*>(loadaddr);
 
             auto sections = reinterpret_cast<Elf64_Shdr*>(loadaddr + header->e_shoff);
@@ -425,7 +422,7 @@ namespace elf
             node->fs->populate(node);
             std::vector<driver_t*> ret;
 
-            for (auto [name, child] : node->children)
+            for (auto [name, child] : node->res->children)
             {
                 if (child->type() == s_iflnk)
                     child = child->reduce(true);
@@ -528,7 +525,7 @@ namespace elf
             if (drvs.empty())
                 log::errorln("ELF: Could not find any builtin drivers!");
         }
-    } // namespace module
+    } // namespace modules
 
     namespace exec
     {
@@ -557,17 +554,17 @@ namespace elf
                 {
                     case PT_LOAD:
                     {
-                        size_t flags = PROT_READ;
+                        size_t flags = vmm::mmap::prot_read;
                         if (phdr.p_flags & PF_W)
-                            flags |= PROT_WRITE;
+                            flags |= vmm::mmap::prot_write;
                         if (phdr.p_flags & PF_X)
-                            flags |= PROT_EXEC;
+                            flags |= vmm::mmap::prot_exec;
 
                         size_t misalign = phdr.p_vaddr & (pmm::page_size - 1);
                         size_t pages = div_roundup(phdr.p_memsz + misalign, pmm::page_size);
 
                         auto paddr = pmm::alloc<uintptr_t>(pages);
-                        if (!pagemap->mmap_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags, MAP_ANONYMOUS))
+                        if (!pagemap->mmap_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags, vmm::mmap::map_anonymous))
                         {
                             pmm::free(paddr, pages);
                             return std::nullopt;
@@ -582,11 +579,11 @@ namespace elf
 
                         // size_t misalign = phdr.p_vaddr - vstart;
 
-                        // if (pagemap->mmap(vstart + base, phdr.p_filesz + misalign, flags, MAP_PRIVATE | MAP_FIXED, res, phdr.p_offset + misalign) == MAP_FAILED)
+                        // if (pagemap->mmap(vstart + base, phdr.p_filesz + misalign, flags, vmm::mmap::map_private | vmm::mmap::map_fixed, res, phdr.p_offset + misalign) == vmm::mmap::map_failed)
                         //     return std::nullopt;
 
                         // if (vend > vfend)
-                        //     if (pagemap->mmap(vfend, vend - vfend, flags, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, NULL, 0) == MAP_FAILED)
+                        //     if (pagemap->mmap(vfend, vend - vfend, flags, vmm::mmap::map_private | vmm::mmap::map_fixed | vmm::mmap::map_anonymous, NULL, 0) == vmm::mmap::map_failed)
                         //         return std::nullopt;
 
                         break;

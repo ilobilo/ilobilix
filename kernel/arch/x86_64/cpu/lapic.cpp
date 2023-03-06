@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/lapic.hpp>
 #include <arch/x86_64/cpu/cpu.hpp>
@@ -106,7 +106,7 @@ namespace lapic
         this->write(0x3E0, 0x03);
         uint64_t value = this->read(0x320) & ~(3 << 17);
 
-        value |= as_int(mode) << 17;
+        value |= std::to_underlying(mode) << 17;
         value &= 0xFFFFFF00;
         value |= vector;
 

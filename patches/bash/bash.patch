@@ -16,14 +16,14 @@ diff -ruN a/builtins/psize.c b/builtins/psize.c
 -
 -#include <stdio.h>
 -#ifndef _MINIX
--#include "../bashtypes.h"
+-#include <../bashtypes.h>
 -#endif
  #include <signal.h>
 -#include <errno.h>
 -
--#include "../command.h"
--#include "../general.h"
--#include "../sig.h"
+-#include <../command.h>
+-#include <../general.h>
+-#include <../sig.h>
 -
 -#ifndef errno
 -extern int errno;
@@ -59,12 +59,12 @@ diff -ruN a/mksyntax.c b/mksyntax.c
     along with Bash.  If not, see <http://www.gnu.org/licenses/>.
  */
  
--#include "config.h"
+-#include <config.h>
 -
  #include <stdio.h>
 +#include <string.h>
- #include "bashansi.h"
- #include "chartypes.h"
+ #include <bashansi.h>
+ #include <chartypes.h>
  #include <errno.h>
  
 -#ifdef HAVE_UNISTD_H
@@ -72,7 +72,7 @@ diff -ruN a/mksyntax.c b/mksyntax.c
 -#endif
 +#include <unistd.h>
  
- #include "syntax.h"
+ #include <syntax.h>
  
  extern int optind;
  extern char *optarg;
@@ -158,9 +158,9 @@ diff -ruN a/support/bashversion.c b/support/bashversion.c
     along with Bash.  If not, see <http://www.gnu.org/licenses/>.
  */
  
--#include "config.h"
+-#include <config.h>
 -
- #include "stdc.h"
+ #include <stdc.h>
  
  #include <stdio.h>
 +#include <string.h>
@@ -170,7 +170,7 @@ diff -ruN a/support/bashversion.c b/support/bashversion.c
 -#endif
 +#include <unistd.h>
  
- #include "bashansi.h"
+ #include <bashansi.h>
  
 diff -ruN a/support/config.sub b/support/config.sub
 --- a/support/config.sub	2022-12-12 23:53:35.578321954 +0400

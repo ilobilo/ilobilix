@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/aarch64/cpu/cpu.hpp>
 #include <lib/panic.hpp>
@@ -100,7 +100,7 @@ namespace vmm
             default:
                 return WB;
         }
-        __builtin_unreachable();
+        std::unreachable();
     }
 
     ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize)
@@ -158,7 +158,8 @@ namespace vmm
         ptentry *pml_entry = this->virt2pte(vaddr, true, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -175,7 +176,8 @@ namespace vmm
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -191,7 +193,8 @@ namespace vmm
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -207,7 +210,6 @@ namespace vmm
     static size_t counter = 0;
     void pagemap::load()
     {
-        lockit(this->lock);
         write_ttbr_el1(0, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr0)));
 
         // load ttbr1 once on every cpu
@@ -217,7 +219,6 @@ namespace vmm
 
     void pagemap::save()
     {
-        lockit(this->lock);
         this->toplvl->ttbr0 = reinterpret_cast<ttbr*>(tohh(read_ttbr_el1(0)));
         this->toplvl->ttbr1 = reinterpret_cast<ttbr*>(tohh(read_ttbr_el1(1)));
     }

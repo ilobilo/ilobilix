@@ -6,20 +6,32 @@ src += files(
     'cpu/ioapic.cpp',
     'cpu/lapic.cpp',
     'cpu/pic.cpp',
+
     'drivers/pci/pci_legacy.cpp',
     'drivers/pci/pci.cpp',
+
+    'drivers/ps2/ps2.cpp',
+    'drivers/ps2/kbd.cpp',
+    'drivers/ps2/scancodes.cpp',
+
     'drivers/timers/hpet.cpp',
     'drivers/timers/pit.cpp',
     'drivers/timers/rtc.cpp',
     'drivers/timers/tsc.cpp',
+
     'drivers/proc.cpp',
     'drivers/serial.cpp',
     'drivers/smp.cpp',
+
     'lib/io.cpp',
     'lib/memory.S',
+
     'mm/vmm.cpp',
+
     'syscall/syscall.cpp',
     'syscall/syscall.S',
+    'syscall/arch.cpp',
+
     'arch.cpp'
 )
 

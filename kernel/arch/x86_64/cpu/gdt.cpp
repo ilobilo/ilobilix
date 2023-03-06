@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <init/kernel.hpp>
@@ -51,22 +51,19 @@ namespace gdt
             reinterpret_cast<uintptr_t>(gdt),
         };
 
-        asm volatile ("lgdt %0" :: "m"(gdtr) : "memory");
         asm volatile (
+            "lgdt %[gdtr]\n\t"
             "mov %[dsel], %%ds \n\t"
             "mov %[dsel], %%fs \n\t"
             "mov %[dsel], %%gs \n\t"
             "mov %[dsel], %%es \n\t"
             "mov %[dsel], %%ss \n\t"
-            :: [dsel]"m"(GDT_DATA)
-        );
-        asm volatile (
             "push %[csel] \n\t"
             "lea 1f(%%rip), %%rax \n\t"
             "push %%rax \n\t"
-            ".byte 0x48, 0xCB \n\t"
+            ".byte 0x48, 0xCB \n"
             "1:"
-            :: [csel]"i"(GDT_CODE) : "rax"
+            :: [gdtr]"m"(gdtr), [dsel]"m"(GDT_DATA), [csel]"i"(GDT_CODE) : "rax", "memory"
         );
         asm volatile ("ltr %0" :: "r"(static_cast<uint16_t>(GDT_TSS)));
     }

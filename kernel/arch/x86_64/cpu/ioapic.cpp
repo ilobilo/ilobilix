@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
@@ -54,12 +54,15 @@ namespace ioapic
     {
         uint64_t value = 0;
         value |= vector;
-        value |= as_int(delivery) << 8;
-        value |= as_int(dest) << 11;
+        value |= std::to_underlying(delivery) << 8;
+        value |= std::to_underlying(dest) << 11;
 
-        if (flags & ACTIVE_HIGH_LOW) value |= (1 << 13);
-        if (flags & EDGE_LEVEL) value |= (1 << 15);
-        if (flags & MASKED) value |= (1 << 16);
+        if (flags & ACTIVE_HIGH_LOW)
+            value |= (1 << 13);
+        if (flags & EDGE_LEVEL)
+            value |= (1 << 15);
+        if (flags & MASKED)
+            value |= (1 << 16);
 
         value |= static_cast<uint64_t>(id) << 56;
 

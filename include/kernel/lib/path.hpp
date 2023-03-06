@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -364,7 +364,7 @@ class path_t
 
     operator std::string_view() const
     {
-        return this->_str.sub_view();
+        return std::string_view { this->_str };
     }
 
     operator path_view_t() const
@@ -493,14 +493,14 @@ class path_t
         return this->_str.empty();
     }
 
-    char *begin() const
+    decltype(auto) begin() const
     {
-        return const_cast<char*>(this->_str.cbegin());
+        return this->_str.begin();
     }
 
-    char *end() const
+    decltype(auto) end() const
     {
-        return const_cast<char*>(this->_str.cend());
+        return this->_str.end();
     }
 
     friend void swap(path_t &lhs, path_t &rhs)

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/lib/io.hpp>
 #include <drivers/acpi.hpp>
@@ -61,9 +61,11 @@ namespace timers::rtc
     void sleep(uint64_t sec)
     {
         uint64_t lastsec = time();
-        while (lastsec == time());
+        while (lastsec == time())
+            asm volatile ("pause");
 
         lastsec = time() + sec;
-        while (lastsec != time());
+        while (lastsec != time())
+            asm volatile ("pause");
     }
 } // namespace timers::rtc

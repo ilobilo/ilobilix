@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 // #include <arch/x86_64/drivers/timers/tsc.hpp>
 #include <arch/x86_64/cpu/lapic.hpp>
@@ -31,6 +31,8 @@ namespace smp
 
         cpuptr->lapic.init();
     }
+
+    uint64_t cpu_t::fpu_storage_size = 512;
 
     extern "C" void syscall_entry();
     void cpu_init(limine_smp_info *cpu)

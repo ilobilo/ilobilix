@@ -1,11 +1,14 @@
-initrd/*
+sysroot/*
 .vscode
+.clang-format
+.iwyu*
 
 serial.txt
 log.txt
 
 build*
 sources
+
 subprojects/*
 !subprojects/*.wrap
 !subprojects/packagefiles

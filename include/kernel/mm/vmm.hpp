@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -40,14 +40,14 @@ namespace vmm
         framebuffer = write_combining
     };
 
-    static constexpr caching default_caching = write_back;
-    static constexpr size_t default_flags = rwx;
+    constexpr inline caching default_caching = write_back;
+    constexpr inline size_t default_flags = rwx;
 
-    static constexpr size_t kib4 = 0x1000;
-    static constexpr size_t mib2 = 0x200000;
-    static constexpr size_t gib1 = 0x40000000;
+    constexpr inline size_t kib4 = 0x1000;
+    constexpr inline size_t mib2 = 0x200000;
+    constexpr inline size_t gib1 = 0x40000000;
 
-    static constexpr auto invalid_addr = uintptr_t(-1);
+    constexpr inline auto invalid_addr = uintptr_t(-1);
 
     extern uintptr_t pa_mask;
 
@@ -93,34 +93,34 @@ namespace vmm
         struct global;
         struct local;
 
-        #define MAP_FAILED ((void*)-1)
+        constexpr inline auto map_failed = fold(reinterpret_cast<void*>(-1));
 
-        #define MAP_SHARED 0x01
-        #define MAP_PRIVATE 0x02
-        #define MAP_SHARED_VALIDATE 0x03
-        #define MAP_TYPE 0x0f
-        #define MAP_FIXED 0x10
-        #define MAP_ANON 0x20
-        #define MAP_ANONYMOUS MAP_ANON
-        #define MAP_NORESERVE 0x4000
-        #define MAP_GROWSDOWN 0x0100
-        #define MAP_DENYWRITE 0x0800
-        #define MAP_EXECUTABLE 0x1000
-        #define MAP_LOCKED 0x2000
-        #define MAP_POPULATE 0x8000
-        #define MAP_NONBLOCK 0x10000
-        #define MAP_STACK 0x20000
-        #define MAP_HUGETLB 0x40000
-        #define MAP_SYNC 0x80000
-        #define MAP_FIXED_NOREPLACE 0x100000
-        #define MAP_FILE 0
+        constexpr inline auto map_shared = 0x01;
+        constexpr inline auto map_private = 0x02;
+        constexpr inline auto map_shared_validate = 0x03;
+        constexpr inline auto map_type = 0x0F;
+        constexpr inline auto map_fixed = 0x10;
+        constexpr inline auto map_anon = 0x20;
+        constexpr inline auto map_anonymous = map_anon;
+        constexpr inline auto map_noreserve = 0x4000;
+        constexpr inline auto map_growsdown = 0x0100;
+        constexpr inline auto map_denywrite = 0x0800;
+        constexpr inline auto map_executable = 0x1000;
+        constexpr inline auto map_locked = 0x2000;
+        constexpr inline auto map_populate = 0x8000;
+        constexpr inline auto map_nonblock = 0x10000;
+        constexpr inline auto map_stack = 0x20000;
+        constexpr inline auto map_hugetlb = 0x40000;
+        constexpr inline auto map_sync = 0x80000;
+        constexpr inline auto map_fixed_noreplace = 0x100000;
+        constexpr inline auto map_file = 0;
 
-        #define PROT_NONE 0
-        #define PROT_READ 1
-        #define PROT_WRITE 2
-        #define PROT_EXEC 4
-        #define PROT_GROWSDOWN 0x01000000
-        #define PROT_GROWSUP 0x02000000
+        constexpr inline auto prot_none = 0;
+        constexpr inline auto prot_read = 1;
+        constexpr inline auto prot_write = 2;
+        constexpr inline auto prot_exec = 4;
+        constexpr inline auto prot_growsdown = 0x01000000;
+        constexpr inline auto prot_growsup = 0x02000000;
     } // namespace mmap
 
     struct ptable;
@@ -219,6 +219,7 @@ namespace vmm
     };
 
     extern pagemap *kernel_pagemap;
+    extern bool print_errors;
 
     bool is_canonical(uintptr_t addr);
     uintptr_t flags2arch(size_t flags);

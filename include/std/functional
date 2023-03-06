@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -158,35 +158,23 @@ constexpr uint64_t FNV1a(const void *key, uint64_t len, uint64_t seed = 0xCBF29C
     return h;
 }
 
+constexpr inline size_t _hash(const void *ptr, uint64_t len, uint64_t seed = 0xC70F6907UL)
+{
+    return MurmurHash2_64A(ptr, len, seed);
+}
+
+constexpr inline size_t _hash(const auto &val)
+{
+    return _hash(&val, sizeof(val));
+}
+
+constexpr inline size_t _hash_combine(const auto &val, uint64_t old)
+{
+    return _hash(&val, sizeof(val), old);
+}
+
 namespace std
 {
-    // std::hash
-
-    namespace detail
-    {
-        struct hash_impl
-        {
-            static size_t hash(const void *ptr, uint64_t len, uint64_t seed = 0xC70F6907UL)
-            {
-                return MurmurHash2_64A(ptr, len, seed);
-            }
-
-            template<typename Type>
-            static size_t hash(const Type &val)
-            {
-                return hash(&val, sizeof(val));
-            }
-
-            template<typename Type>
-            static size_t hash_combine(const Type &val, uint64_t hash)
-            {
-                return hash(&val, sizeof(val), hash);
-            }
-        };
-    } // namespace impl
-
-    // std::function
-
     template<typename func>
     class function;
 

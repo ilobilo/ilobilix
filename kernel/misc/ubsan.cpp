@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <misc/ubsan.hpp>
 #include <arch/arch.hpp>
@@ -9,7 +9,7 @@ static void print(const char *message, source_location loc)
 {
     log::warnln("Ubsan: {} at file {}, line {}, column {}", message, loc.file, loc.line, loc.column);
     trace::print();
-    arch::halt();
+    arch::halt(false);
 }
 
 extern "C"

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <lib/mmio.hpp>
@@ -10,7 +10,8 @@ namespace cpu
     {
         uint32_t cpuid_max = 0;
         asm volatile ("cpuid" : "=a"(cpuid_max) : "a"(leaf & 0x80000000) : "ebx", "ecx", "edx");
-        if (leaf > cpuid_max) return false;
+        if (leaf > cpuid_max)
+            return false;
         asm volatile ("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(leaf), "c"(subleaf));
         return true;
     }

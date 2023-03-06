@@ -1,7 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/elf.hpp>
 #include <lib/trace.hpp>
+#include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <cxxabi.h>
 
@@ -19,10 +20,12 @@ namespace trace
         auto print_name = [&prefix](uintptr_t ip)
         {
             auto [entry, offset] = elf::syms::lookup(ip, STT_FUNC);
-            std::string_view name = __cxxabiv1::__cxa_demangle(entry.name.data(), nullptr, nullptr, nullptr) ?: entry.name;
+            std::string_view name = abi::__cxa_demangle(entry.name.data(), nullptr, nullptr, nullptr) ?: entry.name;
 
             if (entry != elf::syms::empty_sym)
                 log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, name, offset);
+
+            return name != "syscall_handler";
         };
 
         log::println("{}Stacktrace:", prefix);
@@ -32,10 +35,12 @@ namespace trace
         // while (true)
         for (size_t i = 0; i < 10; i++)
         {
-            if (frame == nullptr || frame->ip == 0)
+            if (frame == nullptr || ishh(frame->ip) == false)
                 break;
 
-            print_name(frame->ip);
+            if (print_name(frame->ip) == false)
+                break;
+
             frame = frame->next;
         }
     }

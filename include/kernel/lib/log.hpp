@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -7,9 +7,9 @@
 
 namespace log
 {
-    static constexpr auto info_prefix = "[\033[32mINFO\033[0m] ";
-    static constexpr auto warn_prefix = "[\033[33mWARN\033[0m] ";
-    static constexpr auto error_prefix = "[\033[31mERROR\033[0m] ";
+    constexpr inline auto info_prefix = "[\033[32mINFO\033[0m] ";
+    constexpr inline auto warn_prefix = "[\033[33mWARN\033[0m] ";
+    constexpr inline auto error_prefix = "[\033[31mERROR\033[0m] ";
 
     inline bool to_term = true;
     inline lock_t lock;

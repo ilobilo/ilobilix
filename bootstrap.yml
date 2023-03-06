@@ -1,4 +1,4 @@
-# Shamelessly inspired (copied) from the one in bootstrap-managarm
+# Shamelessly copied from the one in bootstrap-managarm
 
 declare_options:
   - name: arch
@@ -293,10 +293,39 @@ packages:
     build:
       - args: ['cp', '-r', '@SOURCE_ROOT@/base-files/.', '@THIS_COLLECT_DIR@']
 
+  - name: linux-headers
+    labels: [aarch64]
+    architecture: '@OPTION:arch@'
+    source:
+      subdir: sources
+      url: 'https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.1.10.tar.xz'
+      extract_path: 'linux-6.1.10'
+      format: 'tar.xz'
+      version: '6.1.10'
+    implict_package: true
+    configure:
+      - args: ['cp', '-Tr', '@THIS_SOURCE_DIR@', '.']
+    build:
+      - args: |
+          LINUX_ARCH="@OPTION:arch@"
+          case "$LINUX_ARCH" in
+            "aarch64")
+              LINUX_ARCH="arm64"
+              ;;
+          esac
+          make ARCH="$LINUX_ARCH" headers_install
+      - args: ['find', 'usr/include', '-type', 'f', '!', '-name', '*.h', '-delete']
+      - args: ['mkdir', '-p', '@THIS_COLLECT_DIR@/usr']
+      # remove this file, as mlibc will override this file with one suited to mlibc
+      - args: ['rm', 'usr/include/linux/libc-compat.h']
+      - args: ['cp', '-r', 'usr/include', '@THIS_COLLECT_DIR@/usr']
+
   - name: mlibc-headers
     labels: [aarch64]
     architecture: '@OPTION:arch@'
     from_source: mlibc
+    pkgs_required:
+      - linux-headers
     implict_package: true
     configure:
       - args:
@@ -311,6 +340,7 @@ packages:
         - '-Ddisable_crypt_option=true'
         - '-Ddisable_iconv_option=true'
         - '-Ddisable_intl_option=true'
+        - '-Dlinux_kernel_headers=@BUILD_ROOT@/packages/linux-headers/usr/include'
     build:
       - args: ['ninja']
       - args: ['ninja', 'install']
@@ -329,6 +359,7 @@ packages:
         triple: "@OPTION:arch-triple@"
     implict_package: true
     pkgs_required:
+      - linux-headers
       - mlibc-headers
     configure:
       - args:
@@ -345,6 +376,7 @@ packages:
         - '-Ddisable_iconv_option=true'
         - '-Ddisable_intl_option=true'
         - '-Ddefault_library=both'
+        - '-Dlinux_kernel_headers=@BUILD_ROOT@/packages/linux-headers/usr/include'
         - '@THIS_SOURCE_DIR@'
     build:
       - args: ['ninja']

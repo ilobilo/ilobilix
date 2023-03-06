@@ -1,8 +1,9 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <misc/cxxabi.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
+#include <cxxabi.h>
 #include <cstdint>
 
 extern "C"
@@ -55,7 +56,7 @@ extern "C"
 
     namespace __cxxabiv1
     {
-        int __cxa_guard_acquire(uint64_t *guard)
+        int __cxa_guard_acquire(__guard *guard)
         {
             if ((*guard) & 0x0001)
                 return 0;
@@ -66,12 +67,12 @@ extern "C"
             return 1;
         }
 
-        void __cxa_guard_release(uint64_t *guard)
+        void __cxa_guard_release(__guard *guard)
         {
-            *guard |= 0x01;
+            *guard |= 0x0001;
         }
 
-        void __cxa_guard_abort(uint64_t *guard)
+        void __cxa_guard_abort(__guard *guard)
         {
             PANIC("__cxa_guard_abort({})", static_cast<void*>(guard));
         }
@@ -89,6 +90,17 @@ namespace std
     [[gnu::noreturn]] void terminate() noexcept
     {
         PANIC("std::terminate()");
+    }
+
+    // TODO: TMP?
+    size_t _Hash_bytes(const void *key, size_t len, size_t seed)
+    {
+        return MurmurHash2_64A(key, len, seed);
+    }
+
+    size_t _Fnv_hash_bytes(const void *key, size_t len, size_t seed)
+    {
+        return FNV1a(key, len, seed);
     }
 } // namespace std
 

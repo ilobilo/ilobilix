@@ -1,10 +1,13 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
+#include <drivers/fs/dev/tty/tty.hpp>
 #include <drivers/vfs.hpp>
 #include <drivers/elf.hpp>
 #include <drivers/fd.hpp>
+#include <lib/event.hpp>
+#include <lib/misc.hpp>
 #include <cpu/cpu.hpp>
 #include <mm/vmm.hpp>
 
@@ -26,6 +29,11 @@ namespace proc
         killed = 4
     };
 
+    struct session
+    {
+        tty::tty_t *tty;
+    };
+
     struct thread;
     struct process
     {
@@ -36,13 +44,16 @@ namespace proc
 
         std::atomic<tid_t> next_tid;
 
-        vfs::node_t *root;
-        vfs::node_t *cwd;
+        // ref_val_wrapper<vfs::node_t*> root;
+        // ref_val_wrapper<vfs::node_t*> cwd;
+        // ref_val_wrapper<mode_t> umask;
 
-        lock_t fd_lock;
-        std::unordered_map<size_t, vfs::fd*> fds;
+        chain_wrapper<vfs::node_t*> root;
+        chain_wrapper<vfs::node_t*> cwd;
+        chain_wrapper<mode_t> umask;
 
-        mode_t umask;
+        std::shared_ptr<vfs::fd_table> fd_table;
+        std::shared_ptr<session> session;
 
         gid_t gid;
         gid_t sgid;
@@ -55,24 +66,19 @@ namespace proc
         process *parent;
         std::vector<thread*> threads;
         std::vector<process*> children;
+        std::vector<process*> zombies;
+
+        int status;
+        bool exited;
+        event_t event;
 
         uintptr_t mmap_anon_base;
         uintptr_t usr_stack_top;
 
-        process() : name(""), pagemap(nullptr), next_tid(1), parent(nullptr), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top) { }
-
+        process() : name(""), pagemap(nullptr), next_tid(1), root(nullptr), cwd(nullptr), umask(0), fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top) { }
         process(std::string_view name);
-        process(std::string_view name, process *old_proc);
-
-        process(process *old_proc) : process(old_proc->name, old_proc) { }
-
-        ~process();
 
         tid_t alloc_tid();
-
-        bool close_fd(int num);
-        int fd2num(vfs::fd *fd, int old_num, bool specific);
-        int res2num(vfs::resource *res, int flags, int old_num, bool specific);
 
         int dupfd(int old_num, process *new_proc, int new_num, int flags, bool specific, bool cloexec);
         inline int dupfd(int old_num, int new_num, int flags, bool specific, bool cloexec)
@@ -80,7 +86,7 @@ namespace proc
             return this->dupfd(old_num, this, new_num, flags, specific, cloexec);
         }
 
-        vfs::fd *num2fd(int num);
+        int open(int dirfd, std::string_view pathname, int flags, mode_t mode, int spec_fd = -1);
     };
 
     struct thread
@@ -105,6 +111,8 @@ namespace proc
         status status;
 
         cpu::registers_t regs;
+        cpu::registers_t saved_regs;
+
         std::vector<uintptr_t> stacks;
 
         #if defined(__x86_64__)
@@ -117,6 +125,12 @@ namespace proc
         uintptr_t el0_base;
         #endif
 
+        std::deque<event_t*> events;
+        ssize_t timeout = -1;
+        size_t event = 0;
+
+        thread(process *parent);
+
         thread(process *parent, uintptr_t pc, uintptr_t arg);
         thread(process *parent, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
 
@@ -128,17 +142,24 @@ namespace proc
 
     extern std::unordered_map<pid_t, process*> processes;
 
-    inline pid_t alloc_pid()
+    inline lock_t pid_lock;
+    inline pid_t alloc_pid(process *proc)
     {
+        lockit(pid_lock);
         for (pid_t i = 0; i < std::numeric_limits<pid_t>::max(); i++)
+        {
             if (processes.contains(i) == false)
+            {
+                processes[i] = proc;
                 return i;
-
+            }
+        }
         return -1;
     }
 
     inline bool free_pid(pid_t pid)
     {
+        lockit(pid_lock);
         return processes.erase(pid);
     }
 
@@ -157,10 +178,10 @@ namespace proc
     void block();
 
     void exit(thread *thread);
-    void exit();
+    [[noreturn]] void exit();
 
-    void pexit(process *proc);
-    void pexit();
+    void pexit(process *proc, int code);
+    [[noreturn]] void pexit(int code);
 
     std::pair<pid_t, tid_t> pid();
 

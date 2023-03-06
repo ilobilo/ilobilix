@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -7,4 +7,11 @@
 namespace std
 {
     using ::wint_t;
+
+    using ::wmemcpy;
+    using ::wmemmove;
+    using ::wmemset;
+    using ::wmemcmp;
+    using ::wmemchr;
+    using ::wcslen;
 } // namespace std

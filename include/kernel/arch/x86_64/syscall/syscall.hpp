@@ -1,6 +1,4 @@
-// Copyright (C) 2022  ilobilo
-
-#include <cpu/cpu.hpp>
+// Copyright (C) 2022-2023  ilobilo
 
 namespace syscall
 {

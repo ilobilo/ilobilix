@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/drivers/timers/hpet.hpp>
 #include <arch/x86_64/drivers/timers/pit.hpp>
@@ -14,9 +14,11 @@
 #include <arch/x86_64/lib/io.hpp>
 
 #include <drivers/pci/pci.hpp>
+#include <drivers/ps2/ps2.hpp>
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
 
+#include <lib/misc.hpp>
 #include <lib/log.hpp>
 
 namespace arch
@@ -136,5 +138,10 @@ namespace arch
         syscall::init();
 
         smp::init();
+    }
+
+    void late_init()
+    {
+        ps2::init();
     }
 } // namespace arch
