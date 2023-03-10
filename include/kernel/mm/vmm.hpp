@@ -121,12 +121,16 @@ namespace vmm
         constexpr inline auto prot_exec = 4;
         constexpr inline auto prot_growsdown = 0x01000000;
         constexpr inline auto prot_growsup = 0x02000000;
+
+        constexpr inline uintptr_t def_bump_base = 0x80000000000;
     } // namespace mmap
 
     struct ptable;
     struct pagemap
     {
         std::vector<std::shared_ptr<mmap::local>> ranges;
+        uintptr_t mmap_bump_base = mmap::def_bump_base;
+
         ptable *toplvl = nullptr;
 
         size_t llpage_size = 0;
@@ -161,12 +165,18 @@ namespace vmm
 
         bool map(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching);
         bool unmap_nolock(uintptr_t vaddr, size_t flags = 0);
-        bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching);
+        bool setflags_nolock(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching);
 
         inline bool unmap(uintptr_t vaddr, size_t flags = 0)
         {
             lockit(this->lock);
             return this->unmap_nolock(vaddr, flags);
+        }
+
+        bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching)
+        {
+            lockit(this->lock);
+            return this->setflags_nolock(vaddr, flags, cache);
         }
 
         inline bool remap(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t flags = default_flags, caching cache = default_caching)
@@ -207,14 +217,15 @@ namespace vmm
         bool mmap_range(uintptr_t vaddr, uintptr_t paddr, size_t length, int prot, int flags);
 
         void *mmap(uintptr_t addr, size_t length, int prot, int flags, vfs::resource *res, off_t offset);
+        bool mprotect(uintptr_t addr, size_t length, int prot);
         bool munmap(uintptr_t addr, size_t length);
-
-        pagemap *fork();
 
         void load();
         void save();
 
         pagemap();
+        pagemap(pagemap *other);
+
         ~pagemap();
     };
 

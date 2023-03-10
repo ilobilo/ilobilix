@@ -32,17 +32,14 @@ namespace event
     struct events_guard
     {
         std::span<event_t*> _events;
-        lock_t _lock;
+        irq_lock _lock;
 
-        events_guard(std::span<event_t*> events) : _events(events) { this->lock(); }
+        events_guard(std::span<event_t*> events) : _events(events), _lock() { this->lock(); }
         ~events_guard() { this->unlock(); }
 
         void lock()
         {
-            if (this->_lock.is_locked() == true)
-                return;
-
-            this->_lock.lock();
+            this->_lock.try_lock();
             for (auto &event : this->_events)
                 event->lock.lock();
         }
@@ -52,9 +49,10 @@ namespace event
             if (this->_lock.is_locked() == false)
                 return;
 
-            this->_lock.unlock();
             for (auto &event : this->_events)
                 event->lock.unlock();
+
+            this->_lock.unlock();
         }
     };
 
@@ -115,6 +113,9 @@ namespace event
 
         guard.unlock();
         proc::block();
+        guard.lock();
+
+        detach(thread);
 
         return thread->event;
     }
@@ -135,20 +136,21 @@ namespace event
 
         guard.unlock();
         proc::block();
+        guard.lock();
+
+        detach(thread);
 
         if (thread->timeout == 0)
-        {
-            guard.lock();
-            detach(thread);
             return std::nullopt;
-        }
 
         return thread->event;
     }
 
     void trigger(event_t *event, bool drop)
     {
-        lockit(event->lock);
+        std::array evs { event };
+        events_guard guard(evs);
+
         if (event->listeners.size() == 0)
         {
             if (drop == false)

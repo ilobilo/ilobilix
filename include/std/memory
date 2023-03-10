@@ -60,9 +60,9 @@ namespace std
             return static_cast<Type*>(::operator new(size * sizeof(Type)));
         }
 
-        constexpr void deallocate(Type *ptr, size_t = 0)
+        constexpr void deallocate(Type *ptr, size_t size)
         {
-            ::operator delete(ptr);
+            ::operator delete(ptr, size);
         }
 
         friend constexpr bool operator==(const allocator &, const allocator &) noexcept

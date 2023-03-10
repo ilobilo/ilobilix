@@ -95,7 +95,7 @@ namespace pmm
         for (size_t i = page; i < page + count; i++)
             bitmap[i] = false;
 
-        // TODO: Should I remove this?
+        // TODO: Does this help?
         lastindex = std::min(lastindex, page);
         usedmem -= count * page_size;
     }

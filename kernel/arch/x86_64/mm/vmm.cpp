@@ -199,10 +199,8 @@ namespace vmm
         return unmap_one(vaddr, psize);
     }
 
-    bool pagemap::setflags(uintptr_t vaddr, size_t flags, caching cache)
+    bool pagemap::setflags_nolock(uintptr_t vaddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
-
         auto psize = this->get_psize(flags);
         ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
         if (pml_entry == nullptr)
@@ -243,8 +241,11 @@ namespace vmm
             for (size_t i = 256; i < 512; i++)
                 get_next_lvl(this->toplvl, i, true);
 
-            if (counter++ < smp_request.response->cpu_count)
+            if (counter < smp_request.response->cpu_count)
+            {
                 cpu::enablePAT();
+                counter++;
+            }
         }
         else
         {

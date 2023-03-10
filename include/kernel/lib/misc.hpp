@@ -3,19 +3,18 @@
 #pragma once
 
 #include <init/kernel.hpp>
-// #include <type_traits>
-// #include <algorithm>
-// #include <concepts>
-// #include <utility>
-// #include <cstdint>
-// #include <cstddef>
-// #include <memory>
-// #include <cctype>
-// #include <cerrno>
-// #include <limits>
-import std; // modules yay!
+#include <type_traits>
+#include <algorithm>
+#include <concepts>
+#include <utility>
+#include <cstdint>
+#include <cstddef>
+#include <memory>
+#include <cctype>
+#include <cerrno>
+#include <limits>
 
-constexpr inline bool remove_from(auto &container, auto &val)
+constexpr inline bool remove_from(auto &container, auto &&val)
 {
     return container.erase(std::remove(container.begin(), container.end(), val), container.end()) != container.end();
 }

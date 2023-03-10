@@ -58,8 +58,8 @@ namespace streams
 
         ssize_t read(vfs::resource *res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
         {
-            // TODO: does it need a lock?
             lockit(this->lock);
+
             auto u8buffer = static_cast<uint8_t*>(buffer);
             for (size_t i = 0; i < count; i++)
                 u8buffer[i] = this->dist(this->rng);

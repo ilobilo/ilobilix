@@ -110,8 +110,12 @@ namespace idt
     static void exception_handler(cpu::registers_t *regs)
     {
         if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1))
-            if (vmm::page_fault(rdreg(cr2)))
+        {
+            auto cr2 = rdreg(cr2);
+            if (vmm::page_fault(cr2))
                 return;
+            // log::errorln("CR2: 0x{:X}", cr2);
+        }
 
         if (regs->cs & 0x03)
             panic(regs, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));

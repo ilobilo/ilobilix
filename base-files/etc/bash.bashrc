@@ -13,8 +13,11 @@
 # Provides colored /bin/ls and /bin/grep commands.  Used in conjunction
 # with code in /etc/profile.
 
-# TODO
-# alias ls='ls --color=auto'
-# alias grep='grep --color=auto'
+alias ls='ls --color=auto'
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+alias grep='grep --color=auto'
 
 # End /etc/bashrc

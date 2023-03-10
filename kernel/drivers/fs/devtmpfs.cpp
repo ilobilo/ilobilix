@@ -36,7 +36,6 @@ namespace devtmpfs
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
-                this->can_mmap = true;
             }
 
             this->stat.st_size = 0;

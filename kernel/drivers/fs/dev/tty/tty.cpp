@@ -6,6 +6,8 @@
 #include <drivers/fd.hpp>
 #include <lib/panic.hpp>
 
+#include <lib/log.hpp>
+
 // #include <drivers/term.hpp>
 
 namespace tty
@@ -43,13 +45,11 @@ namespace tty
 
         if (this->tty->termios.c_lflag & icanon)
         {
-            // TODO: why is this todo?
-            // term::print("ls --color=auto\n");
-            // memcpy(charbuf, "ls --color=auto\n", 16);
-            // static int counter = 0;
-            // if (counter++ > 0)
-                arch::halt(false);
-            return 16;
+            this->tty->canon_event.await();
+            lockit(this->tty->input_lock);
+
+            auto line = this->tty->canon_lines.pop_front_element();
+            return line.copy(reinterpret_cast<char*>(buffer), count);
         }
 
         auto min = this->tty->termios.c_cc[vmin];
@@ -59,8 +59,8 @@ namespace tty
         auto await = [&]
         {
             return ms == 0 ?
-                this->tty->event.await() :
-                this->tty->event.await_timeout(ms);
+                this->tty->raw_event.await() :
+                this->tty->raw_event.await_timeout(ms);
         };
 
         if (min != 0 && time != 0)
@@ -69,23 +69,22 @@ namespace tty
         }
         else if (min == 0 && time != 0)
         {
-            while (this->tty->input_queue.empty())
+            while (this->tty->raw_queue.empty())
                 if (await().has_value() == false)
                     return 0;
         }
         else if (min != 0 && time == 0)
         {
             // auto max = std::max(count, size_t(min));
-            while (this->tty->input_queue.size() < size_t(min))
+            while (this->tty->raw_queue.size() < size_t(min))
                 await();
         }
 
         lockit(this->tty->input_lock);
-        lockit(this->tty->output_lock);
-        size_t ret = 0;
 
-        while (this->tty->input_queue.empty() == false && ret < count)
-            charbuf[ret++] = this->tty->input_queue.pop_back_element();
+        size_t ret = 0;
+        while (this->tty->raw_queue.empty() == false && ret < count)
+            charbuf[ret++] = this->tty->raw_queue.pop_back_element();
 
         return ret;
     }
@@ -99,16 +98,15 @@ namespace tty
             return count;
         }
 
-        this->tty->output_lock.lock();
+        lockit(this->tty->output_lock);
         for (const auto ch : std::string_view(static_cast<const char *>(buffer), count))
             this->tty->print(ch);
-        this->tty->output_lock.unlock();
+
         return count;
     }
 
     int cdev_t::ioctl(vfs::resource *res, vfs::fdhandle *fd, size_t request, uintptr_t argp)
     {
-        lockit(this->tty->lock);
         switch (request)
         {
             case tcgets:
@@ -181,10 +179,12 @@ namespace tty
             }
         };
 
-        auto move_to_input = [&]
+        auto move_to_output = [&]
         {
-            this->input_queue.insert(this->input_queue.end(), this->canon_queue.begin(), this->canon_queue.end());
+            // TODO: Linux allows max 4095 chars, should we do that too?
+            this->canon_lines.emplace_back(this->canon_queue.begin(), this->canon_queue.end());
             this->canon_queue.clear();
+            this->canon_event.trigger();
         };
 
         if (this->next_is_verbatim == true)
@@ -218,7 +218,6 @@ namespace tty
 
         if (this->termios.c_lflag & icanon)
         {
-            lockit(this->canon_lock);
             if (c == this->termios.c_cc[vlnext] && this->termios.c_lflag & iexten)
             {
                 this->next_is_verbatim = true;
@@ -269,8 +268,7 @@ namespace tty
             if (c == this->termios.c_cc[veof])
             {
                 if (this->canon_queue.empty() == false)
-                    move_to_input();
-                // else this->input_queue
+                    move_to_output();
                 return;
             }
 
@@ -290,7 +288,7 @@ namespace tty
                 if (!(this->termios.c_lflag & echo) && this->termios.c_lflag & echonl)
                     output(c);
                 this->canon_queue.back() = c;
-                move_to_input();
+                move_to_output();
                 return;
             }
 
@@ -299,7 +297,8 @@ namespace tty
         else if (this->termios.c_lflag & echo)
             output(c);
 
-        this->input_queue.push_back(c);
+        this->raw_queue.push_back(c);
+        this->raw_event.trigger(true);
     }
 
     void register_tty(dev_t dev, tty_t *tty)

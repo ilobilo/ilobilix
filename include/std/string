@@ -115,9 +115,9 @@ namespace std
             this->storage._long.cap = 0;
         }
 
-        constexpr void short_init(bool first_time = false)
+        constexpr void short_init()
         {
-            if (auto &buffer = this->storage._long.data; !first_time && this->is_long() && buffer != nullptr)
+            if (auto &buffer = this->storage._long.data; this->is_long() && buffer != nullptr)
             {
                 this->_allocator.deallocate(buffer, this->storage._long.cap + 1);
                 buffer = nullptr;
@@ -127,10 +127,10 @@ namespace std
             this->storage._short.size = 0;
         }
 
-        constexpr void default_init(size_type size, bool first_time = false)
+        constexpr void default_init(size_type size)
         {
             if (fits_in_sso(size))
-                this->short_init(first_time);
+                this->short_init();
             else
                 this->long_init();
         }
@@ -376,7 +376,7 @@ namespace std
         explicit basic_string(detail::uninitialized_size_tag, size_type size, const allocator_type &a) : _allocator(a)
         {
             if (fits_in_sso(size))
-                this->short_init(true);
+                this->short_init();
             else
             {
                 this->long_init();
@@ -388,7 +388,7 @@ namespace std
         constexpr basic_string() noexcept(noexcept(allocator_type())) : basic_string(allocator_type()) { }
         explicit constexpr basic_string(const allocator_type &a) noexcept : _allocator(a)
         {
-            this->short_init(true);
+            this->short_init();
         }
 
         constexpr basic_string(size_type count, value_type ch, const allocator_type &a = allocator_type()) requires (
@@ -404,14 +404,14 @@ namespace std
 
             auto len = min(count, str.get_size() - pos);
 
-            this->default_init(len, true);
+            // this->default_init(len);
             this->internal_assign(str.data(), len);
         }
         constexpr basic_string(const basic_string &str, size_type pos, const allocator_type &a = allocator_type()) : basic_string(str, pos, npos, a) { }
 
         constexpr basic_string(const value_type *str, size_type count, const allocator_type &a = allocator_type()) : _allocator(a)
         {
-            this->default_init(count, true);
+            // this->default_init(count);
             this->internal_assign(str, count);
         }
         constexpr basic_string(const value_type *str, const allocator_type &a = allocator_type()) requires (detail::is_allocator_v<Allocator>) : basic_string(str, Traits::length(str), a) { }
@@ -421,14 +421,14 @@ namespace std
         constexpr basic_string(InputIterator first, InputIterator last, const allocator_type &a = allocator_type()) : _allocator(a)
         {
             auto len = distance(first, last);
-            this->default_init(len, true);
+            // this->default_init(len);
             this->internal_assign(const_pointer(first), len);
         }
 
         constexpr basic_string(const basic_string &str, const allocator_type &a)
         {
             auto len = str.length();
-            this->default_init(len, true);
+            // this->default_init(len);
             this->internal_assign(str.data(), len);
         }
         constexpr basic_string(const basic_string &str) : basic_string(str, allocator_type()) { }
@@ -438,13 +438,13 @@ namespace std
             if (str.is_long() && a != str._allocator)
             {
                 auto len = str.storage._long.size;
-                this->default_init(len, true);
+                // this->default_init(len);
                 this->internal_assign(str.storage._long.data, len);
             }
             else
             {
                 this->storage = str.storage;
-                str.short_init(true);
+                str.short_init();
             }
         }
         constexpr basic_string(basic_string &&str) noexcept : basic_string(str, move(str._allocator)) { }
@@ -452,7 +452,7 @@ namespace std
         constexpr basic_string(initializer_list<value_type> ilist, const allocator_type &a = allocator_type()) : _allocator(a)
         {
             auto len = ilist.size();
-            this->default_init(len, true);
+            // this->default_init(len);
             this->internal_assign(const_pointer(ilist.begin()), len);
         }
 
@@ -464,7 +464,7 @@ namespace std
             auto sv = sview_type(t).substr(pos, count);
             auto len = sv.length();
 
-            this->default_init(len, true);
+            // this->default_init(len);
             this->internal_assign(sv.data(), len);
         }
 
@@ -477,7 +477,7 @@ namespace std
             sview_type sv(t);
             auto len = sv.length();
 
-            this->default_init(len, true);
+            // this->default_init(len);
             this->internal_assign(sv.data(), len);
         }
 
@@ -1955,7 +1955,6 @@ namespace std
         }
         constexpr basic_string(const Char *s, const Allocator &alloc = Allocator()) : basic_string(s, Traits::length(s), alloc) { }
 
-        // TODO: Is this correct
         template<typename InputIt>
         constexpr basic_string(InputIt first, InputIt last, const Allocator &alloc = Allocator()) : _allocator(alloc)
         {

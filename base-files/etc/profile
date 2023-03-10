@@ -37,6 +37,18 @@ for script in /etc/profile.d/*.sh ; do
     fi
 done
 
+if [ -f "~/.bash_profile" ] ; then
+  source ~/.bash_profile
+fi
+
+if [ -f "/etc/bash.bashrc" ] ; then
+  source /etc/bash.bashrc
+fi
+
+if [ -f "~/.bashrc" ] ; then
+  source ~/.bashrc
+fi
+
 unset script RED GREEN NORMAL
 
 # End /etc/profile

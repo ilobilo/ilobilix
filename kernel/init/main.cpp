@@ -52,8 +52,6 @@ void kernel_thread()
     printf("\033[2J\033[H");
     log::to_term = vmm::print_errors = false;
 
-    // TMP start
-
     auto run_prog = [](std::string_view prog, auto &&...args)
     {
         std::string name(prog);
@@ -62,8 +60,8 @@ void kernel_thread()
             name += " ";
             name += str;
         } (args), ...);
-        term::print(name.data());
-        term::printc('\n');
+        // term::print(name.data());
+        // term::printc('\n');
 
         auto node = std::get<1>(vfs::path2node(nullptr, prog));
         assert(node);
@@ -105,52 +103,7 @@ void kernel_thread()
             proc::yield();
     };
 
-    // run_prog("/bin/bash", "/bin/bashbug");
-    // run_prog("/bin/bash", "/test.sh");
-    // run_prog("/usr/bin/cat", "/etc/group");
-
-    // run_prog("/usr/bin/stat", "/passwd");
-    // run_prog("/usr/bin/stat", "-L", "/passwd");
-    // run_prog("/usr/bin/stat", "/text");
-    // run_prog("/usr/bin/chmod", "+x", "/text");
-    // run_prog("/usr/bin/stat", "/text");
-
-    // run_prog("/usr/bin/stat", "/text");
-    // run_prog("/usr/bin/ls", "--color=auto", "/");
-    // run_prog("/usr/bin/chmod", "+x", "/text");
-    // run_prog("/usr/bin/stat", "/text");
-    // run_prog("/usr/bin/ls", "--color=auto", "/");
-
-    // run_prog("/usr/bin/cat", "/dev/random");
-
-    // run_prog("/getline");
-
-    // run_prog("/usr/bin/ls", "--color=auto", "/");
-    // run_prog("/usr/bin/ls", "--color=auto", "/dev");
-    // run_prog("/usr/bin/ls", "--color=auto", "/dev/pts");
-
-    // run_prog("/usr/bin/stat", "/dev/console");
-    // run_prog("/usr/bin/stat", "/dev/tty0");
-    // run_prog("/usr/bin/stat", "/dev/tty");
-
-    // devtmpfs::add_dev("testnull", makedev(1, 3), 0666 | s_ifchr);
-    // run_prog("/usr/bin/ls", "--color=auto", "/dev");
-    // run_prog("/usr/bin/stat", "/dev/null");
-    // run_prog("/usr/bin/stat", "/dev/testnull");
-    // run_prog("/usr/bin/stat", "/null");
-
-    // run_prog("/usr/bin/ln", "/etc/passwd", "/passwd");
-    // run_prog("/usr/bin/readlink", "/passwd");
-    // run_prog("/usr/bin/cat", "/passwd");
-    // run_prog("/usr/bin/rm", "/passwd");
-    // run_prog("/usr/bin/cat", "/passwd");
-
-    // run_prog("/usr/bin/cat", "/usr/share/doc/bash/README");
-    // run_prog("/usr/bin/ls", "-a", "--color=auto", "/usr/include/");
-    // run_prog("/bin/bash");
-    // run_prog("/fork");
     run_prog("/init");
-    // TMP end
 
     proc::dequeue();
     arch::halt();

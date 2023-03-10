@@ -118,10 +118,7 @@ struct irq_lock
         bool irqs = this->_irqs;
         this->_lock.unlock();
 
-        if (irqs == true)
-            arch::int_toggle(true);
-        else
-            arch::int_toggle(false);
+        arch::int_toggle(irqs);
     }
 
     bool is_locked()

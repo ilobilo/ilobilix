@@ -50,8 +50,6 @@ namespace vfs
 
         cdev_t *cdev;
 
-        bool can_mmap;
-
         inline bool open(fdhandle *fd, proc::process *proc) { return this->cdev->open(this, fd, proc); }
 
         inline ssize_t read(fdhandle *fd, void *buffer, off_t offset, size_t count)
@@ -81,7 +79,7 @@ namespace vfs
         inline void *mmap(size_t fpage, int flags)
             { return this->cdev->mmap(this, fpage, flags); }
 
-        resource(filesystem *fs, cdev_t *cdev) : refcount(1), fs(fs), lock(), cdev(cdev), can_mmap(false) { };
+        resource(filesystem *fs, cdev_t *cdev) : refcount(1), fs(fs), lock(), cdev(cdev) { };
     };
 
     struct node_t

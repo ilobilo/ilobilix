@@ -22,6 +22,13 @@ namespace vmm
         return pagemap->mmap(uintptr_t(addr), length, prot, flags, res, offset);
     }
 
+    int sys_mprotect(void *addr, size_t length, int prot)
+    {
+        auto proc = this_thread()->parent;
+        auto pagemap = proc->pagemap;
+        return pagemap->mprotect(uintptr_t(addr), length, prot) ? 0 : -1;
+    }
+
     int sys_munmap(void *addr, size_t length)
     {
         auto proc = this_thread()->parent;

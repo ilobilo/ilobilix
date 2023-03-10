@@ -1,16 +1,17 @@
-From 91779c895cc61f63ba94e7797a264a03cc2c514b Mon Sep 17 00:00:00 2001
+From d30364ee11acd6f745b917df98f24a1a6e2553ef Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Fri, 10 Feb 2023 00:56:26 +0400
+Date: Wed, 8 Mar 2023 00:47:55 +0400
 Subject: Add wip ilobilix sysdeps
 
 ---
  meson.build                                   |   4 +
- meson.build.orig                              | 402 +++++++++
  sysdeps/ilobilix/aarch64/crt-src/crt0.S       |   9 +
  sysdeps/ilobilix/aarch64/crt-src/crti.S       |  13 +
  sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
+ sysdeps/ilobilix/aarch64/thread_entry.S       |  27 +
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
- sysdeps/ilobilix/generic/sysdeps.cpp          | 789 ++++++++++++++++++
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 815 ++++++++++++++++++
+ sysdeps/ilobilix/generic/thread.cpp           |  62 ++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/blkcnt_t.h  |   1 +
@@ -54,18 +55,21 @@ Subject: Add wip ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/vt.h        |   1 +
  sysdeps/ilobilix/include/abi-bits/wait.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
- sysdeps/ilobilix/include/ilobilix/syscall.h   | 158 ++++
- sysdeps/ilobilix/meson.build                  |  93 +++
+ sysdeps/ilobilix/include/ilobilix/syscall.h   | 160 ++++
+ .../ilobilix/include/mlibc/thread-entry.hpp   |  12 +
+ sysdeps/ilobilix/meson.build                  |  95 ++
  sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
- 55 files changed, 1585 insertions(+)
- create mode 100644 meson.build.orig
+ sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
+ 58 files changed, 1337 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
+ create mode 100644 sysdeps/ilobilix/aarch64/thread_entry.S
  create mode 100644 sysdeps/ilobilix/generic/entry.cpp
  create mode 100644 sysdeps/ilobilix/generic/sysdeps.cpp
+ create mode 100644 sysdeps/ilobilix/generic/thread.cpp
  create mode 120000 sysdeps/ilobilix/include/abi-bits/access.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/auxv.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
@@ -110,437 +114,31 @@ Subject: Add wip ilobilix sysdeps
  create mode 120000 sysdeps/ilobilix/include/abi-bits/wait.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/xattr.h
  create mode 100644 sysdeps/ilobilix/include/ilobilix/syscall.h
+ create mode 100644 sysdeps/ilobilix/include/mlibc/thread-entry.hpp
  create mode 100644 sysdeps/ilobilix/meson.build
  create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crtn.S
+ create mode 100644 sysdeps/ilobilix/x86_64/thread_entry.S
 
 diff --git a/meson.build b/meson.build
-index 79a64707..8e6262f1 100644
+index 2fd3db9..bf36fe1 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -146,6 +146,10 @@ elif host_machine.system() == 'lyre'
- 	rtdl_include_dirs += include_directories('sysdeps/lyre/include')
- 	libc_include_dirs += include_directories('sysdeps/lyre/include')
- 	subdir('sysdeps/lyre')
+@@ -122,6 +122,10 @@ if host_machine.system() == 'linux'
+ 	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
+ 	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
+ 	subdir('sysdeps/linux')
 +elif host_machine.system() == 'ilobilix'
 +	rtdl_include_dirs += include_directories('sysdeps/ilobilix/include')
 +	libc_include_dirs += include_directories('sysdeps/ilobilix/include')
 +	subdir('sysdeps/ilobilix')
- elif host_machine.system() == 'lemon'
- 	rtdl_include_dirs += include_directories('sysdeps/lemon/include')
- 	libc_include_dirs += include_directories('sysdeps/lemon/include')
-diff --git a/meson.build.orig b/meson.build.orig
-new file mode 100644
-index 00000000..79a64707
---- /dev/null
-+++ b/meson.build.orig
-@@ -0,0 +1,402 @@
-+project('mlibc', default_options: ['warning_level=2', 'cpp_std=c++20'])
-+
-+fs = import('fs')
-+
-+rtdl_include_dirs = [
-+	include_directories('options/internal/include'),
-+	include_directories('options/internal' / host_machine.cpu_family() + '-include'),
-+	include_directories('options/rtdl/include'),
-+]
-+libc_include_dirs = [
-+	include_directories('options/internal/include'),
-+	include_directories('options/elf/include'),
-+	include_directories('options/lsb/include'),
-+	include_directories('options/rtdl/include'),
-+	include_directories('options/internal' / host_machine.cpu_family() + '-include')
-+]
-+
-+rtdl_sources = [ ]
-+rtdl_dso_sources = [ ]
-+libc_sources = [ ]
-+libc_sublibs = [ ]
-+
-+libc_deps = [ ]
-+rtdl_deps = [ ]
-+
-+headers_only = get_option('headers_only')
-+no_headers = get_option('mlibc_no_headers')
-+library_type = get_option('default_library')
-+build_tests = get_option('build_tests')
-+build_tests_host_libc = get_option('build_tests_host_libc')
-+disable_ansi_option = get_option('disable_ansi_option')
-+disable_posix_option = get_option('disable_posix_option')
-+disable_linux_option = get_option('disable_linux_option')
-+disable_iconv_option = get_option('disable_iconv_option')
-+disable_intl_option = get_option('disable_intl_option')
-+disable_glibc_option = get_option('disable_glibc_option')
-+disable_crypt_option = get_option('disable_crypt_option')
-+disable_bsd_option = get_option('disable_bsd_option')
-+internal_conf = configuration_data()
-+mlibc_conf = configuration_data()
-+
-+if not headers_only
-+	cxxshim_dep = dependency('cxxshim', fallback: ['cxxshim', 'cxxshim_dep'])
-+	libc_deps += cxxshim_dep
-+	rtdl_deps += cxxshim_dep
-+
-+	frigg_dep = dependency(
-+		'frigg',
-+		default_options: ['frigg_no_install=true'],
-+		fallback: ['frigg', 'frigg_dep'],
-+	)
-+	libc_deps += frigg_dep
-+	rtdl_deps += frigg_dep
-+
-+	add_languages('c', 'cpp')
-+	c_compiler = meson.get_compiler('c')
-+
-+	add_project_arguments('-Wno-unused-function', '-D__MLIBC_BUILDING_MLIBC', language: ['c', 'cpp'])
-+	add_project_arguments('-nostdinc', '-fno-builtin', language: ['c', 'cpp'])
-+	add_project_arguments('-Werror=misleading-indentation', language: ['c', 'cpp'])
-+	add_project_arguments('-fno-rtti', '-fno-exceptions', language: 'cpp')
-+	add_project_link_arguments('-nostdlib', language: ['c', 'cpp'])
-+
-+	searchdirs = run_command(c_compiler.cmd_array(), '-print-search-dirs',
-+				check: true).stdout()
-+	searchdirs_arr = searchdirs.split('\n')
-+	searchline = 'install: '
-+	ccdir = ''
-+	if c_compiler.get_id() == 'clang'
-+		searchline = 'libraries: ='
-+	endif
-+
-+	foreach line : searchdirs_arr
-+		if line.startswith(searchline)
-+			ccdir = line.strip(searchline)
-+			ccdir = ccdir.split(':')[0]
-+			break
-+		endif
-+	endforeach
-+
-+	if ccdir == ''
-+		error('could not find compiler-specific header directory')
-+	endif
-+
-+	if c_compiler.get_id() == 'gcc' and fs.exists(ccdir / 'include-fixed')
-+		rtdl_include_dirs += include_directories(ccdir / 'include-fixed')
-+		libc_include_dirs += include_directories(ccdir / 'include-fixed')
-+	endif
-+
-+	rtdl_include_dirs += include_directories(ccdir / 'include')
-+	libc_include_dirs += include_directories(ccdir / 'include')
-+endif
-+
-+internal_conf.set_quoted('MLIBC_SYSTEM_NAME', host_machine.system())
-+internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', false)
-+internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', false)
-+internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', false)
-+internal_conf.set10('MLIBC_DEBUG_ALLOCATOR', get_option('debug_allocator'))
-+
-+#----------------------------------------------------------------------------------------
-+# Configuration based on sysdeps.
-+#----------------------------------------------------------------------------------------
-+
-+# Process sysdeps first, as sysdeps might want to disable unsupported options.
-+provides_bits_syscall_h = false
-+if host_machine.system() == 'linux'
-+	provides_bits_syscall_h = true
-+	rtdl_include_dirs += include_directories('sysdeps/linux/include')
-+	libc_include_dirs += include_directories('sysdeps/linux/include')
-+
-+	if get_option('linux_kernel_headers') == ''
-+		error('linux_kernel_headers is not set')
-+	endif
-+
-+	if not import('fs').is_dir(get_option('linux_kernel_headers'))
-+		error('linux_kernel_headers is not set to a valid path')
-+	endif
-+
-+	rtdl_include_dirs += include_directories(get_option('linux_kernel_headers'))
-+	libc_include_dirs += include_directories(get_option('linux_kernel_headers'))
-+
-+	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
-+	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
-+	subdir('sysdeps/linux')
-+elif host_machine.system() == 'aero'
-+	rtdl_include_dirs += include_directories('sysdeps/aero/include')
-+	libc_include_dirs += include_directories('sysdeps/aero/include')
-+	subdir('sysdeps/aero')
-+elif host_machine.system() == 'managarm'
-+	# TODO: Adopt the include_directories() commands from the managarm meson.build.
-+	rtdl_include_dirs += include_directories('sysdeps/managarm/include')
-+	libc_include_dirs += include_directories('sysdeps/managarm/include')
-+	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
-+	internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', true)
-+	subdir('sysdeps/managarm')
-+elif host_machine.system() == 'ironclad'
-+	# disable_linux_option = true
-+	rtdl_include_dirs += include_directories('sysdeps/ironclad/include')
-+	libc_include_dirs += include_directories('sysdeps/ironclad/include')
-+	subdir('sysdeps/ironclad')
-+elif host_machine.system() == 'vinix'
-+	rtdl_include_dirs += include_directories('sysdeps/vinix/include')
-+	libc_include_dirs += include_directories('sysdeps/vinix/include')
-+	subdir('sysdeps/vinix')
-+elif host_machine.system() == 'lyre'
-+	rtdl_include_dirs += include_directories('sysdeps/lyre/include')
-+	libc_include_dirs += include_directories('sysdeps/lyre/include')
-+	subdir('sysdeps/lyre')
-+elif host_machine.system() == 'lemon'
-+	rtdl_include_dirs += include_directories('sysdeps/lemon/include')
-+	libc_include_dirs += include_directories('sysdeps/lemon/include')
-+	subdir('sysdeps/lemon')
-+elif host_machine.system() == 'dripos'
-+	disable_linux_option = true
-+	rtdl_include_dirs += include_directories('sysdeps/dripos/include')
-+	libc_include_dirs += include_directories('sysdeps/dripos/include')
-+	subdir('sysdeps/dripos')
-+else
-+	error('No sysdeps defined for OS: ' + host_machine.system())
-+endif
-+
-+#----------------------------------------------------------------------------------------
-+# Configuration based on enabled options.
-+#----------------------------------------------------------------------------------------
-+
-+mlibc_conf.set10('__MLIBC_ANSI_OPTION', not disable_ansi_option)
-+mlibc_conf.set10('__MLIBC_POSIX_OPTION', not disable_posix_option)
-+mlibc_conf.set10('__MLIBC_LINUX_OPTION', not disable_linux_option)
-+mlibc_conf.set10('__MLIBC_INTL_OPTION', not disable_intl_option)
-+mlibc_conf.set10('__MLIBC_ICONV_OPTION', not disable_iconv_option)
-+mlibc_conf.set10('__MLIBC_GLIBC_OPTION', not disable_glibc_option)
-+mlibc_conf.set10('__MLIBC_CRYPT_OPTION', not disable_crypt_option)
-+mlibc_conf.set10('__MLIBC_BSD_OPTION', not disable_bsd_option)
-+mlibc_conf.set10('__MLIBC_SYSDEP_HAS_BITS_SYSCALL_H', provides_bits_syscall_h)
-+
-+if not disable_ansi_option
-+	rtdl_include_dirs += include_directories('options/ansi/include')
-+	libc_include_dirs += include_directories('options/ansi/include')
-+endif
-+
-+if not disable_posix_option
-+	rtdl_include_dirs += include_directories('options/posix/include')
-+	libc_include_dirs += include_directories('options/posix/include')
-+endif
-+
-+if not disable_iconv_option
-+	rtdl_include_dirs += include_directories('options/iconv/include')
-+	libc_include_dirs += include_directories('options/iconv/include')
-+endif
-+
-+if not disable_intl_option
-+	libc_include_dirs += include_directories('options/intl/include')
-+endif
-+
-+if not disable_linux_option
-+	if get_option('linux_kernel_headers') == ''
-+		error('linux_kernel_headers is not set')
-+	endif
-+
-+	if not import('fs').is_dir(get_option('linux_kernel_headers'))
-+		error('linux_kernel_headers is not set to a valid path')
-+	endif
-+
-+	rtdl_include_dirs += include_directories('options/linux/include')
-+	libc_include_dirs += include_directories('options/linux/include')
-+	rtdl_include_dirs += include_directories(get_option('linux_kernel_headers'))
-+	libc_include_dirs += include_directories(get_option('linux_kernel_headers'))
-+endif
-+
-+if not disable_glibc_option
-+	rtdl_include_dirs += include_directories('options/glibc/include')
-+	libc_include_dirs += include_directories('options/glibc/include')
-+endif
-+
-+if not disable_crypt_option
-+	libc_include_dirs += include_directories('options/crypt/include')
-+endif
-+
-+if not disable_bsd_option
-+	libc_include_dirs += include_directories('options/bsd/include')
-+endif
-+
-+rtdl_include_dirs += include_directories('options/elf/include')
-+libc_include_dirs += include_directories('options/elf/include')
-+libc_include_dirs += include_directories('.')
-+
-+#----------------------------------------------------------------------------------------
-+
-+configure_file(input: 'internal-config.h.in',
-+	output: 'internal-config.h',
-+	configuration: internal_conf)
-+
-+configure_file(input: 'mlibc-config.h.in',
-+	output: 'mlibc-config.h',
-+	configuration: mlibc_conf,
-+	install: not no_headers,
-+	install_dir: get_option('includedir'))
-+
-+internal_sources = [
-+	'options/internal/generic/allocator.cpp',
-+	'options/internal/generic/charcode.cpp',
-+	'options/internal/generic/charset.cpp',
-+	'options/internal/generic/debug.cpp',
-+	'options/internal/generic/ensure.cpp',
-+	'options/internal/generic/essential.cpp',
-+	'options/internal/generic/frigg.cpp',
-+	'options/internal/generic/global-config.cpp',
-+	'options/internal/generic/inline-emitter.cpp',
-+	'options/internal/generic/locale.cpp',
-+	'options/internal/generic/sigset.cpp',
-+	'options/internal/generic/strings.cpp',
-+	'options/internal/generic/ubsan.cpp',
-+	'options/internal/gcc/stack_protector.cpp',
-+	'options/internal/gcc/guard-abi.cpp',
-+	'options/internal/gcc/initfini.cpp',
-+	'options/internal/gcc-extra/cxxabi.cpp',
-+	'options/internal' / host_machine.cpu_family() / 'setjmp.S',
-+	'options/internal' / host_machine.cpu_family() / 'fenv.S',
-+]
-+
-+internal_dso_sources = [
-+	'options/internal/gcc-extra/mlibc_crtbegin.S',
-+	'options/internal' / host_machine.cpu_family() / 'mlibc_crtend.S',
-+]
-+
-+if not no_headers
-+	install_headers(
-+		'options/internal/include/stdint.h'
-+	)
-+	install_headers(
-+		'options/internal/include/bits/wchar_t.h',
-+		'options/internal/include/bits/wchar.h',
-+		'options/internal/include/bits/wint_t.h',
-+		'options/internal/include/bits/size_t.h',
-+		'options/internal/include/bits/types.h',
-+		'options/internal/include/bits/ensure.h',
-+		'options/internal/include/bits/machine.h',
-+		'options/internal/include/bits/mbstate.h',
-+		'options/internal/include/bits/nl_item.h',
-+		'options/internal/include/bits/null.h',
-+		'options/internal/include/bits/off_t.h',
-+		'options/internal/include/bits/ssize_t.h',
-+		'options/internal/include/bits/sigset_t.h',
-+		'options/internal/include/bits/inline-definition.h',
-+		subdir: 'bits'
-+	)
-+endif
-+
-+rtdl_sources += [
-+	'options/internal/gcc/stack_protector.cpp',
-+	'options/internal/gcc/guard-abi.cpp',
-+	'options/internal/generic/allocator.cpp',
-+	'options/internal/generic/debug.cpp',
-+	'options/internal/generic/ensure.cpp',
-+	'options/internal/generic/essential.cpp',
-+	'options/internal/generic/inline-emitter.cpp',
-+	'options/internal/generic/frigg.cpp',
-+	'options/internal/generic/ubsan.cpp',
-+	'options/rtdl/generic/main.cpp',
-+	'options/rtdl/generic/linker.cpp',
-+	'options/rtdl' / host_machine.cpu_family() / 'runtime.S'
-+]
-+
-+rtdl_dso_sources += ['options/rtdl' / host_machine.cpu_family() / 'entry.S']
-+
-+subdir('options/elf')
-+subdir('options/ansi')
-+subdir('options/posix')
-+subdir('options/lsb')
-+subdir('options/glibc')
-+subdir('options/linux')
-+subdir('options/iconv')
-+subdir('options/intl')
-+subdir('options/crypt')
-+subdir('options/bsd')
-+
-+rtlib_deps = []
-+
-+if not headers_only
-+	if host_machine.cpu_family() == 'aarch64' or host_machine.cpu_family() == 'riscv64'
-+		# Some architectures require us to link with libgcc or compiler_rt
-+		libgcc = meson.get_compiler('c').find_library('gcc', required: false)
-+
-+		compiler_rt_name = 'libclang_rt.builtins-' + host_machine.cpu_family()
-+		compiler_rt = meson.get_compiler('c').find_library(compiler_rt_name, required: false)
-+
-+		if libgcc.found()
-+			rtlib_deps += libgcc
-+		elif compiler_rt.found()
-+			rtlib_deps += compiler_rt
-+		else
-+			error('neither libgcc nor ' + compiler_rt_name + ' was found')
-+		endif
-+	endif
-+
-+	ld_cpp_args = [
-+		'-fvisibility=hidden',
-+		'-fno-stack-protector',
-+		'-DMLIBC_BUILDING_RTDL'
-+	]
-+
-+	libc_all_sources = [
-+		libc_sources,
-+		internal_sources,
-+		ansi_sources,
-+		lsb_sources,
-+	]
-+
-+	# Our library have different behaviour when built as static and shared libraries.
-+	# Hence we need to rebuild the object files with a different define for each mode.
-+	if library_type in ['static', 'both']
-+		static_cpp_args = [
-+			'-DMLIBC_STATIC_BUILD',
-+			'-DFRIGG_HAVE_LIBC',
-+		]
-+		ld_static_lib = static_library('ld', rtdl_sources,
-+			name_prefix: '',
-+			cpp_args: ld_cpp_args + static_cpp_args,
-+			include_directories: rtdl_include_dirs,
-+			dependencies: rtdl_deps + rtlib_deps,
-+			install: false
-+		)
-+		libc_static = static_library('c', libc_all_sources,
-+			cpp_args: static_cpp_args + ['-fno-stack-protector'],
-+			include_directories: libc_include_dirs,
-+			dependencies: libc_deps + rtlib_deps,
-+			link_with: [ld_static_lib],
-+			link_whole: [libc_sublibs, ld_static_lib],
-+			install: true
-+		)
-+	endif
-+	if library_type in ['shared', 'both']
-+		ld_shared_lib = shared_library('ld', rtdl_sources + rtdl_dso_sources,
-+			name_prefix: '',
-+			cpp_args: ld_cpp_args,
-+			include_directories: rtdl_include_dirs,
-+			dependencies: rtdl_deps + rtlib_deps,
-+			install: true
-+		)
-+		libc_shared = shared_library('c', libc_all_sources + internal_dso_sources,
-+			include_directories: libc_include_dirs,
-+			dependencies: libc_deps + rtlib_deps,
-+			link_with: [ld_shared_lib],
-+			link_whole: libc_sublibs,
-+			install: true
-+		)
-+	endif
-+
-+	library('pthread', 'dummy-libs/libpthread/src/dummy.cpp', install: true)
-+	library('rt', 'dummy-libs/librt/src/dummy.cpp', install: true)
-+	library('util', 'dummy-libs/libutil/src/dummy.cpp', install: true)
-+	library('m', 'dummy-libs/libm/src/dummy.cpp', install: true)
-+	if not disable_crypt_option
-+		library('crypt', 'dummy-libs/libcrypt/src/dummy.cpp', install: true)
-+	endif
-+	library('resolv', 'dummy-libs/libresolv/src/dummy.cpp', install: true)
-+	library('dl', 'dummy-libs/libdl/src/dummy.cpp', install: true)
-+endif
-+
-+if build_tests
-+	subdir('tests/')
-+endif
+ elif host_machine.system() == 'aero'
+ 	rtdl_include_dirs += include_directories('sysdeps/aero/include')
+ 	libc_include_dirs += include_directories('sysdeps/aero/include')
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crt0.S b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 new file mode 100644
-index 00000000..91170a76
+index 0000000..91170a7
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 @@ -0,0 +1,9 @@
@@ -555,7 +153,7 @@ index 00000000..91170a76
 +
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crti.S b/sysdeps/ilobilix/aarch64/crt-src/crti.S
 new file mode 100644
-index 00000000..0f5ca0f1
+index 0000000..0f5ca0f
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crti.S
 @@ -0,0 +1,13 @@
@@ -574,7 +172,7 @@ index 00000000..0f5ca0f1
 +
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crtn.S b/sysdeps/ilobilix/aarch64/crt-src/crtn.S
 new file mode 100644
-index 00000000..cd95321a
+index 0000000..cd95321
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crtn.S
 @@ -0,0 +1,9 @@
@@ -587,9 +185,42 @@ index 00000000..cd95321a
 +	ret
 +.section .note.GNU-stack,"",%progbits
 +
+diff --git a/sysdeps/ilobilix/aarch64/thread_entry.S b/sysdeps/ilobilix/aarch64/thread_entry.S
+new file mode 100644
+index 0000000..a47a048
+--- /dev/null
++++ b/sysdeps/ilobilix/aarch64/thread_entry.S
+@@ -0,0 +1,27 @@
++.section .text
++.global __mlibc_spawn_thread
++.type __mlibc_spawn_thread, "function"
++__mlibc_spawn_thread:
++	// __mlibc_spawn_thread(flags, stack, pid_out, child_tid, tls)
++	//                         x0,     x1,     x2,        x3,  x4
++	//           syscall(NR_clone, flags, stack, ptid, tls, ctid)
++	//                         x8,    x0,    x1,   x2,  x3,   x4
++
++	// Swap x3 <-> x4
++	mov x5, x4
++	mov x4, x3
++	mov x3, x5
++
++	mov x8, 220 // NR_clone
++	svc 0
++	cbnz x0, .parent
++
++	ldp x0, x1, [sp], #16
++
++	bl __mlibc_enter_thread
++	brk #0
++
++.parent:
++	ret
++.section .note.GNU-stack,"",%progbits
++
 diff --git a/sysdeps/ilobilix/generic/entry.cpp b/sysdeps/ilobilix/generic/entry.cpp
 new file mode 100644
-index 00000000..62b1c3cb
+index 0000000..62b1c3c
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/entry.cpp
 @@ -0,0 +1,37 @@
@@ -632,14 +263,15 @@ index 00000000..62b1c3cb
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 00000000..0603b3a4
+index 0000000..c7fd557
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
-@@ -0,0 +1,789 @@
+@@ -0,0 +1,815 @@
 +#include <bits/ensure.h>
 +#include <mlibc/allocator.hpp>
 +#include <mlibc/debug.hpp>
 +#include <mlibc/all-sysdeps.hpp>
++#include <mlibc/thread-entry.hpp>
 +#include <errno.h>
 +#include <dirent.h>
 +#include <fcntl.h>
@@ -836,6 +468,14 @@ index 00000000..0603b3a4
 +	return 0;
 +}
 +
++int sys_vm_protect(void *pointer, size_t size, int prot)
++{
++	auto ret = do_syscall(SYS_mprotect, pointer, size, prot);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
 +int sys_anon_allocate(size_t size, void **pointer)
 +{
 +	return sys_vm_map(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0, pointer);
@@ -865,6 +505,25 @@ index 00000000..0603b3a4
 +		return e;
 +	*child = int(ret);
 +	return 0;
++}
++
++int sys_clone(void *tcb, pid_t *pid_out, void *stack)
++{
++	unsigned long flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND
++		| CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS | CLONE_SETTLS
++		| CLONE_PARENT_SETTID;
++
++#if defined(__aarch64__)
++	// TP should point to the address 16 bytes before the end of the TCB.
++	// TODO: We should change the sysdep so that we don't need to do this.
++	auto tp = reinterpret_cast<char *>(tcb) + sizeof(Tcb) - 0x10;
++	tcb = reinterpret_cast<void *>(tp);
++#endif
++
++	auto ret = __mlibc_spawn_thread(flags, stack, pid_out, NULL, tcb);
++	if (ret < 0)
++		return ret;
++    return 0;
 +}
 +
 +int sys_tcgetattr(int fd, struct termios *attr)
@@ -1420,14 +1079,80 @@ index 00000000..0603b3a4
 +// 	return 0;
 +// }
 +
-+// int sys_vm_protect(void *, size_t, int)
-+
 +#endif
 +
 +} // namespace mlibc
+diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
+new file mode 100644
+index 0000000..fb089fe
+--- /dev/null
++++ b/sysdeps/ilobilix/generic/thread.cpp
+@@ -0,0 +1,62 @@
++#include <mlibc/thread-entry.hpp>
++#include <mlibc/all-sysdeps.hpp>
++#include <mlibc/thread.hpp>
++#include <bits/ensure.h>
++#include <sys/mman.h>
++#include <stdint.h>
++#include <stddef.h>
++#include <errno.h>
++
++extern "C" void __mlibc_enter_thread(void *entry, void *user_arg) {
++	// The linux kernel already sets the TCB in sys_clone().
++	auto tcb = mlibc::get_current_tcb();
++
++	// Wait until our parent sets up the TID.
++	while(!__atomic_load_n(&tcb->tid, __ATOMIC_RELAXED))
++		mlibc::sys_futex_wait(&tcb->tid, 0, nullptr);
++
++	void *(*func)(void *) = reinterpret_cast<void *(*)(void *)>(entry);
++	auto result = func(user_arg);
++
++	tcb->returnValue = result;
++	__atomic_store_n(&tcb->didExit, 1, __ATOMIC_RELEASE);
++	mlibc::sys_futex_wake(&tcb->didExit);
++
++	mlibc::sys_thread_exit();
++}
++
++namespace mlibc {
++
++static constexpr size_t default_stacksize = 0x200000; // 2 mib
++
++int sys_prepare_stack(void **stack, void *entry, void *user_arg, void *tcb, size_t *stack_size, size_t *guard_size) {
++	(void)tcb;
++	if (!*stack_size)
++		*stack_size = default_stacksize;
++
++	uintptr_t map;
++	if (*stack) {
++		map = reinterpret_cast<uintptr_t>(*stack);
++		*guard_size = 0;
++	} else {
++		map = reinterpret_cast<uintptr_t>(
++				mmap(nullptr, *stack_size + *guard_size,
++					PROT_NONE,
++					MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
++				);
++		if (reinterpret_cast<void*>(map) == MAP_FAILED)
++			return EAGAIN;
++		int ret = mprotect(reinterpret_cast<void*>(map + *guard_size), *stack_size,
++				PROT_READ | PROT_WRITE);
++		if(ret)
++			return EAGAIN;
++		map += *stack_size + *guard_size;
++	}
++
++	auto sp = reinterpret_cast<uintptr_t*>(map);
++	*--sp = reinterpret_cast<uintptr_t>(user_arg);
++	*--sp = reinterpret_cast<uintptr_t>(entry);
++	*stack = reinterpret_cast<void*>(sp);
++	return 0;
++}
++} // namespace mlibc
 diff --git a/sysdeps/ilobilix/include/abi-bits/access.h b/sysdeps/ilobilix/include/abi-bits/access.h
 new file mode 120000
-index 00000000..cb839316
+index 0000000..cb83931
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/access.h
 @@ -0,0 +1 @@
@@ -1435,7 +1160,7 @@ index 00000000..cb839316
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/auxv.h b/sysdeps/ilobilix/include/abi-bits/auxv.h
 new file mode 120000
-index 00000000..c43f8786
+index 0000000..c43f878
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/auxv.h
 @@ -0,0 +1 @@
@@ -1443,7 +1168,7 @@ index 00000000..c43f8786
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h b/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
 new file mode 120000
-index 00000000..0b0ec270
+index 0000000..0b0ec27
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
 @@ -0,0 +1 @@
@@ -1451,7 +1176,7 @@ index 00000000..0b0ec270
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/blksize_t.h b/sysdeps/ilobilix/include/abi-bits/blksize_t.h
 new file mode 120000
-index 00000000..7dc8d7cf
+index 0000000..7dc8d7c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/blksize_t.h
 @@ -0,0 +1 @@
@@ -1459,7 +1184,7 @@ index 00000000..7dc8d7cf
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/clockid_t.h b/sysdeps/ilobilix/include/abi-bits/clockid_t.h
 new file mode 120000
-index 00000000..6a42da56
+index 0000000..6a42da5
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/clockid_t.h
 @@ -0,0 +1 @@
@@ -1467,7 +1192,7 @@ index 00000000..6a42da56
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/dev_t.h b/sysdeps/ilobilix/include/abi-bits/dev_t.h
 new file mode 120000
-index 00000000..bca881e9
+index 0000000..bca881e
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/dev_t.h
 @@ -0,0 +1 @@
@@ -1475,7 +1200,7 @@ index 00000000..bca881e9
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/epoll.h b/sysdeps/ilobilix/include/abi-bits/epoll.h
 new file mode 120000
-index 00000000..eb4b76dc
+index 0000000..eb4b76d
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/epoll.h
 @@ -0,0 +1 @@
@@ -1483,7 +1208,7 @@ index 00000000..eb4b76dc
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/errno.h b/sysdeps/ilobilix/include/abi-bits/errno.h
 new file mode 120000
-index 00000000..6e507def
+index 0000000..6e507de
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/errno.h
 @@ -0,0 +1 @@
@@ -1491,7 +1216,7 @@ index 00000000..6e507def
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/fcntl.h b/sysdeps/ilobilix/include/abi-bits/fcntl.h
 new file mode 120000
-index 00000000..463e2c95
+index 0000000..463e2c9
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/fcntl.h
 @@ -0,0 +1 @@
@@ -1499,7 +1224,7 @@ index 00000000..463e2c95
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h b/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
 new file mode 120000
-index 00000000..898dfb2f
+index 0000000..898dfb2
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
 @@ -0,0 +1 @@
@@ -1507,7 +1232,7 @@ index 00000000..898dfb2f
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h b/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
 new file mode 120000
-index 00000000..791755c9
+index 0000000..791755c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
 @@ -0,0 +1 @@
@@ -1515,7 +1240,7 @@ index 00000000..791755c9
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/gid_t.h b/sysdeps/ilobilix/include/abi-bits/gid_t.h
 new file mode 120000
-index 00000000..6a772180
+index 0000000..6a77218
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/gid_t.h
 @@ -0,0 +1 @@
@@ -1523,7 +1248,7 @@ index 00000000..6a772180
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/in.h b/sysdeps/ilobilix/include/abi-bits/in.h
 new file mode 120000
-index 00000000..418d1d5c
+index 0000000..418d1d5
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/in.h
 @@ -0,0 +1 @@
@@ -1531,7 +1256,7 @@ index 00000000..418d1d5c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/ino_t.h b/sysdeps/ilobilix/include/abi-bits/ino_t.h
 new file mode 120000
-index 00000000..4c20aca2
+index 0000000..4c20aca
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/ino_t.h
 @@ -0,0 +1 @@
@@ -1539,7 +1264,7 @@ index 00000000..4c20aca2
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/inotify.h b/sysdeps/ilobilix/include/abi-bits/inotify.h
 new file mode 120000
-index 00000000..b5cb2823
+index 0000000..b5cb282
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/inotify.h
 @@ -0,0 +1 @@
@@ -1547,7 +1272,7 @@ index 00000000..b5cb2823
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/ioctls.h b/sysdeps/ilobilix/include/abi-bits/ioctls.h
 new file mode 120000
-index 00000000..595106b6
+index 0000000..595106b
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/ioctls.h
 @@ -0,0 +1 @@
@@ -1555,7 +1280,7 @@ index 00000000..595106b6
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/limits.h b/sysdeps/ilobilix/include/abi-bits/limits.h
 new file mode 120000
-index 00000000..6c88db2e
+index 0000000..6c88db2
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/limits.h
 @@ -0,0 +1 @@
@@ -1563,7 +1288,7 @@ index 00000000..6c88db2e
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/mode_t.h b/sysdeps/ilobilix/include/abi-bits/mode_t.h
 new file mode 120000
-index 00000000..5d78fdfc
+index 0000000..5d78fdf
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/mode_t.h
 @@ -0,0 +1 @@
@@ -1571,7 +1296,7 @@ index 00000000..5d78fdfc
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/mqueue.h b/sysdeps/ilobilix/include/abi-bits/mqueue.h
 new file mode 120000
-index 00000000..fa87b078
+index 0000000..fa87b07
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/mqueue.h
 @@ -0,0 +1 @@
@@ -1579,7 +1304,7 @@ index 00000000..fa87b078
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/nlink_t.h b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
 new file mode 120000
-index 00000000..bb3b625c
+index 0000000..bb3b625
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
 @@ -0,0 +1 @@
@@ -1587,7 +1312,7 @@ index 00000000..bb3b625c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/packet.h b/sysdeps/ilobilix/include/abi-bits/packet.h
 new file mode 120000
-index 00000000..998ef1ab
+index 0000000..998ef1a
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/packet.h
 @@ -0,0 +1 @@
@@ -1595,7 +1320,7 @@ index 00000000..998ef1ab
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/pid_t.h b/sysdeps/ilobilix/include/abi-bits/pid_t.h
 new file mode 120000
-index 00000000..baa90f6a
+index 0000000..baa90f6
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/pid_t.h
 @@ -0,0 +1 @@
@@ -1603,7 +1328,7 @@ index 00000000..baa90f6a
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/poll.h b/sysdeps/ilobilix/include/abi-bits/poll.h
 new file mode 120000
-index 00000000..8ea6a0a3
+index 0000000..8ea6a0a
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/poll.h
 @@ -0,0 +1 @@
@@ -1611,7 +1336,7 @@ index 00000000..8ea6a0a3
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/ptrace.h b/sysdeps/ilobilix/include/abi-bits/ptrace.h
 new file mode 120000
-index 00000000..b2517b2c
+index 0000000..b2517b2
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/ptrace.h
 @@ -0,0 +1 @@
@@ -1619,7 +1344,7 @@ index 00000000..b2517b2c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/reboot.h b/sysdeps/ilobilix/include/abi-bits/reboot.h
 new file mode 120000
-index 00000000..77013a41
+index 0000000..77013a4
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/reboot.h
 @@ -0,0 +1 @@
@@ -1627,7 +1352,7 @@ index 00000000..77013a41
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/resource.h b/sysdeps/ilobilix/include/abi-bits/resource.h
 new file mode 120000
-index 00000000..88d74025
+index 0000000..88d7402
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/resource.h
 @@ -0,0 +1 @@
@@ -1635,7 +1360,7 @@ index 00000000..88d74025
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/seek-whence.h b/sysdeps/ilobilix/include/abi-bits/seek-whence.h
 new file mode 120000
-index 00000000..df7bccf0
+index 0000000..df7bccf
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/seek-whence.h
 @@ -0,0 +1 @@
@@ -1643,7 +1368,7 @@ index 00000000..df7bccf0
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/shm.h b/sysdeps/ilobilix/include/abi-bits/shm.h
 new file mode 120000
-index 00000000..067d8c4f
+index 0000000..067d8c4
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/shm.h
 @@ -0,0 +1 @@
@@ -1651,7 +1376,7 @@ index 00000000..067d8c4f
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/signal.h b/sysdeps/ilobilix/include/abi-bits/signal.h
 new file mode 120000
-index 00000000..4dcb0b7c
+index 0000000..4dcb0b7
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/signal.h
 @@ -0,0 +1 @@
@@ -1659,7 +1384,7 @@ index 00000000..4dcb0b7c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/socket.h b/sysdeps/ilobilix/include/abi-bits/socket.h
 new file mode 120000
-index 00000000..f1dc016e
+index 0000000..f1dc016
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/socket.h
 @@ -0,0 +1 @@
@@ -1667,7 +1392,7 @@ index 00000000..f1dc016e
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/socklen_t.h b/sysdeps/ilobilix/include/abi-bits/socklen_t.h
 new file mode 120000
-index 00000000..41f3b11f
+index 0000000..41f3b11
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/socklen_t.h
 @@ -0,0 +1 @@
@@ -1675,7 +1400,7 @@ index 00000000..41f3b11f
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/stat.h b/sysdeps/ilobilix/include/abi-bits/stat.h
 new file mode 120000
-index 00000000..1f63b41f
+index 0000000..1f63b41
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/stat.h
 @@ -0,0 +1 @@
@@ -1683,7 +1408,7 @@ index 00000000..1f63b41f
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/statfs.h b/sysdeps/ilobilix/include/abi-bits/statfs.h
 new file mode 120000
-index 00000000..e3d202f5
+index 0000000..e3d202f
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/statfs.h
 @@ -0,0 +1 @@
@@ -1691,7 +1416,7 @@ index 00000000..e3d202f5
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/statvfs.h b/sysdeps/ilobilix/include/abi-bits/statvfs.h
 new file mode 120000
-index 00000000..1fc80c2a
+index 0000000..1fc80c2
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/statvfs.h
 @@ -0,0 +1 @@
@@ -1699,7 +1424,7 @@ index 00000000..1fc80c2a
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/suseconds_t.h b/sysdeps/ilobilix/include/abi-bits/suseconds_t.h
 new file mode 120000
-index 00000000..9ed65977
+index 0000000..9ed6597
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/suseconds_t.h
 @@ -0,0 +1 @@
@@ -1707,7 +1432,7 @@ index 00000000..9ed65977
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/termios.h b/sysdeps/ilobilix/include/abi-bits/termios.h
 new file mode 120000
-index 00000000..ee8f0b09
+index 0000000..ee8f0b0
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/termios.h
 @@ -0,0 +1 @@
@@ -1715,7 +1440,7 @@ index 00000000..ee8f0b09
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/time.h b/sysdeps/ilobilix/include/abi-bits/time.h
 new file mode 120000
-index 00000000..2a026257
+index 0000000..2a02625
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/time.h
 @@ -0,0 +1 @@
@@ -1723,7 +1448,7 @@ index 00000000..2a026257
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/uid_t.h b/sysdeps/ilobilix/include/abi-bits/uid_t.h
 new file mode 120000
-index 00000000..b3067778
+index 0000000..b306777
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/uid_t.h
 @@ -0,0 +1 @@
@@ -1731,7 +1456,7 @@ index 00000000..b3067778
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/utsname.h b/sysdeps/ilobilix/include/abi-bits/utsname.h
 new file mode 120000
-index 00000000..b2857547
+index 0000000..b285754
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/utsname.h
 @@ -0,0 +1 @@
@@ -1739,7 +1464,7 @@ index 00000000..b2857547
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/vm-flags.h b/sysdeps/ilobilix/include/abi-bits/vm-flags.h
 new file mode 120000
-index 00000000..bbe258cf
+index 0000000..bbe258c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/vm-flags.h
 @@ -0,0 +1 @@
@@ -1747,7 +1472,7 @@ index 00000000..bbe258cf
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/vt.h b/sysdeps/ilobilix/include/abi-bits/vt.h
 new file mode 120000
-index 00000000..5798a4ac
+index 0000000..5798a4a
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/vt.h
 @@ -0,0 +1 @@
@@ -1755,7 +1480,7 @@ index 00000000..5798a4ac
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/wait.h b/sysdeps/ilobilix/include/abi-bits/wait.h
 new file mode 120000
-index 00000000..feb2840c
+index 0000000..feb2840
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/wait.h
 @@ -0,0 +1 @@
@@ -1763,7 +1488,7 @@ index 00000000..feb2840c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/xattr.h b/sysdeps/ilobilix/include/abi-bits/xattr.h
 new file mode 120000
-index 00000000..66412d70
+index 0000000..66412d7
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/xattr.h
 @@ -0,0 +1 @@
@@ -1771,10 +1496,10 @@ index 00000000..66412d70
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
 new file mode 100644
-index 00000000..a6eea190
+index 0000000..cfe454e
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,160 @@
 +#ifndef _ILOBILIX__SYSCALL_H
 +#define _ILOBILIX__SYSCALL_H
 +
@@ -1791,6 +1516,7 @@ index 00000000..a6eea190
 +#define SYS_lstat 6
 +#define SYS_lseek 8
 +#define SYS_mmap 9
++#define SYS_mprotect 10
 +#define SYS_munmap 11
 +#define SYS_ioctl 16
 +#define SYS_dup 32
@@ -1916,6 +1642,7 @@ index 00000000..a6eea190
 +#define SYS_clone 220
 +#define SYS_execve 221
 +#define SYS_mmap 222
++#define SYS_mprotect 226
 +#define SYS_wait4 260
 +
 +static inline uintptr_t __syscall0(uintptr_t n) { return -1; }
@@ -1933,12 +1660,30 @@ index 00000000..a6eea190
 +#define syscall __syscall
 +
 +#endif
+diff --git a/sysdeps/ilobilix/include/mlibc/thread-entry.hpp b/sysdeps/ilobilix/include/mlibc/thread-entry.hpp
+new file mode 100644
+index 0000000..a20cab5
+--- /dev/null
++++ b/sysdeps/ilobilix/include/mlibc/thread-entry.hpp
+@@ -0,0 +1,12 @@
++#ifndef MLIBC_THREAD_ENTRY
++
++#include <mlibc/tcb.hpp>
++
++extern "C" int __mlibc_spawn_thread(int flags, void *stack, void *pid_out, void *child_tid, void *tcb);
++extern "C" void __mlibc_enter_thread(void *entry, void *user_arg);
++
++namespace mlibc {
++	void *prepare_stack(void *entry, void *user_arg);
++}
++
++#endif // MLIBC_THREAD_ENTRY
 diff --git a/sysdeps/ilobilix/meson.build b/sysdeps/ilobilix/meson.build
 new file mode 100644
-index 00000000..00662560
+index 0000000..626d1e3
 --- /dev/null
 +++ b/sysdeps/ilobilix/meson.build
-@@ -0,0 +1,93 @@
+@@ -0,0 +1,95 @@
 +
 +rtdl_dso_sources += files(
 +	'generic/sysdeps.cpp'
@@ -1946,7 +1691,9 @@ index 00000000..00662560
 +
 +libc_sources += files(
 +	'generic/entry.cpp',
-+	'generic/sysdeps.cpp'
++	'generic/sysdeps.cpp',
++	'generic/thread.cpp',
++	host_machine.cpu_family() / 'thread_entry.S'
 +)
 +
 +if not no_headers
@@ -2034,7 +1781,7 @@ index 00000000..00662560
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crt0.S b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
 new file mode 100644
-index 00000000..4a5cf860
+index 0000000..4a5cf86
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
 @@ -0,0 +1,8 @@
@@ -2048,7 +1795,7 @@ index 00000000..4a5cf860
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crti.S b/sysdeps/ilobilix/x86_64/crt-src/crti.S
 new file mode 100644
-index 00000000..911b078d
+index 0000000..911b078
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crti.S
 @@ -0,0 +1,11 @@
@@ -2065,7 +1812,7 @@ index 00000000..911b078d
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crtn.S b/sysdeps/ilobilix/x86_64/crt-src/crtn.S
 new file mode 100644
-index 00000000..0187e50f
+index 0000000..0187e50
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crtn.S
 @@ -0,0 +1,9 @@
@@ -2075,6 +1822,35 @@ index 00000000..0187e50f
 +
 +.section .fini
 +	pop %rax
++	ret
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/x86_64/thread_entry.S b/sysdeps/ilobilix/x86_64/thread_entry.S
+new file mode 100644
+index 0000000..954c6dd
+--- /dev/null
++++ b/sysdeps/ilobilix/x86_64/thread_entry.S
+@@ -0,0 +1,23 @@
++
++.section .text
++.global __mlibc_spawn_thread
++.type __mlibc_spawn_thread, "function"
++__mlibc_spawn_thread:
++	xor %eax, %eax
++	/* The rest of the args are already in the right registers,
++	* only need to fixup rcx to r10
++	*/
++	mov %rcx, %r10
++	mov $56, %al
++	syscall
++	test %eax, %eax
++	jnz 1f
++	xor %ebp, %ebp
++	pop %rdi
++	pop %rsi
++	call __mlibc_enter_thread
++	hlt
++1:
 +	ret
 +.section .note.GNU-stack,"",%progbits
 +

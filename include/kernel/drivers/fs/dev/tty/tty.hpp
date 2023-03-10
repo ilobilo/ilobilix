@@ -4,6 +4,7 @@
 
 #include <drivers/vfs.hpp>
 #include <lib/event.hpp>
+#include <deque>
 
 namespace proc { struct session; }
 namespace tty
@@ -17,20 +18,21 @@ namespace tty
         public:
         termios termios;
 
-        lock_t lock;
         lock_t input_lock;
-        lock_t canon_lock;
         lock_t output_lock;
 
-        std::deque<char> input_queue;
+        std::deque<char> raw_queue;
+        event_t raw_event;
+
+        std::deque<std::string> canon_lines;
         std::deque<char> canon_queue;
+        event_t canon_event;
 
         bool next_is_verbatim;
-        event_t event;
 
         std::weak_ptr<proc::session> session;
 
-        tty_t() : lock(), input_lock(), canon_lock(), output_lock(), next_is_verbatim(false)
+        tty_t() : input_lock(), output_lock(), next_is_verbatim(false)
         {
             this->termios.c_iflag = icrnl | ixon;
             this->termios.c_oflag = opost | onlcr;
@@ -62,14 +64,12 @@ namespace tty
         {
             lockit(this->input_lock);
             this->internal_add_to_buf(c);
-            this->event.trigger();
         }
         void add_to_buf(auto str)
         {
             lockit(this->input_lock);
             for (const auto c : str)
                 this->internal_add_to_buf(c);
-            this->event.trigger();
         }
     };
 

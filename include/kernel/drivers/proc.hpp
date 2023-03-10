@@ -14,7 +14,6 @@
 namespace proc
 {
     static constexpr uintptr_t def_usr_stack_top = 0x70000000000;
-    static constexpr uintptr_t def_mmap_anon_base = 0x80000000000;
     static constexpr size_t fixed_timeslice = 6;
 
     enum class status
@@ -72,10 +71,9 @@ namespace proc
         bool exited;
         event_t event;
 
-        uintptr_t mmap_anon_base;
         uintptr_t usr_stack_top;
 
-        process() : name(""), pagemap(nullptr), next_tid(1), root(nullptr), cwd(nullptr), umask(0), fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top) { }
+        process() : name(""), pagemap(nullptr), next_tid(1), root(nullptr), cwd(nullptr), umask(0), fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), usr_stack_top(def_usr_stack_top) { }
         process(std::string_view name);
 
         tid_t alloc_tid();
@@ -113,17 +111,17 @@ namespace proc
         cpu::registers_t regs;
         cpu::registers_t saved_regs;
 
-        std::vector<uintptr_t> stacks;
+        std::vector<std::pair<uintptr_t, size_t>> stacks;
 
-        #if defined(__x86_64__)
+#if defined(__x86_64__)
         uintptr_t gs_base;
         uintptr_t fs_base;
 
         size_t fpu_storage_pages;
         uint8_t *fpu_storage;
-        #elif defined(__aarch64__)
+#elif defined(__aarch64__)
         uintptr_t el0_base;
-        #endif
+#endif
 
         std::deque<event_t*> events;
         ssize_t timeout = -1;

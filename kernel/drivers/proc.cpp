@@ -23,7 +23,6 @@ namespace proc
 
     void arch_init(void (*func)(cpu::registers_t *regs));
 
-    // O(1) scheduling algorithm (used in linux kernel versions 2.6.0-2.6.22)
     static std::deque<thread*> queues[2];
     static auto active = &queues[0];
     static auto expired = &queues[1];
@@ -144,7 +143,9 @@ namespace proc
         proc->zombies.clear();
 
         remove_from(proc->parent->children, proc);
-        proc->parent->zombies.push_back(proc);
+
+        // TODO: zombies
+        // proc->parent->zombies.push_back(proc);
 
         proc->status = code;
         proc->exited = true;
@@ -157,7 +158,7 @@ namespace proc
             if (thread != me && status == status::running)
                 wake_up(thread->running_on);
         }
-        // proc->threads.clear(); // threads will remove themselves itself from threads vector
+        // proc->threads.clear(); // threads will remove themselves
 
         proc->event.trigger();
 
@@ -169,6 +170,7 @@ namespace proc
             vmm::kernel_pagemap->load();
             yield();
             arch::halt();
+            std::unreachable();
         }
     }
 
@@ -180,7 +182,7 @@ namespace proc
 
     process::process(std::string_view name) :
         name(name), pagemap(nullptr), next_tid(1), root(vfs::get_root()), cwd(vfs::get_root()), umask(s_iwgrp | s_iwoth),
-        fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top)
+        fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), usr_stack_top(def_usr_stack_top)
     {
         this->gid = 0;
         this->sgid = 0;
@@ -200,16 +202,16 @@ namespace proc
 
     static std::pair<uintptr_t, uintptr_t> map_user_stack(thread *thread, process *parent)
     {
-        uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        uintptr_t vustack = parent->usr_stack_top - default_stack_size;
+        uintptr_t pstack = pmm::alloc<uintptr_t>(user_stack_size / pmm::page_size);
+        uintptr_t vustack = parent->usr_stack_top - user_stack_size;
 
-        if (!parent->pagemap->mmap_range(vustack, pstack, default_stack_size, vmm::mmap::prot_read | vmm::mmap::prot_write, vmm::mmap::map_anonymous))
+        if (!parent->pagemap->mmap_range(vustack, pstack, user_stack_size, vmm::mmap::prot_read | vmm::mmap::prot_write, vmm::mmap::map_anonymous))
             PANIC("Could not map user stack!");
 
         parent->usr_stack_top = vustack - pmm::page_size;
 
-        thread->stacks.push_back(pstack);
-        return { tohh(pstack) + default_stack_size, vustack + default_stack_size };
+        thread->stacks.push_back(std::make_pair(pstack, user_stack_size));
+        return { tohh(pstack) + user_stack_size, vustack + user_stack_size };
     }
 
     thread::thread(process *parent) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
@@ -241,9 +243,11 @@ namespace proc
 
     thread::~thread()
     {
-        auto it = std::find(this->parent->threads.begin(), this->parent->threads.end(), this);
-        if (it != this->parent->threads.end())
-            this->parent->threads.erase(it);
+        // auto it = std::find(this->parent->threads.begin(), this->parent->threads.end(), this);
+        // if (it != this->parent->threads.end())
+        //     this->parent->threads.erase(it);
+
+        remove_from(this->parent->threads, this);
 
         if (this->parent->threads.empty())
         {
@@ -254,7 +258,7 @@ namespace proc
         }
 
         for (const auto &stack : this->stacks)
-            pmm::free(stack, default_stack_size / pmm::page_size);
+            pmm::free(stack.first, stack.second / pmm::page_size);
 
         thread_delete(this);
     }
@@ -276,9 +280,9 @@ namespace proc
             if (new_thread->status == status::killed)
                 delete new_thread;
 
-            if (new_thread->events.empty() == false)
+            if (new_thread->events.empty() == false && new_thread->timeout > 0)
             {
-                if (new_thread->timeout > 0 && size_t(new_thread->timeout) <= time::time_ms())
+                if (size_t(new_thread->timeout) <= time::time_ms())
                 {
                     new_thread->timeout = 0;
                     event::trigger(new_thread->events[0]);

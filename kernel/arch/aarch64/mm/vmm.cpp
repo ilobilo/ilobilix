@@ -186,10 +186,8 @@ namespace vmm
         return true;
     }
 
-    bool pagemap::setflags(uintptr_t vaddr, size_t flags, caching cache)
+    bool pagemap::setflags_nolock(uintptr_t vaddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
-
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
@@ -212,9 +210,12 @@ namespace vmm
     {
         write_ttbr_el1(0, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr0)));
 
-        // load ttbr1 once on every cpu
-        if (counter++ < smp_request.response->cpu_count)
+        // load ttbr1 only once on each cpu
+        if (counter < smp_request.response->cpu_count)
+        {
             write_ttbr_el1(1, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr1)));
+            counter++;
+        }
     }
 
     void pagemap::save()

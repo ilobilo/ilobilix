@@ -92,7 +92,7 @@ namespace std
         PANIC("std::terminate()");
     }
 
-    // TODO: TMP?
+    // For libstdc++
     size_t _Hash_bytes(const void *key, size_t len, size_t seed)
     {
         return MurmurHash2_64A(key, len, seed);

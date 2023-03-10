@@ -106,15 +106,15 @@ namespace proc
         }
         else
         {
-            new_proc->pagemap = old_proc->pagemap->fork();
+            new_proc->pagemap = new vmm::pagemap(old_proc->pagemap);
             new_thread->stack = old_thread->stack;
         }
 
-        if ((args.flags & clone_child_settid) == clone_child_settid)
+        if ((args.flags & clone_child_settid) == clone_child_settid && args.child_tid != nullptr)
             *args.child_tid = new_thread->tid;
 
-        if ((args.flags & clone_parent_settid) == clone_parent_settid)
-            *args.child_tid = old_thread->tid;
+        if ((args.flags & clone_parent_settid) == clone_parent_settid && args.parent_tid != nullptr)
+            *args.parent_tid = old_thread->tid;
 
         new_proc->gid = old_proc->gid;
         new_proc->sgid = old_proc->sgid;
@@ -125,7 +125,6 @@ namespace proc
         new_proc->euid = old_proc->euid;
 
         new_proc->usr_stack_top = old_proc->usr_stack_top;
-        new_proc->mmap_anon_base = old_proc->mmap_anon_base;
 
 #if defined(__x86_64__)
         new_thread->gs_base = old_thread->gs_base;
@@ -134,13 +133,13 @@ namespace proc
         else
             new_thread->fs_base = old_thread->fs_base;
 
-        uintptr_t pkstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        new_thread->kstack = tohh(pkstack) + default_stack_size;
-        new_thread->stacks.push_back(pkstack);
+        uintptr_t pkstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        new_thread->kstack = tohh(pkstack) + kernel_stack_size;
+        new_thread->stacks.push_back(std::make_pair(pkstack, kernel_stack_size));
 
-        uintptr_t ppfstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        new_thread->pfstack = tohh(ppfstack) + default_stack_size;
-        new_thread->stacks.push_back(ppfstack);
+        uintptr_t ppfstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        new_thread->pfstack = tohh(ppfstack) + kernel_stack_size;
+        new_thread->stacks.push_back(std::make_pair(ppfstack, kernel_stack_size));
 
         new_thread->fpu_storage_pages = old_thread->fpu_storage_pages;
         new_thread->fpu_storage = tohh(pmm::alloc<uint8_t*>(new_thread->fpu_storage_pages));
@@ -180,7 +179,7 @@ namespace proc
 
         auto new_proc = new process(old_proc->name);
 
-        new_proc->pagemap = old_proc->pagemap->fork();
+        new_proc->pagemap = new vmm::pagemap(old_proc->pagemap);
         new_proc->parent = old_proc;
 
         new_proc->root = old_proc->root.get();
@@ -202,7 +201,6 @@ namespace proc
         new_proc->euid = old_proc->euid;
 
         new_proc->usr_stack_top = old_proc->usr_stack_top;
-        new_proc->mmap_anon_base = old_proc->mmap_anon_base;
 
         auto new_thread = new thread(new_proc);
 
@@ -215,13 +213,13 @@ namespace proc
         new_thread->gs_base = old_thread->gs_base;
         new_thread->fs_base = old_thread->fs_base;
 
-        uintptr_t pkstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        new_thread->kstack = tohh(pkstack) + default_stack_size;
-        new_thread->stacks.push_back(pkstack);
+        uintptr_t pkstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        new_thread->kstack = tohh(pkstack) + kernel_stack_size;
+        new_thread->stacks.push_back(std::make_pair(pkstack, kernel_stack_size));
 
-        uintptr_t ppfstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        new_thread->pfstack = tohh(ppfstack) + default_stack_size;
-        new_thread->stacks.push_back(ppfstack);
+        uintptr_t ppfstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        new_thread->pfstack = tohh(ppfstack) + kernel_stack_size;
+        new_thread->stacks.push_back(std::make_pair(ppfstack, kernel_stack_size));
 
         new_thread->fpu_storage_pages = old_thread->fpu_storage_pages;
         new_thread->fpu_storage = tohh(pmm::alloc<uint8_t*>(new_thread->fpu_storage_pages));
@@ -312,7 +310,6 @@ namespace proc
         old_proc->name = node->to_path();
         old_proc->pagemap = new_pagemap;
         old_proc->usr_stack_top = def_usr_stack_top;
-        old_proc->mmap_anon_base = def_mmap_anon_base;
 
         if (is_suid == true)
             old_proc->euid = node->res->stat.st_uid;
@@ -336,22 +333,31 @@ namespace proc
         auto thread = this_thread();
         auto proc = thread->parent;
 
-        for (auto it = proc->zombies.begin(); it != proc->zombies.end(); )
-        {
-            auto zombie = *it;
-            if (pid < -1)
-            { /* TODO: if(zombie pgid != zombie pid) continue */ }
-            else if (pid == 0)
-            { /* TODO: if (zombie pgid != proc pgid) continue */ }
-            else if (pid > 0)
-                if (zombie->pid != pid)
-                    continue;
+        // TODO: zombies
+        // for (auto it = proc->zombies.begin(); it != proc->zombies.end(); it++)
+        // {
+        //     auto zombie = *it;
+        //     if (pid < -1)
+        //     {
+        //         // TODO: if(zombie pgid != zombie pid) continue
+        //     }
+        //     else if (pid == 0)
+        //     {
+        //         // TODO: if (zombie pgid != proc pgid) continue
+        //     }
+        //     else if (pid > 0)
+        //     {
+        //         if (zombie->pid != pid)
+        //             continue;
+        //     }
 
-            if (wstatus != nullptr)
-                *wstatus = w_exitcode(zombie->status, 0);
-            it = proc->zombies.erase(it);
-            return zombie->pid;
-        }
+        //     if (wstatus != nullptr)
+        //         *wstatus = w_exitcode(zombie->status, 0);
+
+        //     it = proc->zombies.erase(it);
+        //     // TODO: delete zombie?
+        //     return zombie->pid;
+        // }
 
         if ((options & wnohang) == wnohang && proc->zombies.empty())
             return 0;
@@ -368,6 +374,7 @@ namespace proc
         {
             if (proc->children.empty())
                 return_err(-1, ECHILD);
+
             if (pid < -1)
             {
                 for (const auto &child : proc->children)

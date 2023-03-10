@@ -4,12 +4,13 @@
 
 #include <limine.h>
 
-static constexpr uintptr_t default_stack_size = 0x10000; // 64Kib
+static constexpr uintptr_t kernel_stack_size = 0x10000; // 64 kib
+static constexpr uintptr_t user_stack_size = 0x200000; // 2 mib
 
 extern const char *cmdline;
 extern uintptr_t hhdm_offset;
-extern bool uefi;
 extern bool lvl5;
+extern bool uefi;
 
 #if LVL5_PAGING
 extern volatile limine_5_level_paging_request _5_level_paging_request;

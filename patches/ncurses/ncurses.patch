@@ -1,0 +1,26 @@
+diff -ruN a/config.sub b/config.sub
+--- a/config.sub	2022-08-01 12:05:29.000000000 +0400
++++ b/config.sub	2023-03-08 20:18:44.576732163 +0400
+@@ -1754,7 +1754,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | ilobilix* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff -ruN a/configure b/configure
+--- a/configure	2022-11-06 01:13:26.000000000 +0400
++++ b/configure	2023-03-08 20:19:54.721925297 +0400
+@@ -6510,6 +6510,10 @@
+ 		LINK_PROGS="$SHELL ${rel_builddir}/mk_prog.sh"
+ 		LINK_TESTS="$SHELL ${rel_builddir}/mk_prog.sh"
+ 		;;
++  (ilobilix*)
++    CC_SHARED_OPTS='-fPIC'
++                 MK_SHARED_LIB='${CC} -shared -o $@'
++    ;;
+ 	(mingw*)
+ 		cf_cv_shlib_version=mingw
+ 		cf_cv_shlib_version_infix=mingw

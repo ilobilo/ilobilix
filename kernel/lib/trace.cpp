@@ -25,7 +25,7 @@ namespace trace
             if (entry != elf::syms::empty_sym)
                 log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, name, offset);
 
-            return name != "syscall_handler";
+            return name != "int_handler" && name != "syscall_handler";
         };
 
         log::println("{}Stacktrace:", prefix);

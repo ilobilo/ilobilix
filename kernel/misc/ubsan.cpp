@@ -8,7 +8,7 @@
 static void print(const char *message, source_location loc)
 {
     log::warnln("Ubsan: {} at file {}, line {}, column {}", message, loc.file, loc.line, loc.column);
-    trace::print();
+    trace::print(reinterpret_cast<uintptr_t>(__builtin_frame_address(1)));
     arch::halt(false);
 }
 

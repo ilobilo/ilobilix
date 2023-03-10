@@ -43,7 +43,7 @@ namespace gdt
             } // Tss
         };
 
-        tss[num].RSP[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size)) + default_stack_size;
+        tss[num].RSP[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
 
         GDTR gdtr
         {
@@ -63,7 +63,8 @@ namespace gdt
             "push %%rax \n\t"
             ".byte 0x48, 0xCB \n"
             "1:"
-            :: [gdtr]"m"(gdtr), [dsel]"m"(GDT_DATA), [csel]"i"(GDT_CODE) : "rax", "memory"
+            :: [gdtr]"m"(gdtr), [dsel]"m"(GDT_DATA), [csel]"i"(GDT_CODE)
+            : "rax", "memory"
         );
         asm volatile ("ltr %0" :: "r"(static_cast<uint16_t>(GDT_TSS)));
     }

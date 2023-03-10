@@ -356,6 +356,44 @@ enum ioctls
     tiocnotty = 0x5422
 };
 
+enum fbtypes
+{
+    fb_type_packed_pixels = 0,
+    fb_type_planes = 1,
+    fb_type_interleaved_planes = 2,
+    fb_type_text = 3,
+    fb_type_vga_planes = 4,
+    fb_type_fourcc = 5,
+};
+
+enum fbvisuals
+{
+    fb_visual_mono01 = 0,
+    fb_visual_mono10 = 1,
+    fb_visual_truecolor = 2,
+    fb_visual_pseudocolor = 3,
+    fb_visual_directcolor = 4,
+    fb_visual_static_pseudocolor = 5,
+    fb_visual_fourcc = 6,
+};
+
+enum fbaccels
+{
+    fb_accel_none = 0,
+    /* ... */
+};
+
+enum fbioctls
+{
+    fbioget_vscreeninfo = 0x4600,
+    fbioput_vscreeninfo = 0x4601,
+    fbioget_fscreeninfo = 0x4602,
+    fbiogetcmap = 0x4604,
+    fbioputcmap = 0x4605,
+    fbiopan_display = 0x4606,
+    fbioblank = 0x4611
+};
+
 struct kernel_clone_args
 {
     uint64_t flags;
@@ -595,6 +633,81 @@ struct winsize
     unsigned short ws_col;
     unsigned short ws_xpixel;
     unsigned short ws_ypixel;
+};
+
+struct fb_cmap
+{
+    uint32_t start;
+    uint32_t len;
+    uint16_t *red;
+    uint16_t *green;
+    uint16_t *blue;
+    uint16_t *transp;
+};
+
+struct fb_bitfield
+{
+    uint32_t offset;
+    uint32_t length;
+    uint32_t msb_right;
+};
+
+struct fb_fix_screeninfo
+{
+    char id[16];
+    unsigned long smem_start;
+    uint32_t smem_len;
+    uint32_t type;
+    uint32_t type_aux;
+    uint32_t visual;
+    uint16_t xpanstep;
+    uint16_t ypanstep;
+    uint16_t ywrapstep;
+    uint32_t line_length;
+    unsigned long mmio_start;
+    uint32_t mmio_len;
+    uint32_t accel;
+    uint16_t capabilities;
+    uint16_t reserved[2];
+};
+
+struct fb_var_screeninfo
+{
+    uint32_t xres;
+    uint32_t yres;
+    uint32_t xres_virtual;
+    uint32_t yres_virtual;
+    uint32_t xoffset;
+    uint32_t yoffset;
+
+    uint32_t bits_per_pixel;
+    uint32_t grayscale;
+    fb_bitfield red;
+    fb_bitfield green;
+    fb_bitfield blue;
+    fb_bitfield transp;
+
+    uint32_t nonstd;
+
+    uint32_t activate;
+
+    uint32_t height;
+    uint32_t width;
+
+    uint32_t accel_flags;
+
+    uint32_t pixclock;
+    uint32_t left_margin;
+    uint32_t right_margin;
+    uint32_t upper_margin;
+    uint32_t lower_margin;
+    uint32_t hsync_len;
+    uint32_t vsync_len;
+    uint32_t sync;
+    uint32_t vmode;
+    uint32_t rotate;
+    uint32_t colorspace;
+    uint32_t reserved[4];
 };
 
 struct rusage

@@ -31,7 +31,6 @@ namespace tmpfs
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
-                this->can_mmap = true;
                 fs->current_size += this->cap;
             }
 
@@ -243,7 +242,6 @@ namespace tmpfs
         return fs->root;
     }
 
-    // TODO: Is this correct?
     bool tmpfs::unmount()
     {
         vfs::recursive_delete(this->root, true);

@@ -263,8 +263,7 @@ namespace vfs
         return true;
     }
 
-    // TODO: unmount
-    // TODO: flags
+    // TODO: unmount, flags
     bool unmount(node_t *parent, path_view_t path, int flags);
 
     node_t *create(node_t *parent, path_view_t path, mode_t mode)

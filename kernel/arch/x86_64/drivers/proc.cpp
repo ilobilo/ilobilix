@@ -27,13 +27,13 @@ namespace proc
         thread->fpu_storage_pages = div_roundup(this_cpu()->fpu_storage_size, pmm::page_size);
         thread->fpu_storage = tohh(pmm::alloc<uint8_t*>(thread->fpu_storage_pages));
 
-        uintptr_t pkstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        thread->kstack = tohh(pkstack) + default_stack_size;
-        thread->stacks.push_back(pkstack);
+        uintptr_t pkstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        thread->kstack = tohh(pkstack) + kernel_stack_size;
+        thread->stacks.push_back(std::make_pair(pkstack, kernel_stack_size));
 
-        uintptr_t ppfstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        thread->pfstack = tohh(ppfstack) + default_stack_size;
-        thread->stacks.push_back(ppfstack);
+        uintptr_t ppfstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        thread->pfstack = tohh(ppfstack) + kernel_stack_size;
+        thread->stacks.push_back(std::make_pair(ppfstack, kernel_stack_size));
 
         thread->gs_base = reinterpret_cast<uintptr_t>(thread);
 
@@ -102,15 +102,15 @@ namespace proc
 
     void reschedule(uint64_t ms)
     {
-        if (ms == 0)
-            this_cpu()->lapic.ipi(sched_vector, this_cpu()->lapic.id);
-        else
+        // if (ms == 0)
+        //     this_cpu()->lapic.ipi(sched_vector, this_cpu()->lapic.id);
+        // else
             this_cpu()->lapic.timer(sched_vector, ms, lapic::timerModes::ONESHOT);
     }
 
     void arch_init(void (*func)(cpu::registers_t *regs))
     {
-        gdt::tss[this_cpu()->id].IST[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size)) + default_stack_size;
+        gdt::tss[this_cpu()->id].IST[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
         idt::idt[14].IST = 2;
 
         [[maybe_unused]]

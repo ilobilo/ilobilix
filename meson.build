@@ -121,6 +121,7 @@ add_global_arguments([
     '-fsized-deallocation',
     '-Wno-unused-parameter',
     '-Wno-non-virtual-dtor',
+    '-Wno-frame-address',
     '-DMAGIC_ENUM_NO_STREAMS=1',
     '-D__cplusplus=202101L',
     '-D__cpp_concepts=202002L',

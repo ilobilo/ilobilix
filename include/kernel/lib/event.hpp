@@ -56,7 +56,7 @@ namespace event
 
     struct event_t
     {
-        irq_lock lock;
+        lock_t lock;
         size_t pending = 0;
         std::deque<listener> listeners;
 

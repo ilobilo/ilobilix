@@ -5,7 +5,7 @@
 #include <drivers/vfs.hpp>
 #include <module.hpp>
 #include <mm/vmm.hpp>
-#include <lib/elf.h>
+#include <elf.h>
 
 #include <unordered_map>
 #include <string_view>

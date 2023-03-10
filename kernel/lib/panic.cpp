@@ -19,7 +19,7 @@
     log::errorln("Line: {}", line);
     log::errorln("Function: {}", func);
 
-    // trace::print(0, 0, log::error_prefix);
+    trace::print(reinterpret_cast<uintptr_t>(__builtin_frame_address(1)), 0, log::error_prefix);
 
     log::errorln("System halted!");
     arch::halt(false);
@@ -29,6 +29,8 @@
 {
     log::println();
     log::errorln("{}", message);
+
+    trace::print(reinterpret_cast<uintptr_t>(__builtin_frame_address(1)), 0, log::error_prefix);
 
     log::errorln("System halted!");
     arch::halt(false);

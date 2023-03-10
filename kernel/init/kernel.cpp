@@ -13,8 +13,8 @@
 
 const char *cmdline = nullptr;
 uintptr_t hhdm_offset = 0;
-bool lvl5 = LVL5_PAGING != 0;
-bool uefi = true;
+bool lvl5 = false;
+bool uefi = false;
 
 #if LVL5_PAGING
 volatile limine_5_level_paging_request _5_level_paging_request
@@ -61,11 +61,11 @@ volatile limine_smp_request smp_request
     .id = LIMINE_SMP_REQUEST,
     .revision = 0,
     .response = nullptr,
-    #if defined(__x86_64__)
+#if defined(__x86_64__)
     .flags = LIMINE_SMP_X2APIC
-    #else
+#else
     .flags = 0
-    #endif
+#endif
 };
 
 volatile limine_memmap_request memmap_request
@@ -122,7 +122,7 @@ volatile limine_stack_size_request stack_size_request
     .id = LIMINE_STACK_SIZE_REQUEST,
     .revision = 0,
     .response = nullptr,
-    .stack_size = default_stack_size
+    .stack_size = kernel_stack_size
 };
 
 limine_file *find_module(const char *name)

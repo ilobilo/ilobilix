@@ -28,6 +28,7 @@ namespace syscall
         SYSCALL_ENTRY(6, "lstat", vfs::sys_lstat),
         SYSCALL_ENTRY(8, "lseek", vfs::sys_lseek),
         SYSCALL_ENTRY(9, "mmap", vmm::sys_mmap),
+        SYSCALL_ENTRY(10, "mprotect", vmm::sys_mprotect),
         SYSCALL_ENTRY(11, "munmap", vmm::sys_munmap),
         SYSCALL_ENTRY(16, "ioctl", vfs::sys_ioctl),
         SYSCALL_ENTRY(32, "dup", vfs::sys_dup),

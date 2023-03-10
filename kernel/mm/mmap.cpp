@@ -128,19 +128,11 @@ namespace vmm
     void *pagemap::mmap(uintptr_t addr, size_t length, int prot, int flags, vfs::resource *res, off_t offset)
     {
         if (length == 0)
-        {
-            errno = EINVAL;
-            return mmap::map_failed;
-        }
+            return_err(mmap::map_failed, EINVAL);
         length = align_up(length, this->page_size);
 
-        if (!(flags & mmap::map_anonymous) && res && !res->can_mmap)
-        {
-            errno = ENODEV;
-            return mmap::map_failed;
-        }
-
-        auto proc = this_thread()->parent;
+        if (!(flags & (mmap::map_anonymous | mmap::map_shared | mmap::map_private)))
+            return_err(mmap::map_failed, EINVAL);
 
         uintptr_t base = 0;
         if (flags & mmap::map_fixed)
@@ -151,8 +143,8 @@ namespace vmm
         }
         else
         {
-            base = proc->mmap_anon_base;
-            proc->mmap_anon_base += length + this->page_size;
+            base = this->mmap_bump_base;
+            this->mmap_bump_base += length + this->page_size;
         }
 
         auto global = std::make_shared<mmap::global>();
@@ -181,6 +173,80 @@ namespace vmm
             res->ref();
 
         return reinterpret_cast<void*>(base);
+    }
+
+    bool pagemap::mprotect(uintptr_t addr, size_t length, int prot)
+    {
+        if (length == 0)
+            return_err(false, EINVAL);
+        length = align_up(length, this->page_size);
+
+        for (auto i = addr; i < addr + length; i += this->page_size)
+        {
+            auto a2r = addr2range(i);
+            if (a2r.has_value() == false)
+                continue;
+
+            auto local = std::get<0>(a2r.value());
+            if (local->prot == prot)
+                continue;
+
+            auto begin = i;
+            while (i < local->base + local->length && i < addr + length)
+                i += this->page_size;
+            auto end = i;
+            auto len = end - begin;
+
+            lockit(this->lock);
+
+            if (begin > local->base && end < local->base + local->length)
+            {
+                auto split_local = std::make_shared<mmap::local>();
+                split_local->pagemap = local->pagemap;
+                split_local->global = local->global;
+                split_local->base = end;
+                split_local->length = (local->base + local->length) - end;
+                split_local->offset = local->offset + off_t(end - local->base);
+                split_local->prot = local->prot;
+                split_local->flags = local->flags;
+
+                this->ranges.push_back(split_local);
+                local->length -= split_local->length;
+            }
+
+            for (auto j = begin; j < end; j += this->page_size)
+            {
+                size_t flags = user;
+                if (prot & mmap::prot_read)
+                    flags |= read;
+                if (prot & mmap::prot_write)
+                    flags |= write;
+                if (prot & mmap::prot_exec)
+                    flags |= exec;
+
+                this->setflags_nolock(j, flags);
+            }
+
+            auto new_offset = local->offset + (begin - local->base);
+            if (begin == local->base)
+            {
+                local->offset += len;
+                local->base = end;
+            }
+            local->base = len;
+
+            auto new_local = std::make_shared<mmap::local>();
+            new_local->pagemap = local->pagemap;
+            new_local->global = local->global;
+            new_local->base = begin;
+            new_local->length = len;
+            new_local->offset = new_offset;
+            new_local->prot = prot;
+            new_local->flags = local->flags;
+
+            this->ranges.push_back(new_local);
+        }
+        return true;
     }
 
     bool pagemap::munmap(uintptr_t addr, size_t length)
@@ -265,12 +331,12 @@ namespace vmm
         return true;
     }
 
-    pagemap *pagemap::fork()
+    pagemap::pagemap(pagemap *other) : pagemap()
     {
-        lockit(this->lock);
-        auto new_pagemap = new pagemap;
+        assert(this->page_size == other->page_size);
+        this->mmap_bump_base = other->mmap_bump_base;
 
-        for (const auto &local : this->ranges)
+        for (const auto &local : other->ranges)
         {
             auto global = local->global;
             auto new_local = std::make_shared<mmap::local>(*local);
@@ -281,13 +347,13 @@ namespace vmm
             if (local->flags & mmap::map_shared)
             {
                 global->locals.push_back(new_local);
-                for (uintptr_t i = local->base; i < local->base + local->length; i += this->page_size)
+                for (uintptr_t i = local->base; i < local->base + local->length; i += other->page_size)
                 {
-                    auto old_pte = this->virt2pte(i, false, this->page_size);
+                    auto old_pte = other->virt2pte(i, false, other->page_size);
                     if (old_pte == nullptr)
                         continue;
 
-                    new_pagemap->virt2pte(i, true, new_pagemap->page_size)->value = old_pte->value;
+                    this->virt2pte(i, true, this->page_size)->value = old_pte->value;
                 }
             }
             else
@@ -298,22 +364,26 @@ namespace vmm
                 new_global->base = global->base;
                 new_global->length = global->length;
                 new_global->offset = global->offset;
+
+                // TODO: ?
+                new_local->global = new_global;
+
                 new_global->locals.push_back(new_local);
 
-                assert(local->flags & mmap::map_anonymous, "non anonymous pagemap fork()");
-                for (uintptr_t i = local->base; i < local->base + local->length; i += this->page_size)
+                assert(local->flags & mmap::map_anonymous, "non anonymous pagemap fork");
+                for (uintptr_t i = local->base; i < local->base + local->length; i += other->page_size)
                 {
-                    auto old_pte = this->virt2pte(i, false, this->page_size);
+                    auto old_pte = other->virt2pte(i, false, other->page_size);
                     if (old_pte == nullptr || !old_pte->getflags(flags2arch(0) /* valid flags */))
                         continue;
 
-                    auto new_pte = new_pagemap->virt2pte(i, true, new_pagemap->page_size);
+                    auto new_pte = this->virt2pte(i, true, this->page_size);
                     auto new_spte = new_global->shadow->virt2pte(i, true, new_global->shadow->page_size);
 
                     auto old_page = old_pte->getaddr();
-                    auto page = pmm::alloc<uintptr_t>(this->page_size / pmm::page_size);
+                    auto page = pmm::alloc<uintptr_t>(other->page_size / pmm::page_size);
 
-                    memcpy(reinterpret_cast<void*>(tohh(page)), reinterpret_cast<void*>(tohh(old_page)), this->page_size);
+                    memcpy(reinterpret_cast<void*>(tohh(page)), reinterpret_cast<void*>(tohh(old_page)), other->page_size);
                     new_pte->value = 0;
                     new_pte->setflags(old_pte->getflags(), true);
                     new_pte->setaddr(page);
@@ -321,9 +391,8 @@ namespace vmm
                 }
             }
 
-            new_pagemap->ranges.push_back(new_local);
+            this->ranges.push_back(new_local);
         }
-        return new_pagemap;
     }
 
     bool page_fault(uintptr_t addr)
@@ -333,7 +402,6 @@ namespace vmm
         auto pagemap = proc->pagemap;
 
         auto a2r = pagemap->addr2range(addr);
-
         if (a2r.has_value() == false)
             return false;
 

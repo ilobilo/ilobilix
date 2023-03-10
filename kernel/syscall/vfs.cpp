@@ -451,6 +451,8 @@ namespace vfs
         for (const auto &ent : handle->dirents)
             length += ent->d_reclen;
 
+        length = std::min(size_t(count), length);
+
         if (handle->dirents.front()->d_reclen > count)
             return_err(-1, EINVAL);
 
@@ -458,10 +460,12 @@ namespace vfs
         handle->dirents_invalid = false;
 
         size_t i = 0;
+        size_t bytes = 0;
         while (i < length)
         {
             auto ent = handle->dirents.pop_front_element();
             memcpy(reinterpret_cast<char*>(dirp) + i, ent, ent->d_reclen);
+            bytes = i;
             i += ent->d_reclen;
             free(ent);
         }
@@ -469,7 +473,7 @@ namespace vfs
         if (handle->dirents.empty())
             handle->dirents_invalid = true;
 
-        return end ? 0 : length;
+        return end ? 0 : bytes;
     }
 
     ssize_t sys_getdents64(int dirfd, void *dirp, size_t count)
