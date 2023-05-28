@@ -316,7 +316,7 @@ namespace proc
         if (is_sgid == true)
             old_proc->egid = node->res->stat.st_gid;
 
-        enqueue(new thread(old_proc, entry, 0, std::span<std::string_view>(argvs.begin(), argvs.size()), std::span<std::string_view>(envps.begin(), envps.size()), auxv));
+        enqueue(new thread(old_proc, entry, std::span<std::string_view>(argvs.begin(), argvs.size()), std::span<std::string_view>(envps.begin(), envps.size()), auxv));
 
         vmm::kernel_pagemap->load();
         delete old_pagemap;

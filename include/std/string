@@ -42,8 +42,8 @@ namespace std
     } // namespace detail
 
     // basic_string
+    // based on implementations from llvm project and libstdc++
     // TODO: checks for max_size length errors
-    // TODO: make it work with constexpr
     template<typename Char, typename Traits = char_traits<Char>, typename Allocator = allocator<Char>>
     class basic_string
     {
@@ -99,7 +99,7 @@ namespace std
         union storage_t
         {
             long_data _long;
-            short_data _short { false, 0 };
+            short_data _short { { false, 0 }, { }, { } };
         } storage;
 
         constexpr static bool fits_in_sso(size_type size)
@@ -228,8 +228,10 @@ namespace std
             Traits::assign(buffer[this->get_size()], _terminator);
         }
 
-        bool addr_in_range(const_pointer ptr) const
+        constexpr bool addr_in_range(const_pointer ptr) const
         {
+            if (std::is_constant_evaluated())
+                return false;
             return this->get_data() <= ptr && ptr <= this->get_data() + this->get_size();
         }
 
@@ -1828,6 +1830,7 @@ namespace std
         } // namespace string_literals
     } // namespace literals
 } // namespace std
+
 using namespace std::literals::string_literals;
 
 #else

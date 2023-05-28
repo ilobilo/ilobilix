@@ -410,7 +410,7 @@ packages:
       version: '1.0'
     configure: []
     build:
-      - args: ['cp', '-r', '@SOURCE_ROOT@/base-files/.', '@THIS_COLLECT_DIR@']
+      - args: ['rsync', '-al', '@SOURCE_ROOT@/base-files/', '@THIS_COLLECT_DIR@']
 
   - name: userspace
     labels: [aarch64]

@@ -29,7 +29,7 @@ Follow these steps to build and run the os:
 1. Clone this repo with:\
 ``git clone --depth=1 https://github.com/ilobilo/ilobilix``
 
-1. Currently you have to manually build the sysroot:
+2. Currently you have to manually build the sysroot:
 * Set the architecture in boostrap.yml
 * ``mkdir build-sysroot``
 * ``pushd build-sysroot``
@@ -41,12 +41,13 @@ If you created ``build-sysroot`` in ilobilix source root and are in that directo
 ``ln -s build-sysroot/system-root ../sysroot``
 * ``popd``
 
-1. Set up the build system:\
+3. Set up the build system:\
 ``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64).cross-file -Doptions=values``
 
-1. Build and run the kernel:\
+4. Build and run the kernel:\
 ``ninja -C builddir``
 
+Note: you can also check github workflows for example
 Note: optionally you can add run_bios or run_efi to ninja arguments\
 Note: on aarch64, only run_efi is supported\
 Note: if firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_efi
@@ -67,6 +68,7 @@ Note: if firmware type is not specified and architecture supports bios mode, run
 | gdb               | false         | Add -s -S to qemu. Enables 'qemu_debug'  |
 | noaccel           | false         | Disable qemu accelerators                |
 | vnc               | false         | Start qemu VNC server on 127.0.0.1:5901  |
+| norun             | false         | Do no run qemu                           |
 
 ## Discord server
 https://discord.gg/fM5GK3RpS7

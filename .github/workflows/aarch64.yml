@@ -1,0 +1,33 @@
+name: aarch64
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt dist-upgrade -y
+          sudo apt install clang lld llvm xorriso tar qemu-system-arm python-is-python3 libgmp-dev libmpfr-dev libmpc-dev flex bison help2man autopoint gperf gettext rsync -y
+          sudo python -m pip install meson ninja xbstrap
+
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Git config
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Sysroot
+        run: |
+          sed -i bootstrap.yml 's/default: x86_64/default: aarch64/g'
+          mkdir build-sysroot
+          pushd build-sysroot
+          xbstrap init ..
+          xbstrap install base
+          ln -sf build-sysroot/system-root ../sysroot
+          popd
+
+      - name: Kernel
+        run: |
+          meson setup builddir --cross-file cross-files/meson-kernel-clang-aarch64.cross-file -Dnorun=true
+          ninja -C builddir

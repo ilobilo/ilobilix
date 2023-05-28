@@ -233,7 +233,7 @@ namespace proc
         parent->threads.push_back(this);
     }
 
-    thread::thread(process *parent, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : self(this), error(no_error), parent(parent), user(true), in_queue(false), status(status::dequeued)
+    thread::thread(process *parent, uintptr_t pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : self(this), error(no_error), parent(parent), user(true), in_queue(false), status(status::dequeued)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
@@ -241,7 +241,7 @@ namespace proc
         auto [vstack, vustack] = map_user_stack(this, parent);
         this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
 
-        thread_finalise(this, pc, arg);
+        thread_finalise(this, pc, 0);
         parent->threads.push_back(this);
     }
 

@@ -91,11 +91,11 @@ void kernel_thread()
                 if (auto ld_ret = elf::exec::load(ld_node->res, pmap, 0x40000000); ld_ret.has_value())
                 {
                     auto [ld_auxv, _] = ld_ret.value();
-                    proc::enqueue(new proc::thread(proc, ld_auxv.at_entry, 0, argv, envp, auxv));
+                    proc::enqueue(new proc::thread(proc, ld_auxv.at_entry, argv, envp, auxv));
                 }
                 else assert(!"Could not load ld_path");
             }
-            else proc::enqueue(new proc::thread(proc, auxv.at_entry, 0, argv, envp, auxv));
+            else proc::enqueue(new proc::thread(proc, auxv.at_entry, argv, envp, auxv));
         }
         else assert(!"Could not load elf file");
     };

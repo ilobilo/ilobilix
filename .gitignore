@@ -1,4 +1,4 @@
-sysroot/*
+sysroot
 .vscode
 .clang-format
 .iwyu*

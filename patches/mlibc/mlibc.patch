@@ -1,17 +1,17 @@
-From f2ff8e72b0f6902e6690a12ca108ae08db8e8f84 Mon Sep 17 00:00:00 2001
+From 2f38671ae7780c17660ad348c2010613b7d3f291 Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Fri, 10 Mar 2023 23:17:43 +0400
+Date: Sun, 28 May 2023 20:55:04 +0400
 Subject: Add wip ilobilix sysdeps
 
 ---
- meson.build                                   |   4 +
+ meson.build                                   |   6 +
  sysdeps/ilobilix/aarch64/crt-src/crt0.S       |   9 +
  sysdeps/ilobilix/aarch64/crt-src/crti.S       |  13 +
  sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
  sysdeps/ilobilix/aarch64/thread_entry.S       |  27 +
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
  sysdeps/ilobilix/generic/sysdeps.cpp          | 829 ++++++++++++++++++
- sysdeps/ilobilix/generic/thread.cpp           |  62 ++
+ sysdeps/ilobilix/generic/thread.cpp           |  60 ++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/blkcnt_t.h  |   1 +
@@ -122,16 +122,18 @@ Subject: Add wip ilobilix sysdeps
  create mode 100644 sysdeps/ilobilix/x86_64/thread_entry.S
 
 diff --git a/meson.build b/meson.build
-index 2fd3db9..bf36fe1 100644
+index b9ad391..3874d0a 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -122,6 +122,10 @@ if host_machine.system() == 'linux'
+@@ -123,6 +123,12 @@ if host_machine.system() == 'linux'
  	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
  	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
  	subdir('sysdeps/linux')
 +elif host_machine.system() == 'ilobilix'
 +	rtdl_include_dirs += include_directories('sysdeps/ilobilix/include')
 +	libc_include_dirs += include_directories('sysdeps/ilobilix/include')
++	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
++	internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', true)
 +	subdir('sysdeps/ilobilix')
  elif host_machine.system() == 'aero'
  	rtdl_include_dirs += include_directories('sysdeps/aero/include')
@@ -1098,10 +1100,10 @@ index 0000000..0a4ef4b
 +} // namespace mlibc
 diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
 new file mode 100644
-index 0000000..4787e8d
+index 0000000..1f30eaf
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/thread.cpp
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,60 @@
 +#include <mlibc/thread-entry.hpp>
 +#include <mlibc/all-sysdeps.hpp>
 +#include <mlibc/thread.hpp>
@@ -1119,10 +1121,8 @@ index 0000000..4787e8d
 +	while(!__atomic_load_n(&tcb->tid, __ATOMIC_RELAXED))
 +		mlibc::sys_futex_wait(&tcb->tid, 0, nullptr);
 +
-+	void *(*func)(void *) = reinterpret_cast<void *(*)(void *)>(entry);
-+	auto result = func(user_arg);
++	tcb->invokeThreadFunc(entry, user_arg);
 +
-+	tcb->returnValue = result;
 +	__atomic_store_n(&tcb->didExit, 1, __ATOMIC_RELEASE);
 +	mlibc::sys_futex_wake(&tcb->didExit);
 +
@@ -1876,5 +1876,5 @@ index 0000000..954c6dd
 +.section .note.GNU-stack,"",%progbits
 +
 -- 
-2.37.2
+2.39.2
 
