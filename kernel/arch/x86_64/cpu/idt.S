@@ -1,9 +1,11 @@
-# Copyright (C) 2022  ilobilo
+# Copyright (C) 2022-2023  ilobilo
 
 .include "arch/x86_64/cpu/cpu.inc"
 
 .extern int_handler
 int_common_stub:
+    cld
+
     test qword ptr [rsp + 24], 0x03
     je 1f
     swapgs

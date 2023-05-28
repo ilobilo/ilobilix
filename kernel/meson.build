@@ -6,26 +6,32 @@ src = files(
     'libc/stdio.cpp',
     'libc/stdlib.cpp',
     'libc/string.cpp',
+    'libc/wchar.cpp',
 
     'lib/alloc.cpp',
     'lib/errno.cpp',
     'lib/event.cpp',
     'lib/log.cpp',
     'lib/panic.cpp',
-    'lib/syscall.cpp',
     'lib/time.cpp',
     'lib/trace.cpp',
 
     'drivers/fs/dev/streams.cpp',
+    'drivers/fs/dev/tty/tty.cpp',
+    'drivers/fs/dev/tty/pty.cpp',
+
     'drivers/fs/devtmpfs.cpp',
     'drivers/fs/tmpfs.cpp',
+
     'drivers/initrd/ilar.cpp',
     'drivers/initrd/ustar.cpp',
     'drivers/initrd/initrd.cpp',
+
     'drivers/pci/pci_acpi.cpp',
     'drivers/pci/pci_ecam.cpp',
     'drivers/pci/pci_ecam.cpp',
     'drivers/pci/pci.cpp',
+
     'drivers/acpi.cpp',
     'drivers/dtb.cpp',
     'drivers/elf.cpp',
@@ -39,6 +45,10 @@ src = files(
     'mm/pmm.cpp',
     'mm/vmm.cpp',
     'mm/mmap.cpp',
+
+    'syscall/mm.cpp',
+    'syscall/proc.cpp',
+    'syscall/vfs.cpp',
 
     'misc/cxxabi.cpp',
     'misc/ubsan.cpp'
@@ -62,8 +72,8 @@ endif
 subdir('arch' / arch)
 
 kernel_elf = executable('ilobilix.elf', src,
-    include_directories : incs,
     dependencies : [deps, mod_deps],
+    include_directories : incs,
     c_args : [c_args, args],
     cpp_args : [cxx_args, args],
     link_args : ld_args,

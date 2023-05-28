@@ -1,0 +1,193 @@
+diff -ruN a/bfd/config.bfd b/bfd/config.bfd
+--- a/bfd/config.bfd	2022-07-08 13:46:47.000000000 +0400
++++ b/bfd/config.bfd	2022-12-12 17:17:09.000000000 +0400
+@@ -284,6 +284,11 @@
+     targ_selvecs="aarch64_elf64_le_vec aarch64_elf32_le_vec aarch64_elf32_be_vec arm_elf32_be_vec arm_elf32_le_vec"
+     want64=true
+     ;;
++  aarch64-*-ilobilix*)
++    targ_defvec=aarch64_elf64_le_vec
++    targ_selvecs=aarch64_elf32_le_vec
++    want64=true
++    ;;
+   alpha*-*-freebsd* | alpha*-*-kfreebsd*-gnu)
+     targ_defvec=alpha_elf64_fbsd_vec
+     targ_selvecs="alpha_elf64_vec alpha_ecoff_le_vec"
+@@ -719,6 +724,11 @@
+     targ_defvec=x86_64_elf64_vec
+     targ_selvecs=i386_elf32_vec
+     want64=true
++    ;;
++  x86_64-*-ilobilix*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs=i386_elf32_vec
++    want64=true
+     ;;
+ #endif
+   i[3-7]86-*-lynxos*)
+diff -ruN a/bfd/elfnn-aarch64.c b/bfd/elfnn-aarch64.c
+--- a/bfd/elfnn-aarch64.c	2022-07-08 13:46:47.000000000 +0400
++++ b/bfd/elfnn-aarch64.c	2022-12-12 23:18:38.141874339 +0400
+@@ -7965,6 +7965,9 @@
+ 	    if ((got_type & GOT_TLS_IE) && GOT_TLS_GD_ANY_P (got_type))
+ 	      got_type &= ~ (GOT_TLSDESC_GD | GOT_TLS_GD);
+ 
++		if (!bfd_link_executable (info) && (got_type & GOT_TLS_IE))
++	      info->flags |= DF_STATIC_TLS;
++
+ 	    if (old_got_type != got_type)
+ 	      {
+ 		if (h != NULL)
+diff -ruN a/config.sub b/config.sub
+--- a/config.sub	2022-07-08 13:46:47.000000000 +0400
++++ b/config.sub	2022-12-12 16:59:46.000000000 +0400
+@@ -1754,7 +1754,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | ilobilix* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff -ruN a/gas/configure.tgt b/gas/configure.tgt
+--- a/gas/configure.tgt	2022-07-08 13:46:47.000000000 +0400
++++ b/gas/configure.tgt	2022-12-13 19:08:42.236897921 +0400
+@@ -129,6 +129,7 @@
+   aarch64*-*-fuchsia*)			fmt=elf;;
+   aarch64*-*-haiku*)			fmt=elf em=haiku ;;
+   aarch64*-*-genode*)			fmt=elf;;
++  aarch64*-*-ilobilix*)		fmt=elf;;
+   aarch64*-*-linux*)			fmt=elf em=linux
+     case ${cpu}-${os} in
+       aarch64*-linux-gnu_ilp32)		arch=aarch64:32 ;;
+@@ -233,6 +234,7 @@
+   i386-*-knetbsd*-gnu | \
+   i386-*-netbsd* | \
+   i386-*-openbsd*)			fmt=elf em=nbsd ;;
++  i386-*-ilobilix*)	  fmt=elf;;
+   i386-*-linux-*)			fmt=elf em=linux
+     case ${cpu}-${os} in
+       x86_64*-linux-gnux32)		arch=x86_64:32 ;;
+diff -ruN a/ld/configure.tgt b/ld/configure.tgt
+--- a/ld/configure.tgt	2022-07-29 11:37:48.000000000 +0400
++++ b/ld/configure.tgt	2022-12-13 18:37:22.008694351 +0400
+@@ -114,6 +114,9 @@
+ 			targ_extra_libpath="aarch64linuxb aarch64linux32 aarch64linux32b armelfb_linux_eabi armelf_linux_eabi"
+ 			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b aarch64elfb armelf armelfb $targ_extra_libpath"
+ 			;;
++aarch64-*-ilobilix*)	targ_emul=aarch64ilobilix
++			targ_extra_emuls="aarch64elf $targ_extra_libpath"
++			;;
+ aarch64-*-haiku*)	targ_emul=aarch64haiku
+ 			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b aarch64elfb armelf armelfb armelf_haiku $targ_extra_libpath"
+ 			;;
+@@ -1004,6 +1007,9 @@
+ 			targ_extra_libpath="elf_i386 elf32_x86_64"
+ 			tdir_elf_i386=`echo ${targ_alias} | sed -e 's/x86_64/i386/'`
+ 			;;
++x86_64-*-ilobilix*) targ_emul=elf_x86_64
++			targ_extra_emuls=elf_i386
++			;;
+ x86_64-*-redox*)	targ_emul=elf_x86_64
+ 			targ_extra_emuls=elf_i386
+ 			;;
+diff -ruN a/ld/emulparams/aarch64ilobilix.sh b/ld/emulparams/aarch64ilobilix.sh
+--- a/ld/emulparams/aarch64ilobilix.sh	1970-01-01 04:00:00.000000000 +0400
++++ b/ld/emulparams/aarch64ilobilix.sh	2022-12-13 19:11:59.315982361 +0400
+@@ -0,0 +1,45 @@
++ARCH=aarch64
++MACHINE=
++NOP=0x1f2003d5
++
++SCRIPT_NAME=elf
++ELFSIZE=64
++OUTPUT_FORMAT="elf64-littleaarch64"
++BIG_OUTPUT_FORMAT="elf64-bigaarch64"
++LITTLE_OUTPUT_FORMAT="elf64-littleaarch64"
++NO_REL_RELOCS=yes
++
++TEMPLATE_NAME=elf
++EXTRA_EM_FILE=aarch64elf
++
++GENERATE_SHLIB_SCRIPT=yes
++GENERATE_PIE_SCRIPT=yes
++
++MAXPAGESIZE="CONSTANT (MAXPAGESIZE)"
++COMMONPAGESIZE="CONSTANT (COMMONPAGESIZE)"
++SEPARATE_GOTPLT=24
++IREL_IN_PLT=
++
++TEXT_START_ADDR=0x400000
++
++DATA_START_SYMBOLS='PROVIDE (__data_start = .);';
++
++# AArch64 does not support .s* sections.
++NO_SMALL_DATA=yes
++
++OTHER_BSS_SYMBOLS="${CREATE_SHLIB+PROVIDE (}__bss_start__ = .${CREATE_SHLIB+)};"
++OTHER_BSS_END_SYMBOLS="${CREATE_SHLIB+PROVIDE (}_bss_end__ = .${CREATE_SHLIB+)}; ${CREATE_SHLIB+PROVIDE (}__bss_end__ = .${CREATE_SHLIB+)};"
++OTHER_END_SYMBOLS="${CREATE_SHLIB+PROVIDE (}__end__ = .${CREATE_SHLIB+)};"
++
++OTHER_SECTIONS='.note.gnu.arm.ident 0 : { KEEP (*(.note.gnu.arm.ident)) }'
++ATTRS_SECTIONS='.ARM.attributes 0 : { KEEP (*(.ARM.attributes)) KEEP (*(.gnu.attributes)) }'
++# Ensure each PLT entry is aligned to a cache line.
++PLT=".plt          ${RELOCATING-0} : ALIGN(16) { *(.plt)${RELOCATING+${IREL_IN_PLT+ *(.iplt)}} }"
++
++case "$target" in
++  aarch64*-ilobilix*)
++    case "$EMULATION_NAME" in
++      aarch64ilobilix*) LIBPATH_SUFFIX=64 ;;
++    esac
++    ;;
++esac
+diff -ruN a/ld/emulparams/elf_x86_64.sh b/ld/emulparams/elf_x86_64.sh
+--- a/ld/emulparams/elf_x86_64.sh	2022-07-08 13:46:48.000000000 +0400
++++ b/ld/emulparams/elf_x86_64.sh	2022-12-12 17:21:08.000000000 +0400
+@@ -43,7 +43,7 @@
+ # Linux/Solaris modify the default library search path to first include
+ # a 64-bit specific directory.
+ case "$target" in
+-  x86_64*-linux*|i[3-7]86-*-linux-*)
++  x86_64*-linux*|i[3-7]86-*-linux-*|x86_64*-ilobilix*)
+     case "$EMULATION_NAME" in
+       *64*)
+ 	LIBPATH_SUFFIX=64
+diff -ruN a/ld/Makefile.am b/ld/Makefile.am
+--- a/ld/Makefile.am	2022-07-08 13:46:48.000000000 +0400
++++ b/ld/Makefile.am	2022-12-13 19:04:06.006503780 +0400
+@@ -388,6 +388,7 @@
+ 	eaarch64linux32.c \
+ 	eaarch64linux32b.c \
+ 	eaarch64linuxb.c \
++	eaarch64ilobilix.c \
+ 	eelf32_x86_64.c \
+ 	eelf32b4300.c \
+ 	eelf32bmip.c \
+@@ -876,6 +877,7 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64linux32.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64linux32b.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64linuxb.Pc@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64ilobilix.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32_x86_64.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32b4300.Pc@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf32bmip.Pc@am__quote@
+diff -ruN a/ld/Makefile.in b/ld/Makefile.in
+--- a/ld/Makefile.in	2022-08-05 13:56:53.000000000 +0400
++++ b/ld/Makefile.in	2022-12-13 19:04:00.673999767 +0400
+@@ -884,6 +884,7 @@
+ 	eaarch64linux32.c \
+ 	eaarch64linux32b.c \
+ 	eaarch64linuxb.c \
++	eaarch64ilobilix.c \
+ 	eelf32_x86_64.c \
+ 	eelf32b4300.c \
+ 	eelf32bmip.c \
+@@ -1255,6 +1256,7 @@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64linux32.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64linux32b.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64linuxb.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaarch64ilobilix.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaix5ppc.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaix5rs6.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eaixppc.Po@am__quote@

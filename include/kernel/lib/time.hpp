@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -7,12 +7,10 @@
 
 namespace time
 {
-    static constexpr uint64_t frequency = 1'000;
-
     extern timespec realtime;
     extern timespec monotonic;
 
-    void timer_handler();
+    void timer_handler(size_t ns);
 
     uint64_t time_ns();
     uint64_t time_ms();

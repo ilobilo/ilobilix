@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/ilobilo/compiler-rt-builtins
+revision = master
+depth = 1
+
+[provide]
+compiler_rt_builtins = compiler_rt_builtins_dep
+compiler_rt_builtins_src = compiler_rt_builtins_src_dep

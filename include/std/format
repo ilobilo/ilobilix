@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -6,5 +6,7 @@
 
 namespace std
 {
-    using namespace fmt;
+    using fmt::formatter;
+    using fmt::format;
+    using fmt::print;
 } // namespace std

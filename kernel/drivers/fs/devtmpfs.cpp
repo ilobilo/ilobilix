@@ -1,82 +1,41 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/fs/dev/streams.hpp>
 #include <drivers/fs/devtmpfs.hpp>
+#include <drivers/proc.hpp>
+#include <drivers/fd.hpp>
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
+#include <cstdlib>
 
 namespace devtmpfs
 {
     static constexpr size_t default_size = pmm::page_size;
+
     vfs::filesystem *dev_fs = nullptr;
     vfs::node_t *dev_root = nullptr;
+
+    struct cdev_t : vfs::cdev_t
+    {
+        ssize_t read(vfs::resource *_res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count);
+        ssize_t write(vfs::resource *_res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count);
+        bool trunc(vfs::resource *_res, vfs::fdhandle *fd, size_t length);
+        void *mmap(vfs::resource *_res, size_t fpage, int flags);
+    };
 
     struct resource : vfs::resource
     {
         size_t cap;
         uint8_t *data;
 
-        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
+        resource(devtmpfs *fs, mode_t mode, vfs::cdev_t *cdev) : vfs::resource(fs, cdev)
         {
-            lockit(this->lock);
-
-            auto real_count = count;
-            if (off_t(offset + count) >= this->stat.st_size)
-                real_count = count - ((offset + count) - this->stat.st_size);
-
-            memcpy(buffer, this->data + offset, real_count);
-            return real_count;
-        }
-
-        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
-        {
-            lockit(this->lock);
-
-            if (offset + count > this->cap)
-            {
-                auto new_cap = this->cap;
-                while (offset + count >= new_cap)
-                    new_cap *= 2;
-
-                this->data = realloc(this->data, new_cap);
-                this->cap = new_cap;
-            }
-
-            memcpy(this->data + offset, buffer, count);
-
-            if (off_t(offset + count) >= this->stat.st_size)
-            {
-                this->stat.st_size = offset + count;
-                this->stat.st_blocks = div_roundup(offset + count, this->stat.st_blksize);
-            }
-            return count;
-        }
-
-        void *mmap(size_t fpage, int flags)
-        {
-            lockit(this->lock);
-
-            void *ret = nullptr;
-            if (flags & MAP_SHARED)
-                ret = fromhh(this->data + fpage * pmm::page_size);
-            else
-            {
-                ret = pmm::alloc();
-                memcpy(tohh(ret), this->data + fpage * pmm::page_size, pmm::page_size);
-            }
-
-            return ret;
-        }
-
-        resource(devtmpfs *fs, mode_t mode) : vfs::resource(fs)
-        {
-            if ((mode & s_ifmt) == s_ifreg)
+            if (mode2type(mode) == s_ifreg)
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
-                this->can_mmap = true;
             }
 
             this->stat.st_size = 0;
@@ -87,10 +46,14 @@ namespace devtmpfs
             this->stat.st_mode = mode;
             this->stat.st_nlink = 1;
 
-            this->stat.st_atim = time::realtime;
-            this->stat.st_mtim = time::realtime;
-            this->stat.st_ctim = time::realtime;
+            auto proc = this_thread()->parent;
+            this->stat.st_uid = proc->euid;
+            this->stat.st_gid = proc->egid;
+
+            this->stat.update_time(stat_t::access | stat_t::modify | stat_t::status);
         }
+
+        resource(devtmpfs *fs, mode_t mode) : resource(fs, mode, new cdev_t) { }
 
         ~resource()
         {
@@ -104,13 +67,88 @@ namespace devtmpfs
         }
     };
 
-    // devtmpfs::mount() should only be called once
+    ssize_t cdev_t::read(vfs::resource *_res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        auto real_count = count;
+        if (off_t(offset + count) >= res->stat.st_size)
+            real_count = count - ((offset + count) - res->stat.st_size);
+
+        memcpy(buffer, res->data + offset, real_count);
+        return real_count;
+    }
+
+    ssize_t cdev_t::write(vfs::resource *_res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        if (offset + count > res->cap)
+        {
+            auto new_cap = res->cap;
+            while (offset + count >= new_cap)
+                new_cap *= 2;
+
+            res->data = realloc(res->data, new_cap);
+            res->cap = new_cap;
+        }
+
+        memcpy(res->data + offset, buffer, count);
+
+        if (off_t(offset + count) >= res->stat.st_size)
+        {
+            res->stat.st_size = offset + count;
+            res->stat.st_blocks = div_roundup(offset + count, res->stat.st_blksize);
+        }
+        return count;
+    }
+
+    bool cdev_t::trunc(vfs::resource *_res, vfs::fdhandle *fd, size_t length)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        if (length > res->cap)
+        {
+            auto new_cap = res->cap;
+            while (new_cap < length)
+                new_cap *= 2;
+
+            res->data = realloc(res->data, new_cap);
+            res->cap = new_cap;
+        }
+
+        res->stat.st_size = off_t(length);
+        res->stat.st_blocks = div_roundup(res->stat.st_size, res->stat.st_blksize);
+
+        return true;
+    }
+
+    void *cdev_t::mmap(vfs::resource *_res, size_t fpage, int flags)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        void *ret = nullptr;
+        if (flags & vmm::mmap::map_shared)
+            ret = fromhh(res->data + fpage * pmm::page_size);
+        else
+        {
+            ret = pmm::alloc();
+            memcpy(tohh(ret), res->data + fpage * pmm::page_size, pmm::page_size);
+        }
+
+        return ret;
+    }
+
     vfs::node_t *devtmpfs::mount(vfs::node_t *, vfs::node_t *parent, std::string_view name, void *data)
     {
         if (dev_root == nullptr)
             dev_root = this->create(parent, "", 0755 | s_ifdir);
 
-        return this->root = dev_root;
+        return this->root = new vfs::node_t(name, parent, this, dev_root->res);
     }
 
     bool devtmpfs::unmount()
@@ -118,6 +156,11 @@ namespace devtmpfs
         if (this->mountdata != nullptr)
             free(this->mountdata);
 
+        return true;
+    }
+
+    bool devtmpfs::sync(vfs::resource *res)
+    {
         return true;
     }
 
@@ -149,32 +192,69 @@ namespace devtmpfs
         return true;
     }
 
-    vfs::node_t *add_dev(path_view_t path, vfs::resource *res)
+    vfs::node_t *devtmpfs::mknod(vfs::node_t *parent, std::string_view name, dev_t dev, mode_t mode)
     {
-        static lock_t lock;
-        lockit(lock);
-
-        auto [nparent, node, basename] = vfs::path2node(dev_root, path);
-
-        if (node != nullptr)
-        {
-            errno = EEXIST;
+        auto cdev = get_dev(dev);
+        if (cdev == nullptr)
             return nullptr;
-        }
+
+        auto res = new resource(this, mode, cdev);
+        res->stat.st_rdev = dev;
+
+        return new vfs::node_t(name, parent, this, res);
+    }
+
+    std::unordered_map<dev_t, vfs::cdev_t*> devs;
+    std::mutex lock;
+
+    bool register_dev(vfs::cdev_t *cdev, dev_t dev)
+    {
+        std::unique_lock guard(lock);
+        if (devs.contains(dev) == true)
+            return false;
+        devs[dev] = cdev;
+        return true;
+    }
+
+    bool unregister_dev(dev_t dev)
+    {
+        std::unique_lock guard(lock);
+        if (devs.contains(dev) == false)
+            return false;
+        devs.erase(dev);
+        return true;
+    }
+
+    vfs::cdev_t *get_dev(dev_t dev)
+    {
+        if (devs.contains(dev) == false)
+            return_err(nullptr, ENODEV);
+        return devs[dev];
+    }
+
+    vfs::node_t *mknod(vfs::node_t *parent, path_view_t path, dev_t dev, mode_t mode)
+    {
+        std::unique_lock guard(lock);
+
+        auto [nparent, node, basename] = vfs::path2node(parent, path);
+        if (node != nullptr)
+            return_err(nullptr, EEXIST);
 
         if (nparent == nullptr)
             return nullptr;
 
-        node = new vfs::node_t(basename, nparent, dev_fs, res);
-
-        res->stat.st_dev = dev_fs->dev_id;
-        res->stat.st_ino = dev_fs->inodes++;
-        res->stat.st_nlink = 1;
-
-        lockit(nparent->lock);
-        nparent->children[node->name] = node;
-
+        node = nparent->fs->mknod(nparent, basename, dev, mode);
+        if (node != nullptr)
+        {
+            std::unique_lock guard(nparent->lock);
+            nparent->res->children[node->name] = node;
+        }
         return node;
+    }
+
+    vfs::node_t *add_dev(path_view_t path, dev_t dev, mode_t mode)
+    {
+        return mknod(dev_root, path, dev, mode);
     }
 
     void init()

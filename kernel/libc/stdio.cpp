@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <printf/printf.h>
 #include <lib/log.hpp>
@@ -7,7 +7,11 @@
 
 extern "C"
 {
-    static lock_t lock;
+    static std::mutex lock;
+
+    // Stubs for fmtlib
+    FILE *stdout = (FILE*)&stdout;
+    FILE *stderr = (FILE*)&stderr;
 
     int fputc(char c, FILE *stream)
     {
@@ -25,7 +29,7 @@ extern "C"
 
     int fprintf(FILE *stream, const char *format, ...)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         va_list arg;
         va_start(arg, format);
@@ -41,7 +45,7 @@ extern "C"
 
     size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         if (stream == stderr)
             log::prints(log::error_prefix);
@@ -55,7 +59,7 @@ extern "C"
 
     int vprintf(const char *format, va_list arg)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         return vprintf_(format, arg);
     }
 

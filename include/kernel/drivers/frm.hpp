@@ -1,5 +1,7 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
+#include <lib/types.hpp>
+#include <limine.h>
 #include <vector>
 
 namespace frm

@@ -1,9 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/elf.hpp>
 #include <init/kernel.hpp>
 #include <lib/misc.hpp>
-#include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
@@ -113,12 +112,12 @@ namespace elf
         }
     } // namespace syms
 
-    namespace module
+    namespace modules
     {
         std::unordered_map<std::string_view, driver_t*> drivers;
         std::vector<module_t> modules;
         static uintptr_t base_addr = 0;
-        static lock_t lock;
+        static std::mutex lock;
 
         static std::vector<driver_t*> get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
         {
@@ -149,7 +148,7 @@ namespace elf
                                 log::infoln("  - '{}'", driver->deps[d]);
                         }
 
-                        drivers[driver->name] = driver;
+                        drivers[name] = driver;
                         ret.push_back(driver);
 
                         next:
@@ -166,8 +165,6 @@ namespace elf
             if (base_addr == 0)
                 base_addr = align_up(tohh(pmm::mem_top), 0x40000000);
 
-            size = align_up(size, pmm::page_size);
-
             uintptr_t loadaddr = base_addr;
             base_addr += size;
 
@@ -175,20 +172,15 @@ namespace elf
             vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);
 
             return loadaddr;
-
-            // return malloc<uintptr_t>(size);
         }
 
         void unmap(uintptr_t loadaddr, size_t size)
         {
-            size = align_up(size, pmm::page_size);
             if (loadaddr == base_addr - size)
                 base_addr = loadaddr;
 
             pmm::free(vmm::kernel_pagemap->virt2phys(loadaddr), size / pmm::page_size);
             vmm::kernel_pagemap->unmap_range(loadaddr, size);
-
-            // free(loadaddr);
         }
 
         [[clang::no_sanitize("alignment")]]
@@ -211,9 +203,13 @@ namespace elf
                 return std::nullopt;
             }
 
-            lockit(lock);
+            std::unique_lock guard(lock);
+
+            auto realsize = size;
+            size = align_up(size, pmm::page_size);
+
             auto loadaddr = map(size);
-            memcpy(reinterpret_cast<void*>(loadaddr), reinterpret_cast<void*>(address), size);
+            memcpy(reinterpret_cast<void*>(loadaddr), reinterpret_cast<void*>(address), realsize);
             header = reinterpret_cast<Elf64_Ehdr*>(loadaddr);
 
             auto sections = reinterpret_cast<Elf64_Shdr*>(loadaddr + header->e_shoff);
@@ -425,7 +421,7 @@ namespace elf
             node->fs->populate(node);
             std::vector<driver_t*> ret;
 
-            for (auto [name, child] : node->children)
+            for (auto [name, child] : node->res->children)
             {
                 if (child->type() == s_iflnk)
                     child = child->reduce(true);
@@ -528,7 +524,7 @@ namespace elf
             if (drvs.empty())
                 log::errorln("ELF: Could not find any builtin drivers!");
         }
-    } // namespace module
+    } // namespace modules
 
     namespace exec
     {
@@ -557,17 +553,17 @@ namespace elf
                 {
                     case PT_LOAD:
                     {
-                        size_t flags = PROT_READ;
+                        size_t flags = vmm::mmap::prot_read;
                         if (phdr.p_flags & PF_W)
-                            flags |= PROT_WRITE;
+                            flags |= vmm::mmap::prot_write;
                         if (phdr.p_flags & PF_X)
-                            flags |= PROT_EXEC;
+                            flags |= vmm::mmap::prot_exec;
 
                         size_t misalign = phdr.p_vaddr & (pmm::page_size - 1);
                         size_t pages = div_roundup(phdr.p_memsz + misalign, pmm::page_size);
 
                         auto paddr = pmm::alloc<uintptr_t>(pages);
-                        if (!pagemap->mmap_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags, MAP_ANONYMOUS))
+                        if (!pagemap->mmap_range(phdr.p_vaddr + base, paddr, pages * pmm::page_size, flags, vmm::mmap::map_anonymous))
                         {
                             pmm::free(paddr, pages);
                             return std::nullopt;
@@ -575,6 +571,19 @@ namespace elf
 
                         if (res->read(reinterpret_cast<void*>(tohh(paddr + misalign)), phdr.p_offset, phdr.p_filesz) != ssize_t(phdr.p_filesz))
                             return std::nullopt;
+
+                        // uintptr_t vstart = align_down(phdr.p_vaddr, pmm::page_size);
+                        // uintptr_t vend = align_up(phdr.p_vaddr + phdr.p_memsz, pmm::page_size);
+                        // uintptr_t vfend = align_up(phdr.p_vaddr + phdr.p_filesz, pmm::page_size);
+
+                        // size_t misalign = phdr.p_vaddr - vstart;
+
+                        // if (pagemap->mmap(vstart + base, phdr.p_filesz + misalign, flags, vmm::mmap::map_private | vmm::mmap::map_fixed, res, phdr.p_offset + misalign) == vmm::mmap::map_failed)
+                        //     return std::nullopt;
+
+                        // if (vend > vfend)
+                        //     if (pagemap->mmap(vfend, vend - vfend, flags, vmm::mmap::map_private | vmm::mmap::map_fixed | vmm::mmap::map_anonymous, NULL, 0) == vmm::mmap::map_failed)
+                        //         return std::nullopt;
 
                         break;
                     }
@@ -603,18 +612,17 @@ namespace elf
 
         uintptr_t prepare_stack(uintptr_t _stack, uintptr_t sp, std::span<std::string_view> argv, std::span<std::string_view> envp, auxval auxv)
         {
-            auto top = reinterpret_cast<uintptr_t*>(_stack);
-            auto stack = top;
+            auto stack = reinterpret_cast<uintptr_t*>(_stack);
 
-            for (auto &env : envp)
+            for (const auto &env : envp)
             {
-                stack = stack - env.length() - 1;
+                stack = reinterpret_cast<uintptr_t*>(reinterpret_cast<char*>(stack) - env.length() - 1);
                 memcpy(stack, env.data(), env.length());
             }
 
-            for (auto &arg : argv)
+            for (const auto &arg : argv)
             {
-                stack = stack - arg.length() - 1;
+                stack = reinterpret_cast<uintptr_t*>(reinterpret_cast<char*>(stack) - arg.length() - 1);
                 memcpy(stack, arg.data(), arg.length());
             }
 
@@ -628,28 +636,26 @@ namespace elf
             stack -= 2; stack[0] = AT_PHENT, stack[1] = auxv.at_phent;
             stack -= 2; stack[0] = AT_PHNUM, stack[1] = auxv.at_phnum;
 
-            uint64_t old_sp = sp;
+            uintptr_t old_sp = sp;
 
             *(--stack) = 0;
             stack -= envp.size();
-            for (size_t i = 0; auto &env : envp)
+            for (size_t i = 0; const auto &env : envp)
             {
                 old_sp -= env.length() + 1;
-                stack[i] = old_sp;
-                i++;
+                stack[i++] = old_sp;
             }
 
             *(--stack) = 0;
             stack -= argv.size();
-            for (size_t i = 0; auto &arg : argv)
+            for (size_t i = 0; const auto &arg : argv)
             {
                 old_sp -= arg.length() + 1;
-                stack[i] = old_sp;
-                i++;
+                stack[i++] = old_sp;
             }
 
             *(--stack) = argv.size();
-            return sp - (top - stack);
+            return sp - (_stack - reinterpret_cast<uintptr_t>(stack));
         }
     } // namespace exec
 } // namespace elf

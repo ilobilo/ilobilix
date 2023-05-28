@@ -1,7 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <mm/pmm.hpp>
 #include <deque>
@@ -11,10 +12,9 @@
 namespace proc
 {
     std::unordered_map<pid_t, process*> processes;
-    static lock_t pid_lock;
-    static lock_t lock;
+    static std::mutex lock;
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg);
     void thread_delete(thread *thread);
 
     void save_thread(thread *thread, cpu::registers_t *regs);
@@ -24,14 +24,13 @@ namespace proc
 
     void arch_init(void (*func)(cpu::registers_t *regs));
 
-    // O(1) scheduling algorithm (used in linux kernel versions 2.6.0-2.6.22)
     static std::deque<thread*> queues[2];
     static auto active = &queues[0];
     static auto expired = &queues[1];
 
     thread *next_thread()
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         if (active->size() == 0)
             std::swap(active, expired);
@@ -52,7 +51,7 @@ namespace proc
 
     void enqueue(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (thread->in_queue == true)
             return;
 
@@ -63,7 +62,7 @@ namespace proc
 
     void dequeue(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         thread->status = status::dequeued;
     }
 
@@ -74,7 +73,7 @@ namespace proc
 
     void unblock(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (thread->status != status::blocked)
             return;
 
@@ -90,16 +89,11 @@ namespace proc
     void block(thread *thread)
     {
         lock.lock();
-        // log::infoln("Scheduler: Blocking thread {}:{}", thread->parent->pid, thread->tid);
-
-        auto status = thread->status;
-        auto running_on = thread->running_on;
-
         thread->status = status::blocked;
-
         lock.unlock();
-        if (status == status::running)
-            wake_up(running_on);
+
+        if (this_thread() == thread)
+            yield();
     }
 
     void block()
@@ -110,57 +104,90 @@ namespace proc
     void exit(thread *thread)
     {
         lock.lock();
-        // log::infoln("Scheduler: Exiting thread {}:{}", thread->parent->pid, thread->tid);
-
-        auto status = thread->status;
-        auto running_on = thread->running_on;
-
         thread->status = status::killed;
-
         lock.unlock();
-        if (status == status::running)
-            wake_up(running_on);
+
+        if (this_thread() == thread)
+        {
+            yield();
+            arch::halt();
+        }
     }
 
-    void exit()
+    [[noreturn]] void exit()
     {
         exit(this_thread());
+        std::unreachable();
     }
 
-    void pexit(process *proc)
+    void pexit(process *proc, int code)
     {
-        lock.lock();
-        // log::infoln("Scheduler: Exiting process {}", proc->pid);
+        if (proc->pid == 1)
+            PANIC("PID 1 exit()");
 
-        auto status = status::killed;
-        size_t running_on = 0;
+        arch::int_toggle(false);
 
+        proc->fd_table.reset();
+
+        for (const auto &child : proc->children)
+        {
+            // child->parent = proc->parent;
+            // proc->parent->children.push_back(child);
+
+            // pid 1 (init) inherits the children
+            child->parent = processes[1];
+            processes[1]->children.push_back(child);
+        }
+        proc->children.clear();
+
+        for (const auto &zombie : proc->zombies)
+        {
+            zombie->parent = proc->parent;
+            proc->parent->zombies.push_back(zombie);
+        }
+        proc->zombies.clear();
+
+        remove_from(proc->parent->children, proc);
+
+        // TODO: zombies
+        // proc->parent->zombies.push_back(proc);
+
+        proc->status = code;
+        proc->exited = true;
+
+        auto me = this_thread();
         for (const auto &thread : proc->threads)
         {
-            if (thread->status == status::running)
-            {
-                status = status::running;
-                running_on = thread->running_on;
-            }
+            auto status = thread->status;
             thread->status = status::killed;
+            if (thread != me && status == status::running)
+                wake_up(thread->running_on);
         }
+        // proc->threads.clear(); // threads will remove themselves
 
-        lock.unlock();
-        if (status == status::running)
-            wake_up(running_on);
+        proc->event.trigger();
+
+        free_pid(proc->pid);
+
+        arch::int_toggle(true);
+        if (this_thread()->parent == proc)
+        {
+            vmm::kernel_pagemap->load();
+            yield();
+            std::unreachable();
+        }
     }
 
-    void pexit()
+    [[noreturn]] void pexit(int code)
     {
-        pexit(this_thread()->parent);
+        pexit(this_thread()->parent, code);
+        std::unreachable();
     }
 
-    process::process(std::string_view name) : name(name), pagemap(nullptr), next_tid(1), parent(nullptr), mmap_anon_base(def_mmap_anon_base), usr_stack_top(def_usr_stack_top)
+    process::process(std::string_view name) :
+        name(name), pagemap(nullptr), next_tid(1), root(vfs::get_root()), cwd(vfs::get_root()), umask(s_iwgrp | s_iwoth),
+        fd_table(nullptr), session(nullptr), parent(nullptr), status(0), exited(false), usr_stack_top(def_usr_stack_top)
     {
-        this->root = vfs::get_root();
-        this->cwd = vfs::get_root();
-        this->umask = s_iwgrp | s_iwoth;
-
         this->gid = 0;
         this->sgid = 0;
         this->egid = 0;
@@ -169,29 +196,7 @@ namespace proc
         this->suid = 0;
         this->euid = 0;
 
-        lockit(pid_lock);
-        this->pid = alloc_pid();
-        processes[this->pid] = this;
-    }
-
-    process::process(std::string_view name, process *old_proc) : name(name), next_tid(1), parent(old_proc), mmap_anon_base(old_proc->mmap_anon_base), usr_stack_top(old_proc->usr_stack_top)
-    {
-        this->root = old_proc->root;
-        this->cwd = old_proc->cwd;
-        this->umask = old_proc->umask;
-        // this->pagemap = old_proc->pagemap.fork();
-
-        this->gid = old_proc->gid;
-        this->sgid = old_proc->sgid;
-        this->egid = old_proc->egid;
-
-        this->uid = old_proc->uid;
-        this->suid = old_proc->suid;
-        this->euid = old_proc->euid;
-
-        lockit(pid_lock);
-        this->pid = alloc_pid();
-        processes[this->pid] = this;
+        this->pid = alloc_pid(this);
     }
 
     tid_t process::alloc_tid()
@@ -199,39 +204,24 @@ namespace proc
         return this->next_tid++;
     }
 
-    process::~process()
-    {
-        vmm::kernel_pagemap->load();
-
-        auto pid1 = processes[1];
-        for (const auto &proc : this->children)
-        {
-            proc->parent = pid1;
-            pid1->children.push_back(proc);
-            this->children.erase(&proc);
-        }
-
-        for (const auto &thread : this->threads)
-            exit(thread);
-
-        delete this->pagemap;
-
-        lockit(pid_lock);
-        free_pid(this->pid);
-    }
-
     static std::pair<uintptr_t, uintptr_t> map_user_stack(thread *thread, process *parent)
     {
-        uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        uintptr_t vustack = parent->usr_stack_top - default_stack_size;
+        uintptr_t pstack = pmm::alloc<uintptr_t>(user_stack_size / pmm::page_size);
+        uintptr_t vustack = parent->usr_stack_top - user_stack_size;
 
-        if (!parent->pagemap->mmap_range(vustack, pstack, default_stack_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS))
+        if (!parent->pagemap->mmap_range(vustack, pstack, user_stack_size, vmm::mmap::prot_read | vmm::mmap::prot_write, vmm::mmap::map_anonymous))
             PANIC("Could not map user stack!");
 
         parent->usr_stack_top = vustack - pmm::page_size;
 
-        thread->stacks.push_back(pstack);
-        return { tohh(pstack) + default_stack_size, vustack + default_stack_size };
+        thread->stacks.push_back(std::make_pair(pstack, user_stack_size));
+        return { tohh(pstack) + user_stack_size, vustack + user_stack_size };
+    }
+
+    thread::thread(process *parent) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
+    {
+        this->running_on = size_t(-1);
+        this->tid = this->parent->alloc_tid();
     }
 
     thread::thread(process *parent, uintptr_t pc, uintptr_t arg) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
@@ -239,10 +229,7 @@ namespace proc
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
 
-        if (this->user == true)
-            this->stack = map_user_stack(this, parent).second;
-
-        thread_finalise(this, pc, arg, std::span<std::string_view>(), std::span<std::string_view>(), elf::exec::auxval { });
+        thread_finalise(this, pc, arg);
         parent->threads.push_back(this);
     }
 
@@ -251,26 +238,42 @@ namespace proc
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
 
-        if (this->user == true)
-        {
-            auto [vstack, vustack] = map_user_stack(this, parent);
-            this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
-        }
+        auto [vstack, vustack] = map_user_stack(this, parent);
+        this->stack = elf::exec::prepare_stack(vstack, vustack, argv, envp, auxv);
 
-        thread_finalise(this, pc, arg, argv, envp, auxv);
+        thread_finalise(this, pc, arg);
         parent->threads.push_back(this);
     }
 
     thread::~thread()
     {
-        auto it = std::find(this->parent->threads.begin(), this->parent->threads.end(), this);
-        if (it != this->parent->threads.end())
-            this->parent->threads.erase(it);
+        // auto it = std::find(this->parent->threads.begin(), this->parent->threads.end(), this);
+        // if (it != this->parent->threads.end())
+        //     this->parent->threads.erase(it);
+
+        remove_from(this->parent->threads, this);
 
         if (this->parent->threads.empty())
-            delete this->parent;
+        {
+            if (this->parent->exited == false)
+                pexit(this->parent, 0);
+
+            delete this->parent->pagemap;
+        }
+
+        for (const auto &stack : this->stacks)
+            pmm::free(stack.first, stack.second / pmm::page_size);
 
         thread_delete(this);
+    }
+
+    static void enqueue_notready(thread *thread)
+    {
+        std::unique_lock guard(lock);
+        thread->in_queue = true;
+        if (thread->status == status::running)
+            thread->status = status::ready;
+        expired->push_front(thread);
     }
 
     static void scheduler(cpu::registers_t *regs)
@@ -280,6 +283,17 @@ namespace proc
         {
             if (new_thread->status == status::killed)
                 delete new_thread;
+
+            if (new_thread->events.empty() == false && new_thread->timeout > 0)
+            {
+                if (size_t(new_thread->timeout) <= time::time_ms())
+                {
+                    new_thread->timeout = 0;
+                    event::trigger(new_thread->events[0]);
+                    continue;
+                }
+                else enqueue_notready(new_thread);
+            }
 
             new_thread = next_thread();
         }
@@ -292,13 +306,14 @@ namespace proc
         auto current_thread = this_thread();
         if (current_thread != nullptr && current_thread->status != status::killed)
         {
-            if (current_thread->status == status::running && current_thread != this_cpu()->idle)
-                enqueue(current_thread);
+            if (current_thread != this_cpu()->idle)
+                enqueue_notready(current_thread);
+
+            // if (current_thread->status == status::running && current_thread != this_cpu()->idle)
+            //     enqueue(current_thread);
 
             save_thread(current_thread, regs);
         }
-
-        // log::infoln("Scheduler: Running '{}' {}:{} on CPU: {}", new_thread->parent->name.c_str(), new_thread->parent->pid, new_thread->tid, this_cpu()->id);
 
         reschedule(fixed_timeslice);
         load_thread(new_thread, regs);

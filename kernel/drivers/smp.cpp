@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
@@ -60,9 +60,9 @@ namespace smp
 
         auto cpu_entry = [](limine_smp_info *cpu)
         {
-            static lock_t lock;
+            static std::mutex lock;
             {
-                lockit(lock);
+                std::unique_lock guard(lock);
                 cpu_init(cpu);
 
                 log::infoln("SMP: CPU {} is up", this_cpu()->id);

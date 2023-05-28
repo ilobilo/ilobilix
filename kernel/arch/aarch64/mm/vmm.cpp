@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/aarch64/cpu/cpu.hpp>
 #include <lib/panic.hpp>
@@ -39,7 +39,7 @@ namespace vmm
         ttbr *ttbr1;
     };
 
-    // TODO: Actually working 16 kib and 64 kib pages
+    // TODO: Is this correct?
 
     static constexpr size_t psize_4kib = 0x1000;
     static constexpr size_t psize_16kib = 0x4000;
@@ -100,7 +100,7 @@ namespace vmm
             default:
                 return WB;
         }
-        __builtin_unreachable();
+        std::unreachable();
     }
 
     ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize)
@@ -141,23 +141,25 @@ namespace vmm
 
     uintptr_t pagemap::virt2phys(uintptr_t vaddr, size_t flags)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
-        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
+        auto psize = this->get_psize(flags);
+        ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
         if (pml_entry == nullptr || !pml_entry->getflags(Valid))
             return invalid_addr;
 
-        return pml_entry->getaddr();
+        return pml_entry->getaddr() + (vaddr % psize);
     }
 
     bool pagemap::map(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         ptentry *pml_entry = this->virt2pte(vaddr, true, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -169,14 +171,13 @@ namespace vmm
         return true;
     }
 
-    bool pagemap::unmap(uintptr_t vaddr, size_t flags)
+    bool pagemap::unmap_nolock(uintptr_t vaddr, size_t flags)
     {
-        lockit(this->lock);
-
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -185,14 +186,13 @@ namespace vmm
         return true;
     }
 
-    bool pagemap::setflags(uintptr_t vaddr, size_t flags, caching cache)
+    bool pagemap::setflags_nolock(uintptr_t vaddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
-
         ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -205,16 +205,21 @@ namespace vmm
         return true;
     }
 
+    static size_t counter = 0;
     void pagemap::load()
     {
-        lockit(this->lock);
         write_ttbr_el1(0, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr0)));
-        write_ttbr_el1(1, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr1)));
+
+        // load ttbr1 only once on each cpu
+        if (counter < smp_request.response->cpu_count)
+        {
+            write_ttbr_el1(1, fromhh(reinterpret_cast<uint64_t>(this->toplvl->ttbr1)));
+            counter++;
+        }
     }
 
     void pagemap::save()
     {
-        lockit(this->lock);
         this->toplvl->ttbr0 = reinterpret_cast<ttbr*>(tohh(read_ttbr_el1(0)));
         this->toplvl->ttbr1 = reinterpret_cast<ttbr*>(tohh(read_ttbr_el1(1)));
     }
@@ -238,7 +243,7 @@ namespace vmm
         else if (va_width == 48)
             return (addr <= 0x0000FFFFFFFFFFFFULL) || (addr >= 0xFFFF000000000000ULL);
 
-        PANIC("VMM: Unknown VA width!");
+        PANIC("VMM: Unknown VA width {}", va_width);
     }
 
     uintptr_t flags2arch(size_t flags)

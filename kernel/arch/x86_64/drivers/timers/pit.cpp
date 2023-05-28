@@ -1,19 +1,20 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/lib/io.hpp>
 #include <lib/time.hpp>
-#include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <atomic>
 
 namespace timers::pit
 {
+    static constexpr uint64_t frequency = 1000;
     static std::atomic<uint64_t> tick = 0;
+    uint8_t vector = 0;
 
     uint64_t time_ms()
     {
-        return tick * (1000 / time::frequency);
+        return tick * (1000 / frequency);
     }
 
     void msleep(uint64_t ms)
@@ -27,7 +28,7 @@ namespace timers::pit
     {
         log::infoln("PIT: Initialising...");
 
-        uint64_t divisor = 1193180 / time::frequency;
+        uint64_t divisor = 1193180 / frequency;
 
         io::out<uint8_t>(0x43, 0x36);
 
@@ -37,12 +38,12 @@ namespace timers::pit
         io::out<uint8_t>(0x40, l);
         io::out<uint8_t>(0x40, h);
 
-        auto [handler, vector] = idt::allocate_handler(idt::IRQ(0));
+        auto [handler, _vector] = idt::allocate_handler(idt::IRQ(0));
         handler.set([](cpu::registers_t *regs)
         {
             tick++;
-            time::timer_handler();
+            time::timer_handler(1'000'000'000 / frequency);
         });
-        idt::unmask(vector - 0x20);
+        idt::unmask((vector = _vector) - 0x20);
     }
 } // namespace timers::pit

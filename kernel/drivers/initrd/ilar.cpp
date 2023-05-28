@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/initrd/ilar.hpp>
 #include <drivers/vfs.hpp>
@@ -47,8 +47,5 @@ namespace ilar
 
             current = reinterpret_cast<header*>(reinterpret_cast<uintptr_t>(current) + sizeof(header) + size);
         }
-
-        // pmm::free(align_down(fromhh(address), pmm::page_size), div_roundup(reinterpret_cast<uintptr_t>(current), pmm::page_size));
-
     }
 } // namespace ilar

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
@@ -13,10 +13,10 @@ namespace proc
 
     extern "C" thread *this_thread()
     {
-        return reinterpret_cast<thread*>(read_gs(8));
+        return reinterpret_cast<thread*>(rdreg(gs:8));
     }
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv)
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
     {
         // auto proc = thread->parent;
 
@@ -27,9 +27,13 @@ namespace proc
         thread->fpu_storage_pages = div_roundup(this_cpu()->fpu_storage_size, pmm::page_size);
         thread->fpu_storage = tohh(pmm::alloc<uint8_t*>(thread->fpu_storage_pages));
 
-        uintptr_t pkstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-        thread->kstack = tohh(pkstack) + default_stack_size;
-        thread->stacks.push_back(pkstack);
+        uintptr_t pkstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        thread->kstack = tohh(pkstack) + kernel_stack_size;
+        thread->stacks.push_back(std::make_pair(pkstack, kernel_stack_size));
+
+        uintptr_t ppfstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+        thread->pfstack = tohh(ppfstack) + kernel_stack_size;
+        thread->stacks.push_back(std::make_pair(ppfstack, kernel_stack_size));
 
         thread->gs_base = reinterpret_cast<uintptr_t>(thread);
 
@@ -61,9 +65,6 @@ namespace proc
     void thread_delete(thread *thread)
     {
         pmm::free(fromhh(thread->fpu_storage), thread->fpu_storage_pages);
-
-        for (const auto &stack : thread->stacks)
-            pmm::free(stack, default_stack_size / pmm::page_size);
     }
 
     void save_thread(thread *thread, cpu::registers_t *regs)
@@ -80,6 +81,7 @@ namespace proc
     {
         thread->running_on = this_cpu()->id;
 
+        gdt::tss[this_cpu()->id].IST[1] = thread->pfstack;
         this_cpu()->fpu_restore(thread->fpu_storage);
         thread->parent->pagemap->load();
 
@@ -100,15 +102,16 @@ namespace proc
 
     void reschedule(uint64_t ms)
     {
-        if (ms == 0)
-            this_cpu()->lapic.ipi(sched_vector, this_cpu()->lapic.id);
-        else
+        // if (ms == 0)
+        //     this_cpu()->lapic.ipi(sched_vector, this_cpu()->lapic.id);
+        // else
             this_cpu()->lapic.timer(sched_vector, ms, lapic::timerModes::ONESHOT);
     }
 
     void arch_init(void (*func)(cpu::registers_t *regs))
     {
-        gdt::tss[this_cpu()->id].IST[0] = tohh(pmm::alloc<uint64_t>(default_stack_size / pmm::page_size)) + default_stack_size;
+        gdt::tss[this_cpu()->id].IST[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
+        idt::idt[14].IST = 2;
 
         [[maybe_unused]]
         static auto once = [func]() -> bool

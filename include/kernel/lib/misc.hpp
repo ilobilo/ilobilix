@@ -1,86 +1,69 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
 #include <init/kernel.hpp>
 #include <type_traits>
+#include <algorithm>
 #include <concepts>
+#include <utility>
 #include <cstdint>
 #include <cstddef>
+#include <memory>
 #include <cctype>
 #include <cerrno>
 #include <limits>
 
-struct point
+constexpr inline bool remove_from(auto &container, auto &&val)
 {
-    size_t X = 0;
-    size_t Y = 0;
-};
+    return container.erase(std::remove(container.begin(), container.end(), val), container.end()) != container.end();
+}
 
-constexpr auto align_down(auto n, auto a)
+constexpr inline bool remove_from_if(auto &container, auto pred)
+{
+    return container.erase(std::remove_if(container.begin(), container.end(), pred), container.end()) != container.end();
+}
+
+constexpr inline auto align_down(auto n, auto a)
 {
     return (n & ~(a - 1));
 }
 
-constexpr auto align_up(auto n, auto a)
+constexpr inline auto align_up(auto n, auto a)
 {
     return align_down(n + a - 1, a);
 }
 
-constexpr auto div_roundup(auto n, auto a)
+constexpr inline auto div_roundup(auto n, auto a)
 {
     return align_down(n + a - 1, a) / a;
 }
 
-constexpr auto next_pow2(uint64_t n)
+constexpr inline auto next_pow2(uint64_t n)
 {
-    return n == 1 ? 1 : 1 << (64 - __builtin_clzl(n - 1));
-}
-
-template<typename Enum>
-constexpr auto as_int(Enum const value) -> typename std::underlying_type<Enum>::type
-{
-    return static_cast<typename std::underlying_type<Enum>::type>(value);
-}
-
-template<std::integral Type>
-constexpr bool ishh(Type a)
-{
-    return static_cast<uintptr_t>(a) >= hhdm_offset;
-}
-
-template<std::integral Type>
-constexpr Type tohh(Type a)
-{
-    return ishh(a) ? a : static_cast<Type>(static_cast<uintptr_t>(a) + hhdm_offset);
-}
-
-template<std::integral Type>
-constexpr Type fromhh(Type a)
-{
-    return !ishh(a) ? a : static_cast<Type>(static_cast<uintptr_t>(a) - hhdm_offset);
+    return n == 1UL ? 1UL : 1UL << (64 - __builtin_clzl(n - 1UL));
 }
 
 template<typename Type>
-constexpr bool ishh(Type a)
+constexpr inline bool ishh(Type a)
 {
-    return reinterpret_cast<uintptr_t>(a) >= hhdm_offset;
+    return uintptr_t(a) >= hhdm_offset;
 }
 
 template<typename Type>
-constexpr Type tohh(Type a)
+constexpr inline Type tohh(Type a)
 {
-    return ishh(a) ? a : reinterpret_cast<Type>(reinterpret_cast<uintptr_t>(a) + hhdm_offset);
+    return ishh(a) ? a : Type(uintptr_t(a) + hhdm_offset);
 }
 
 template<typename Type>
-constexpr Type fromhh(Type a)
+constexpr inline Type fromhh(Type a)
 {
-    return !ishh(a) ? a : reinterpret_cast<Type>(reinterpret_cast<uintptr_t>(a) - hhdm_offset);
+    return !ishh(a) ? a : Type(uintptr_t(a) - hhdm_offset);
 }
 
 template<typename Type>
-constexpr Type pow(Type base, Type exp)
+constexpr inline Type pow(Type base, Type exp)
 {
     int result = 1;
     for (; exp > 0; exp--)
@@ -89,24 +72,24 @@ constexpr Type pow(Type base, Type exp)
 }
 
 template<typename Type>
-constexpr Type abs(Type num)
+constexpr inline Type abs(Type num)
 {
     return num < 0 ? -num : num;
 }
 
 template<typename Type>
-constexpr Type sign(Type num)
+constexpr inline Type sign(Type num)
 {
-    return (num > 0) ? 1 : ((num < 0) ? -1 : 0);
+    return num > 0 ? 1 : (num < 0 ? -1 : 0);
 }
 
-constexpr uint64_t jdn(uint8_t days, uint8_t months, uint16_t years)
+constexpr inline uint64_t jdn(uint8_t days, uint8_t months, uint16_t years)
 {
     return (1461 * (years + 4800 + (months - 14) / 12)) / 4 + (367 * (months - 2 - 12 * ((months - 14) / 12))) / 12 - (3 * ((years + 4900 + (months - 14) / 12) / 100)) / 4 + days - 32075;
 }
-constexpr uint64_t jdn_1970 = jdn(1, 1, 1970);
+constexpr inline uint64_t jdn_1970 = jdn(1, 1, 1970);
 
-constexpr uint64_t epoch(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
+constexpr inline uint64_t epoch(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
 {
     uint64_t jdn_current = jdn(days, months, centuries * 100 + years);
     uint64_t diff = jdn_current - jdn_1970;
@@ -119,15 +102,17 @@ inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t 
     return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
 }
 
-template<typename Ret, typename URet = std::make_unsigned_t<Ret>>
-static Ret str2int(const char *nptr, char **endptr, int _base)
+template<typename Ret>
+constexpr inline Ret str2int(const char *nptr, char **endptr, int _base)
 {
+    using URet = std::make_unsigned_t<Ret>;
+
     auto base = static_cast<Ret>(_base);
     auto str = nptr;
 
     if (base < 0 || base == 1)
     {
-        if (endptr)
+        if (endptr != nullptr)
             *endptr = const_cast<char*>(nptr);
         return 0;
     }
@@ -201,7 +186,7 @@ static Ret str2int(const char *nptr, char **endptr, int _base)
         }
     }
 
-    if (endptr)
+    if (endptr != nullptr)
         *endptr = const_cast<char*>(converted ? str : nptr);
 
     if (out_of_range)
@@ -216,31 +201,149 @@ static Ret str2int(const char *nptr, char **endptr, int _base)
     return negative ? -total : total;
 }
 
-// https://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Member_Detector
+// template<typename Type>
+// struct ref_val_wrapper
+// {
+//     private:
+//     Type *_ref;
+//     Type _val;
 
-#define GENERATE_HAS_MEMBER_TYPE(type)                                                                            \
-    template<typename Type>                                                                                       \
-    class _HasMemberType_##type                                                                                   \
-    {                                                                                                             \
-        private:                                                                                                  \
-        using Yes = char[2];                                                                                      \
-        using No = char[1];                                                                                       \
-                                                                                                                  \
-        struct Fallback                                                                                           \
-        {                                                                                                         \
-            struct type { };                                                                                      \
-        };                                                                                                        \
-        struct Derived : Type, Fallback { };                                                                      \
-                                                                                                                  \
-        template<typename U>                                                                                      \
-        static No &test(typename U::type *);                                                                      \
-                                                                                                                  \
-        template<typename U>                                                                                      \
-        static Yes &test(U *);                                                                                    \
-                                                                                                                  \
-        public:                                                                                                   \
-        static constexpr bool RESULT = sizeof(test<Derived>(nullptr)) == sizeof(Yes);                             \
-    };                                                                                                            \
-                                                                                                                  \
-    template<typename Type>                                                                                       \
-    struct has_member_type_##type : public std::integral_constant<bool, _HasMemberType_##type<Type>::RESULT> { };
+//     enum class which { /* other, */ ref, val };
+//     which _which;
+
+//     public:
+//     constexpr ref_val_wrapper(Type &ref) : _ref(std::addressof(ref)), _which(which::ref) { }
+//     constexpr ref_val_wrapper(Type &&val) : _val(std::move(val)), _which(which::val) { }
+
+//     constexpr ref_val_wrapper(const ref_val_wrapper &other) : _which(other._which)
+//     {
+//         switch (this->_which)
+//         {
+//             case which::ref:
+//                 this->_ref = other._ref;
+//                 break;
+//             case which::val:
+//                 this->_val = other._val;
+//                 break;
+//             default:
+//                 std::unreachable();
+//         }
+//     }
+
+//     constexpr ref_val_wrapper(ref_val_wrapper &&other) : _which(std::move(other._which))
+//     {
+//         switch (this->_which)
+//         {
+//             case which::ref:
+//                 this->_ref = std::move(other._ref);
+//                 break;
+//             case which::val:
+//                 this->_val = std::move(other._val);
+//                 break;
+//             default:
+//                 std::unreachable();
+//         }
+//     }
+
+//     constexpr ref_val_wrapper &operator=(Type &ref)
+//     {
+//         this->_ref = std::addressof(ref);
+//         this->_which = which::ref;
+//         return *this;
+//     }
+
+//     constexpr ref_val_wrapper &operator=(Type &&val)
+//     {
+//         this->_val = std::move(val);
+//         this->_which = which::val;
+//         return *this;
+//     }
+
+//     constexpr ref_val_wrapper &operator=(ref_val_wrapper &other) = default;
+//     constexpr ref_val_wrapper &operator=(ref_val_wrapper &&other) = default;
+
+//     constexpr ref_val_wrapper &assign(Type &ref)
+//     {
+//         this->_val = ref;
+//         this->_which = which::val;
+//         return *this;
+//     }
+
+//     constexpr ref_val_wrapper &assign(Type &&val)
+//     {
+//         this->_val = std::move(val);
+//         this->_which = which::val;
+//         return *this;
+//     }
+
+//     constexpr Type &get()
+//     {
+//         switch (this->_which)
+//         {
+//             case which::ref:
+//                 return *this->_ref;
+//             case which::val:
+//                 return this->_val;
+//             default:
+//                 std::unreachable();
+//         }
+//     }
+
+//     constexpr bool is_ref()
+//     {
+//         switch (this->_which)
+//         {
+//             case which::ref:
+//                 return true;
+//             case which::val:
+//                 return false;
+//             default:
+//                 std::unreachable();
+//         }
+//     }
+
+//     operator Type() { return this->get(); }
+// };
+
+template<typename Type>
+struct chain_wrapper
+{
+    private:
+    chain_wrapper *_other;
+    Type _val;
+    bool _chained;
+
+    public:
+    constexpr chain_wrapper(Type val) : _val(val), _chained(false) { }
+
+    constexpr chain_wrapper(const chain_wrapper &other) : _other(const_cast<chain_wrapper*>(std::addressof(other))), _chained(true) { }
+    constexpr chain_wrapper(chain_wrapper &&other) = delete;
+
+    constexpr chain_wrapper &operator=(Type val)
+    {
+        this->_val = val;
+        this->_chained = false;
+        return *this;
+    }
+
+    constexpr chain_wrapper &operator=(const chain_wrapper &other)
+    {
+        this->_other = const_cast<chain_wrapper*>(std::addressof(other));
+        this->_chained = true;
+        return *this;
+    }
+
+    constexpr Type &get()
+    {
+        if (this->_chained == true)
+            return this->_other->get();
+        return this->_val;
+    }
+
+    constexpr bool is_chained() const
+    {
+        return this->_chained;
+    }
+
+    operator Type() { return this->get(); }
+};

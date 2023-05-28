@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -9,30 +9,27 @@ namespace std
     // Stub for fmtlib
     using ::FILE;
 
-    extern "C"
-    {
-        int fputc(char c, FILE *stream);
-        int fputs(const char *str, FILE *stream);
-        int fputws(const wchar_t *str, FILE *stream);
+    using ::fputc;
+    using ::fputs;
+    using ::fputws;
 
-        int fprintf(FILE *stream, const char *fmt, ...);
-        size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+    using ::fprintf;
+    using ::fwrite;
 
-        int printf(const char *format, ...);
-        int vprintf(const char *format, va_list arg);
+    using ::printf;
+    using ::vprintf;
 
-        int sprintf(char *str, const char *format, ...);
-        int vsprintf(char *str, const char *format, va_list arg);
+    using ::sprintf;
+    using ::vsprintf;
 
-        int snprintf(char *str, size_t count, const char *format, ...);
-        int vsnprintf(char *str, size_t count, const char *format, va_list arg);
+    using ::snprintf;
+    using ::vsnprintf;
 
-        int vasprintf(char **str, const char *format, va_list args);
-        int asprintf(char **str, const char *format, ...);
+    using ::vasprintf;
+    using ::asprintf;
 
-        int fctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char *format, ...);
-        int vfctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char *format, va_list arg);
-    }
+    using ::fctprintf;
+    using ::vfctprintf;
 
     [[gnu::noreturn]] void terminate() noexcept;
 } // namespace std

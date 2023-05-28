@@ -1,32 +1,34 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <lib/alloc.hpp>
+#include <lib/misc.hpp>
+#include <stdlib.h>
 
 extern "C"
 {
     void *malloc(size_t size)
     {
-        return malloc<void*>(size, false);
+        return heap::allocator->malloc<void*>(size);
     }
 
     void *calloc(size_t num, size_t size)
     {
-        return calloc<void*>(num, size, false);
+        return heap::allocator->calloc<void*>(num, size);
     }
 
     void *realloc(void *oldptr, size_t size)
     {
-        return realloc<void*>(oldptr, size, false);
+        return heap::allocator->realloc<void*>(oldptr, size);
     }
 
     void free(void *ptr)
     {
-        return free(ptr, false);
+        return heap::allocator->free(ptr);
     }
 
     size_t allocsize(void *ptr)
     {
-        return allocsize(ptr, false);
+        return heap::allocator->allocsize(ptr);
     }
 
     int atoi(const char *str)

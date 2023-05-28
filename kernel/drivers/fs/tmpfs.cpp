@@ -1,6 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
+#include <drivers/fs/devtmpfs.hpp>
 #include <drivers/fs/tmpfs.hpp>
+#include <drivers/proc.hpp>
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
 #include <mm/pmm.hpp>
@@ -9,78 +11,26 @@
 namespace tmpfs
 {
     static constexpr size_t default_size = pmm::page_size;
+
+    struct cdev_t : vfs::cdev_t
+    {
+        ssize_t read(vfs::resource *_res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count);
+        ssize_t write(vfs::resource *_res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count);
+        bool trunc(vfs::resource *_res, vfs::fdhandle *fd, size_t length);
+        void *mmap(vfs::resource *_res, size_t fpage, int flags);
+    };
+
     struct resource : vfs::resource
     {
         size_t cap;
         uint8_t *data;
 
-        ssize_t read(vfs::handle *fd, void *buffer, off_t offset, size_t count)
+        resource(tmpfs *fs, mode_t mode, vfs::cdev_t *cdev) : vfs::resource(fs, cdev)
         {
-            lockit(this->lock);
-
-            auto real_count = count;
-            if (off_t(offset + count) >= this->stat.st_size)
-                real_count = count - ((offset + count) - this->stat.st_size);
-
-            memcpy(buffer, this->data + offset, real_count);
-            return real_count;
-        }
-
-        ssize_t write(vfs::handle *fd, const void *buffer, off_t offset, size_t count)
-        {
-            lockit(this->lock);
-
-            if (offset + count > this->cap)
-            {
-                auto new_cap = this->cap;
-                while (offset + count >= new_cap)
-                    new_cap *= 2;
-
-                auto tfs = static_cast<tmpfs*>(this->fs);
-                auto offset = new_cap - this->cap;
-                if (tfs->current_size + offset > tfs->max_size)
-                {
-                    errno = ENOSPC;
-                    return -1;
-                }
-
-                this->data = realloc(this->data, new_cap);
-                this->cap = new_cap;
-            }
-
-            memcpy(this->data + offset, buffer, count);
-
-            if (off_t(offset + count) >= this->stat.st_size)
-            {
-                this->stat.st_size = offset + count;
-                this->stat.st_blocks = div_roundup(offset + count, this->stat.st_blksize);
-            }
-            return count;
-        }
-
-        void *mmap(size_t fpage, int flags)
-        {
-            lockit(this->lock);
-
-            void *ret = nullptr;
-            if (flags & MAP_SHARED)
-                ret = fromhh(this->data + fpage * pmm::page_size);
-            else
-            {
-                ret = pmm::alloc();
-                memcpy(tohh(ret), this->data + fpage * pmm::page_size, pmm::page_size);
-            }
-
-            return ret;
-        }
-
-        resource(tmpfs *fs, mode_t mode) : vfs::resource(fs)
-        {
-            if ((mode & s_ifmt) == s_ifreg)
+            if (mode2type(mode) == s_ifreg)
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
-                this->can_mmap = true;
                 fs->current_size += this->cap;
             }
 
@@ -92,10 +42,13 @@ namespace tmpfs
             this->stat.st_mode = mode;
             this->stat.st_nlink = 1;
 
-            this->stat.st_atim = time::realtime;
-            this->stat.st_mtim = time::realtime;
-            this->stat.st_ctim = time::realtime;
+            auto proc = this_thread()->parent;
+            this->stat.st_uid = proc->euid;
+            this->stat.st_gid = proc->egid;
+
+            this->stat.update_time(stat_t::access | stat_t::modify | stat_t::status);
         }
+        resource(tmpfs *fs, mode_t mode) : resource(fs, mode, new cdev_t) { }
 
         ~resource()
         {
@@ -109,83 +62,170 @@ namespace tmpfs
         }
     };
 
+    ssize_t cdev_t::read(vfs::resource *_res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        auto real_count = count;
+        if (off_t(offset + count) >= res->stat.st_size)
+            real_count = count - ((offset + count) - res->stat.st_size);
+
+        memcpy(buffer, res->data + offset, real_count);
+        return real_count;
+    }
+
+    ssize_t cdev_t::write(vfs::resource *_res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        if (offset + count > res->cap)
+        {
+            auto new_cap = res->cap;
+            while (offset + count >= new_cap)
+                new_cap *= 2;
+
+            auto tfs = static_cast<tmpfs*>(res->fs);
+            if (tfs->current_size + (new_cap - res->cap) > tfs->max_size)
+            {
+                errno = ENOSPC;
+                return -1;
+            }
+
+            res->data = realloc(res->data, new_cap);
+            res->cap = new_cap;
+        }
+
+        memcpy(res->data + offset, buffer, count);
+
+        if (off_t(offset + count) >= res->stat.st_size)
+        {
+            res->stat.st_size = offset + count;
+            res->stat.st_blocks = div_roundup(offset + count, res->stat.st_blksize);
+        }
+        return count;
+    }
+
+    bool cdev_t::trunc(vfs::resource *_res, vfs::fdhandle *fd, size_t length)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        if (length > res->cap)
+        {
+            auto new_cap = res->cap;
+            while (new_cap < length)
+                new_cap *= 2;
+
+            auto tfs = static_cast<tmpfs*>(res->fs);
+            if (tfs->current_size + (new_cap - res->cap) > tfs->max_size)
+            {
+                errno = ENOSPC;
+                return -1;
+            }
+
+            res->data = realloc(res->data, new_cap);
+            res->cap = new_cap;
+        }
+
+        res->stat.st_size = off_t(length);
+        res->stat.st_blocks = div_roundup(res->stat.st_size, res->stat.st_blksize);
+
+        return true;
+    }
+
+    void *cdev_t::mmap(vfs::resource *_res, size_t fpage, int flags)
+    {
+        auto res = static_cast<resource*>(_res);
+        std::unique_lock guard(res->lock);
+
+        void *ret = nullptr;
+        if (flags & vmm::mmap::map_shared)
+            ret = fromhh(res->data + fpage * pmm::page_size);
+        else
+        {
+            ret = pmm::alloc();
+            memcpy(tohh(ret), res->data + fpage * pmm::page_size, pmm::page_size);
+        }
+
+        return ret;
+    }
+
     void tmpfs::parse_data()
     {
         if (auto size = this->get_value("size"); size.has_value())
         {
-            size_t count = std::stoll(size.value(), nullptr);
+            size_t count = std::stoll(size.value());
             switch (size.value().back())
             {
+                case 'g':
+                    count *= 1024;
+                    [[fallthrough]];
+                case 'm':
+                    count *= 1024;
+                    [[fallthrough]];
                 case 'k':
                     count *= 1024;
-                    break;
-                case 'm':
-                    count *= 1024 * 1024;
-                    break;
-                case 'g':
-                    count *= 1024 * 1024 * 1024;
                     break;
                 case '%':
                     count *= pmm::total() / 100;
                     break;
+                default:
+                    return;
             }
             this->max_size = count;
         }
         else if (auto blocks = this->get_value("nr_blocks"); blocks.has_value())
         {
-            size_t count = std::stoll(blocks.value(), nullptr);
+            size_t count = std::stoll(blocks.value());
             switch (blocks.value().back())
             {
+                case 'g':
+                    count *= 1024;
+                    [[fallthrough]];
+                case 'm':
+                    count *= 1024;
+                    [[fallthrough]];
                 case 'k':
                     count *= 1024;
                     break;
-                case 'm':
-                    count *= 1024 * 1024;
-                    break;
-                case 'g':
-                    count *= 1024 * 1024 * 1024;
-                    break;
+                default:
+                    return;
             }
             this->max_size = count * pmm::page_size;
         }
-        else this->max_size = pmm::total() / 100 * 50;
+        else this->max_size = pmm::total() / 2;
 
         if (auto inodes = this->get_value("nr_inodes"); inodes.has_value())
         {
-            size_t count = std::stoll(inodes.value(), nullptr);
+            size_t count = std::stoll(inodes.value());
             switch (inodes.value().back())
             {
+                case 'g':
+                    count *= 1024;
+                    [[fallthrough]];
+                case 'm':
+                    count *= 1024;
+                    [[fallthrough]];
                 case 'k':
                     count *= 1024;
                     break;
-                case 'm':
-                    count *= 1024 * 1024;
-                    break;
-                case 'g':
-                    count *= 1024 * 1024 * 1024;
+                default:
+                    return;
             }
             this->max_inodes = count;
         }
         else this->max_inodes = pmm::total() / pmm::page_size / 2;
 
         if (auto mode = this->get_value("mode"); mode.has_value())
-        {
-            size_t count = std::stoll(mode.value(), nullptr);
-            this->root_mode = count;
-        }
-        else this->root_mode = vfs::default_folder_mode;
+            this->root_mode = std::stoll(mode.value(), nullptr, 8);
 
         if (auto gid = this->get_value("gid"); gid.has_value())
-        {
-            size_t count = std::stoll(gid.value(), nullptr);
-            this->root_gid = count;
-        }
+            this->root_gid = std::stoll(gid.value(), nullptr);
 
         if (auto uid = this->get_value("uid"); uid.has_value())
-        {
-            size_t count = std::stoll(uid.value(), nullptr);
-            this->root_uid = count;
-        }
+            this->root_uid = std::stoll(uid.value(), nullptr);
     }
 
     vfs::node_t *tmpfs::mount(vfs::node_t *, vfs::node_t *parent, std::string_view name, void *data)
@@ -202,7 +242,6 @@ namespace tmpfs
         return fs->root;
     }
 
-    // TODO: Is this correct?
     bool tmpfs::unmount()
     {
         vfs::recursive_delete(this->root, true);
@@ -213,9 +252,14 @@ namespace tmpfs
         return true;
     }
 
+    bool tmpfs::sync(vfs::resource *res)
+    {
+        return true;
+    }
+
     vfs::node_t *tmpfs::create(vfs::node_t *parent, std::string_view name, mode_t mode)
     {
-        if (this->inodes >= this->max_inodes || (types(mode & s_ifmt) == s_ifreg && this->current_size + default_size > this->max_size))
+        if (this->inodes >= this->max_inodes || (mode2type(mode) == s_ifreg && this->current_size + default_size > this->max_size))
         {
             errno = ENOSPC;
             return nullptr;
@@ -251,6 +295,18 @@ namespace tmpfs
     bool tmpfs::unlink(vfs::node_t *)
     {
         return true;
+    }
+
+    vfs::node_t *tmpfs::mknod(vfs::node_t *parent, std::string_view name, dev_t dev, mode_t mode)
+    {
+        auto cdev = devtmpfs::get_dev(dev);
+        if (cdev == nullptr)
+            return nullptr;
+
+        auto res = new resource(this, mode, cdev);
+        res->stat.st_rdev = dev;
+
+        return new vfs::node_t(name, parent, this, res);
     }
 
     void init()

@@ -1,0 +1,44 @@
+diff -ruN a/build-aux/ltmain.in b/build-aux/ltmain.in
+--- a/build-aux/ltmain.in	2023-01-04 21:40:47.323832068 +0400
++++ b/build-aux/ltmain.in	2023-01-04 21:41:28.734457163 +0400
+@@ -6497,7 +6497,7 @@
+ 	      fi
+ 	    else
+ 	      # We cannot seem to hardcode it, guess we'll fake it.
+-	      add_dir=-L$libdir
++	      add_dir=-L$lt_sysroot$libdir
+ 	      # Try looking first in the location we're being installed to.
+ 	      if test -n "$inst_prefix_dir"; then
+ 		case $libdir in
+diff -ruN a/m4/libtool.m4 b/m4/libtool.m4
+--- a/m4/libtool.m4	2023-01-04 21:40:47.335832830 +0400
++++ b/m4/libtool.m4	2023-01-04 21:43:55.263680885 +0400
+@@ -2925,6 +2925,17 @@
+   hardcode_into_libs=yes
+   ;;
+ 
++ilobilix*)
++  version_type=linux # correct to gnu/linux during the next big refactor
++  need_lib_prefix=no
++  need_version=no
++  library_names_spec='$libname$release$shared_ext$versuffix $libname$release$shared_ext$major $libname$shared_ext'
++  soname_spec='$libname$release$shared_ext$major'
++  shlibpath_var=LD_LIBRARY_PATH
++  shlibpath_overrides_runpath=no
++  hardcode_into_libs=yes
++  ;;
++
+ newsos6)
+   version_type=linux # correct to gnu/linux during the next big refactor
+   library_names_spec='$libname$release$shared_ext$versuffix $libname$release$shared_ext$major $libname$shared_ext'
+@@ -3566,6 +3577,10 @@
+   lt_cv_deplibs_check_method=pass_all
+   ;;
+ 
++ilobilix*)
++  lt_cv_deplibs_check_method=pass_all
++  ;;
++
+ netbsd*)
+   if echo __ELF__ | $CC -E - | $GREP __ELF__ > /dev/null; then
+     lt_cv_deplibs_check_method='match_pattern /lib[[^/]]+(\.so\.[[0-9]]+\.[[0-9]]+|_pic\.a)$'

@@ -1,10 +1,12 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
 #include <lai/host.h>
 #include <mm/pmm.hpp>
 #include <cstring>
+#include <cstdlib>
+#include <cstddef>
 
 namespace heap
 {
@@ -30,7 +32,7 @@ namespace heap
 
     void *slab_t::alloc()
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
         if (this->firstfree == 0)
             this->init(this->size);
 
@@ -44,7 +46,7 @@ namespace heap
     {
         if (ptr == nullptr)
             return;
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         auto newhead = static_cast<uint64_t*>(ptr);
         newhead[0] = this->firstfree;
@@ -53,15 +55,27 @@ namespace heap
 
     slaballoc::slaballoc()
     {
-        this->slabs[0].init(8);
-        this->slabs[1].init(16);
-        this->slabs[2].init(24);
-        this->slabs[3].init(32);
-        this->slabs[4].init(48);
-        this->slabs[5].init(64);
-        this->slabs[6].init(128);
-        this->slabs[7].init(256);
-        this->slabs[8].init(512);
+        // this->slabs[0].init(8);
+        // this->slabs[1].init(16);
+        // this->slabs[2].init(24);
+        // this->slabs[3].init(32);
+        // this->slabs[4].init(48);
+        // this->slabs[5].init(64);
+        // this->slabs[6].init(128);
+        // this->slabs[7].init(256);
+        // this->slabs[8].init(512);
+        // this->slabs[9].init(1024);
+
+        // theoretically this should use less memory
+        this->slabs[0].init(16);
+        this->slabs[1].init(32);
+        this->slabs[2].init(48);
+        this->slabs[3].init(80);
+        this->slabs[4].init(128);
+        this->slabs[5].init(192);
+        this->slabs[6].init(288);
+        this->slabs[7].init(448);
+        this->slabs[8].init(672);
         this->slabs[9].init(1024);
     }
 

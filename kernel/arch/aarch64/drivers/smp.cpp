@@ -1,8 +1,9 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/smp.hpp>
 #include <init/kernel.hpp>
 #include <cpu/cpu.hpp>
+#include <mm/vmm.hpp>
 
 namespace smp
 {
@@ -18,6 +19,12 @@ namespace smp
 
     void cpu_init(limine_smp_info *cpu)
     {
-        cpu::set_el1_base(cpu->extra_argument);
+        auto cpuptr = reinterpret_cast<cpu_t*>(cpu->extra_argument);
+
+        if (cpuptr->arch_id != bsp_id)
+        {
+            vmm::kernel_pagemap->load();
+            cpu::set_el1_base(cpu->extra_argument);
+        }
     }
 } // namespace smp

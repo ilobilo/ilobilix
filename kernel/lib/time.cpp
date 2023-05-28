@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/arch.hpp>
 #include <lib/time.hpp>
@@ -10,7 +10,7 @@ namespace time
     timespec realtime;
     timespec monotonic;
 
-    void timer_handler()
+    void timer_handler(size_t ns)
     {
         if (realtime.to_ns() == 0)
             realtime = timespec(arch::epoch(), 0);
@@ -18,7 +18,7 @@ namespace time
         if (monotonic.to_ns() == 0)
             monotonic = timespec(arch::epoch(), 0);
 
-        timespec interval(0, 1'000'000'000 / frequency);
+        timespec interval(0, ns);
         realtime += interval;
         monotonic += interval;
     }
@@ -47,6 +47,16 @@ namespace time
             arch::pause();
     }
 } // namespace time
+
+void stat_t::update_time(size_t flags)
+{
+    if (flags & which::access)
+        this->st_atim = time::realtime;
+    if (flags & which::modify)
+        this->st_mtim = time::realtime;
+    if (flags & which::status)
+        this->st_ctim = time::realtime;
+}
 
 void laihost_sleep(uint64_t ms)
 {

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -29,7 +29,7 @@ namespace smp
         uint64_t lapic_ticks_per_ms = 0;
         uint64_t tsc_ticks_per_ns = 0;
 
-        uint64_t fpu_storage_size = 512;
+        static uint64_t fpu_storage_size;
         void (*fpu_save)(uint8_t*);
         void (*fpu_restore)(uint8_t*);
 

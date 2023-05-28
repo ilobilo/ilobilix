@@ -14,13 +14,13 @@ cxx = meson.get_compiler('cpp')
 ld = cxx.get_linker_id()
 arch = host_machine.cpu_family()
 
-initrd_dir = meson.source_root() / 'initrd'
+initrd_dir = meson.source_root() / 'sysroot'
 logfile = meson.source_root() / 'log.txt'
 
 # iso_dir = meson.source_root() / 'iso'
 iso_dir = '/tmp/ilobilix_tmp_iso_dir'
 iso_files = [
-    meson.source_root() / 'misc/bg.bmp',
+    meson.source_root() / 'misc/bg.png',
     meson.source_root() / 'misc/dtb.img',
     meson.source_root() / 'misc/font.bin',
     meson.source_root() / 'limine.cfg'
@@ -32,10 +32,9 @@ qemu_args = [
     '-boot', 'order=d,menu=on,splash-time=100'
 ]
 
-# { arch : [ libgcc, ovmf, bios, qemu_args ] }
+# { arch : [ ovmf, bios, qemu_args ] }
 supported_archs = {
     'x86_64' : [
-        'x86_64-no-red-zone',
         'X64', true,
         [
             '-M', 'q35', '-audiodev', 'id=audio,driver=alsa',
@@ -49,9 +48,8 @@ supported_archs = {
         ]
     ],
     'aarch64' : [
-        'aarch64', 'AA64', false,
+        'AA64', false, # ['-M', 'virt', '-device', 'ramfb']
         ['-cpu', 'cortex-a72', '-M', 'virt', '-device', 'ramfb']
-        # ['-M', 'virt', '-device', 'ramfb']
     ]
 }
 
@@ -59,10 +57,9 @@ if not supported_archs.has_key(arch)
     error('Unknown architecture ' + arch)
 endif
 
-libgcc = supported_archs[arch][0]
-ovmf_id = supported_archs[arch][1]
-supports_bios = supported_archs[arch][2]
-qemu_args += supported_archs[arch][3]
+ovmf_id = supported_archs[arch][0]
+supports_bios = supported_archs[arch][1]
+qemu_args += supported_archs[arch][2]
 qemu = 'qemu-system-' + arch
 
 if get_option('vnc')
@@ -96,12 +93,10 @@ incs = [
     include_directories('include/modules')
 ]
 
-macros = [ ]
-if get_option('5lvl_paging')
-    macros += '-DLVL5_PAGING=1'
-else
-    macros += '-DLVL5_PAGING=0'
-endif
+macros = [
+    '-DLVL5_PAGING=' + (get_option('5lvl_paging') ? '1' : '0'),
+    '-DSYSCALL_DEBUG=' + (get_option('syscall_debug') ? '1' : '0')
+]
 
 warnigns = [
     '-Wno-error=#warnings',
@@ -126,27 +121,43 @@ add_global_arguments([
     '-fsized-deallocation',
     '-Wno-unused-parameter',
     '-Wno-non-virtual-dtor',
+    '-Wno-frame-address',
     '-DMAGIC_ENUM_NO_STREAMS=1',
-    '-D__cplusplus=202101L',
-    '-D__cpp_concepts=202002L',
-    '-D__cpp_lib_format=202207L'
+    # '-D__cplusplus=202101L',
+    # '-D__cpp_concepts=202002L',
+    # '-D__cpp_lib_format=202207L',
+    # '-fmodules',
+    # '-fmodule-map-file=' + meson.source_root() / 'include/module.modulemap'
 ], language : 'cpp')
+
+cmake = import('cmake')
+
+phmap_opts = cmake.subproject_options()
+phmap_opts.add_cmake_defines({
+    'PHMAP_BUILD_EXAMPLES' : false,
+    'PHMAP_BUILD_TESTS' : false,
+    'PHMAP_INSTALL' : false
+})
 
 limine = subproject('limine')
 deps = [
-    import('cmake').subproject('frozen').dependency('frozen'),
-    dependency('libgcc_binaries', default_options : 'lib=' + libgcc),
+    cmake.subproject('parallel_hashmap', options : phmap_opts).dependency('phmap'),
+    cmake.subproject('frozen').dependency('frozen'),
+
+    dependency('compiler_rt_builtins', default_options : 'custom_includes=' + meson.source_root() / 'include/libc'),
+    dependency('demangler', default_options : 'only_itanium=true'),
     dependency('frigg', default_options : 'frigg_no_install=true'),
-    dependency('limine'),
-    dependency('lai'),
-    dependency('fmt'),
-    dependency('printf'),
-    dependency('magic_enum'),
-    dependency('smart_ptr'),
-    dependency('veque'),
-    dependency('cwalk'),
+    dependency('magic_enum', default_options : 'test=false'),
+
+    dependency('libstdcxx_headers'),
     dependency('limine_terminal'),
-    dependency('libstdcxx_headers')
+    dependency('smart_ptr'),
+    dependency('limine'),
+    dependency('printf'),
+    dependency('cwalk'),
+    dependency('veque'),
+    dependency('lai'),
+    dependency('fmt')
 ]
 
 inc_deps = [ ]
@@ -161,8 +172,9 @@ subdir('modules')
 kernel_elf = [ ]
 subdir('kernel')
 
-if not import('fs').is_dir(initrd_dir)
-    error('Directory \'initrd\' not found!')
+fs = import('fs')
+if not fs.is_dir(initrd_dir)
+    error('Directory \'' + fs.name(initrd_dir) + '\' not found!')
 endif
 
 no_ext_mods = ext_mods.length() == 0
@@ -170,7 +182,8 @@ initrd = custom_target('initrd',
     input : ext_mods,
     output : 'initrd.img.gz',
     command : [
-        'rm', '-rf', initrd_dir / 'lib/modules/*', '&&',
+        'rm', '-rf', initrd_dir / 'lib/modules', '&&',
+        'mkdir', '-p', initrd_dir / 'lib/modules', '&&',
         no_ext_mods ? [ ] : ['cp', '@INPUT@', initrd_dir / 'lib/modules/', '&&'],
         'tar', '--format', 'posix', '-czf', '@OUTPUT@', '-C', initrd_dir, './'
     ],

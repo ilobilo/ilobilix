@@ -1,30 +1,64 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
 #include <stddef.h>
 
 #ifdef __cplusplus
-#include <lib/alloc.hpp>
-extern "C" {
-#else
-void *malloc(size_t size);
-void *calloc(size_t num, size_t size);
-void *realloc(void *oldptr, size_t size);
-void free(void *ptr);
-size_t allocsize(void *ptr);
+namespace cdecl
+{
+    extern "C"
+    {
 #endif
+        void *malloc(size_t size);
+        void *calloc(size_t num, size_t size);
+        void *realloc(void *oldptr, size_t size);
+        void free(void *ptr);
+        size_t allocsize(void *ptr);
+#ifdef __cplusplus
+    } // extern "C"
+} // namespace cdecl
 
-int atoi(const char *str);
-long atol(const char *str);
-long long atoll(const char *str);
+template<typename Type = void*>
+inline Type malloc(size_t size)
+{
+    return reinterpret_cast<Type>(cdecl::malloc(size));
+}
 
-long strtol(const char *str, char **str_end, int base);
-long long strtoll(const char *str, char **str_end, int base);
+template<typename Type = void*>
+inline Type calloc(size_t num, size_t size)
+{
+    return reinterpret_cast<Type>(cdecl::calloc(num, size));
+}
 
-unsigned long strtoul(const char *str, char **str_end, int base);
-unsigned long long strtoull(const char *str, char **str_end, int base);
+template<typename Type>
+inline Type realloc(Type oldptr, size_t size)
+{
+    return reinterpret_cast<Type>(cdecl::realloc(reinterpret_cast<void*>(oldptr), size));
+}
 
+inline void free(auto ptr)
+{
+    cdecl::free(reinterpret_cast<void*>(ptr));
+}
+
+inline size_t allocsize(auto ptr)
+{
+    return cdecl::allocsize(reinterpret_cast<void*>(ptr));
+}
+
+extern "C"
+{
+#endif
+    int atoi(const char *str);
+    long atol(const char *str);
+    long long atoll(const char *str);
+
+    long strtol(const char *str, char **str_end, int base);
+    long long strtoll(const char *str, char **str_end, int base);
+
+    unsigned long strtoul(const char *str, char **str_end, int base);
+    unsigned long long strtoull(const char *str, char **str_end, int base);
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -86,6 +86,7 @@ namespace pci
         size_t len;
         bartype type;
         bool prefetchable;
+        bool bit64;
     };
 
     namespace msi

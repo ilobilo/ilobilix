@@ -1,16 +1,12 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
 #ifdef __cplusplus
-#include <cstdint>
-
 extern "C" {
-// Required for syscall debugging
-enum errno_t : uintptr_t
-#else
-enum errno_t
 #endif
+
+enum errno_t
 {
     EPERM = 1,
     ENOENT = 2,
@@ -148,10 +144,11 @@ enum errno_t
     EHWPOISON = 133
 };
 
-#define no_error ((errno_t)0)
-
 errno_t *__errno_location();
 #define errno (*__errno_location())
+
+#define no_error ((errno_t)0)
+#define return_err(ret, err) do { errno = err; return ret; } while(0)
 
 #ifdef __cplusplus
 } // extern "C"

@@ -1,0 +1,54 @@
+# Begin /etc/profile
+# Written for Beyond Linux From Scratch
+# by James Robertson <jameswrobertson@earthlink.net>
+# modifications by Dagmar d'Surreal <rivyqntzne@pbzpnfg.arg>
+
+# System wide environment variables and startup programs.
+
+# System wide aliases and functions should go in /etc/bash.bashrc.  Personal
+# environment variables and startup programs should go into
+# ~/.bash_profile.  Personal aliases and functions should go into
+# ~/.bashrc.
+
+# Set the initial path
+export PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin
+
+if [ $EUID -eq 0 ] ; then
+    unset HISTFILE
+fi
+
+# Set up some environment variables.
+export HISTSIZE=1000
+export HISTIGNORE="&:[bf]g:exit"
+
+# Set up a red prompt for root and a green one for users.
+# NORMAL="\[\e[0m\]"
+# RED="\[\e[1;31m\]"
+# GREEN="\[\e[1;32m\]"
+# if [[ $EUID == 0 ]] ; then
+#     PS1="$RED\u [ $NORMAL\w$RED ]# $NORMAL"
+# else
+#     PS1="$GREEN\u [ $NORMAL\w$GREEN ]\$ $NORMAL"
+# fi
+
+for script in /etc/profile.d/*.sh ; do
+    if [ -r $script ] ; then
+        . $script
+    fi
+done
+
+if [ -f "~/.bash_profile" ] ; then
+  source ~/.bash_profile
+fi
+
+if [ -f "/etc/bash.bashrc" ] ; then
+  source /etc/bash.bashrc
+fi
+
+if [ -f "~/.bashrc" ] ; then
+  source ~/.bashrc
+fi
+
+unset script RED GREEN NORMAL
+
+# End /etc/profile

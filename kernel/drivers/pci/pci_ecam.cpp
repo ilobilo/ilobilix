@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/pci/pci_ecam.hpp>
 #include <lib/panic.hpp>
@@ -42,7 +42,7 @@ namespace pci::ecam
                 return mmio::in<uint32_t>(addr);
                 break;
             default:
-                PANIC("PCI: Invalid integer size!");
+                PANIC("PCI: Invalid integer size {}", width);
         }
     }
 
@@ -62,7 +62,7 @@ namespace pci::ecam
                 mmio::out<uint32_t>(addr, value);
                 break;
             default:
-                PANIC("PCI: Invalid integer size!");
+                PANIC("PCI: Invalid integer size {}", width);
         }
     }
 } // namespace pci::ecam
