@@ -20,10 +20,11 @@ namespace trace
         auto print_name = [&prefix](uintptr_t ip)
         {
             auto [entry, offset] = elf::syms::lookup(ip, STT_FUNC);
-            std::string_view name = abi::__cxa_demangle(entry.name.data(), nullptr, nullptr, nullptr) ?: entry.name;
+            if (entry == elf::syms::empty_sym)
+                return false;
 
-            if (entry != elf::syms::empty_sym)
-                log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, name, offset);
+            std::string_view name = abi::__cxa_demangle(entry.name.data(), nullptr, nullptr, nullptr) ?: entry.name;
+            log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, name, offset);
 
             return name != "int_handler" && name != "syscall_handler";
         };

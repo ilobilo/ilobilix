@@ -1,6 +1,6 @@
-From d30364ee11acd6f745b917df98f24a1a6e2553ef Mon Sep 17 00:00:00 2001
+From f2ff8e72b0f6902e6690a12ca108ae08db8e8f84 Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Wed, 8 Mar 2023 00:47:55 +0400
+Date: Fri, 10 Mar 2023 23:17:43 +0400
 Subject: Add wip ilobilix sysdeps
 
 ---
@@ -10,7 +10,7 @@ Subject: Add wip ilobilix sysdeps
  sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
  sysdeps/ilobilix/aarch64/thread_entry.S       |  27 +
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
- sysdeps/ilobilix/generic/sysdeps.cpp          | 815 ++++++++++++++++++
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 829 ++++++++++++++++++
  sysdeps/ilobilix/generic/thread.cpp           |  62 ++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
@@ -55,14 +55,14 @@ Subject: Add wip ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/vt.h        |   1 +
  sysdeps/ilobilix/include/abi-bits/wait.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
- sysdeps/ilobilix/include/ilobilix/syscall.h   | 160 ++++
+ sysdeps/ilobilix/include/ilobilix/syscall.h   | 167 ++++
  .../ilobilix/include/mlibc/thread-entry.hpp   |  12 +
  sysdeps/ilobilix/meson.build                  |  95 ++
  sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
  sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
- 58 files changed, 1337 insertions(+)
+ 58 files changed, 1358 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
@@ -263,10 +263,10 @@ index 0000000..62b1c3c
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 0000000..c7fd557
+index 0000000..0a4ef4b
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
-@@ -0,0 +1,815 @@
+@@ -0,0 +1,829 @@
 +#include <bits/ensure.h>
 +#include <mlibc/allocator.hpp>
 +#include <mlibc/debug.hpp>
@@ -708,18 +708,29 @@ index 0000000..c7fd557
 +	return 0;
 +}
 +
-+// int sys_mkdir(const char *path, mode_t mode)
-+// {
-+// 	return sys_mkdirat(AT_FDCWD, path, mode);
-+// }
++int sys_mkdir(const char *path, mode_t mode)
++{
++	auto ret = do_syscall(SYS_mkdirat, AT_FDCWD, path, mode);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
 +
-+// int sys_mkdirat(int dirfd, const char *path, mode_t mode)
-+// {
-+// 	auto ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return 0;
-+// }
++int sys_mkdirat(int dirfd, const char *path, mode_t mode)
++{
++	auto ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_mknodat(int dirfd, const char *path, int mode, int dev)
++{
++	auto ret = do_syscall(SYS_mknodat, dirfd, path, mode, dev);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
 +
 +int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written)
 +{
@@ -782,6 +793,9 @@ index 0000000..c7fd557
 +{
 +	return sys_fchmodat(AT_FDCWD, pathname, mode, 0);
 +}
++
++int sys_pselect(int nfds, fd_set *readfds, fd_set *writefds,
++                fd_set *exceptfds, const struct timespec *timeout, const sigset_t *sigmask, int *num_events) STUB_ONLY(pselect)
 +
 +// int sys_rmdir(const char *pathname)
 +// {
@@ -1084,7 +1098,7 @@ index 0000000..c7fd557
 +} // namespace mlibc
 diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
 new file mode 100644
-index 0000000..fb089fe
+index 0000000..4787e8d
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/thread.cpp
 @@ -0,0 +1,62 @@
@@ -1496,10 +1510,10 @@ index 0000000..66412d7
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
 new file mode 100644
-index 0000000..cfe454e
+index 0000000..6efc1db
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,167 @@
 +#ifndef _ILOBILIX__SYSCALL_H
 +#define _ILOBILIX__SYSCALL_H
 +
@@ -1533,15 +1547,20 @@ index 0000000..cfe454e
 +#define SYS_getcwd 79
 +#define SYS_chdir 80
 +#define SYS_fchdir 81
++#define SYS_mkdir 83
++#define SYS_creat 85
 +#define SYS_link 86
 +#define SYS_unlink 87
 +#define SYS_readlink 89
 +#define SYS_fchmod 91
 +#define SYS_umask 95
 +#define SYS_getppid 110
++#define SYS_mknod 133
 +#define SYS_arch_prctl 158
 +#define SYS_getdents64 217
 +#define SYS_openat 257
++#define SYS_mkdirat 258
++#define SYS_mknodat 259
 +#define SYS_fstatat 262
 +#define SYS_unlinkat 263
 +#define SYS_linkat 265
@@ -1619,6 +1638,8 @@ index 0000000..cfe454e
 +#define SYS_dup3 24
 +#define SYS_fcntl 25
 +#define SYS_ioctl 29
++#define SYS_mknodat 33
++#define SYS_mkdirat 34
 +#define SYS_unlinkat 35
 +#define SYS_linkat 37
 +#define SYS_chdir 49

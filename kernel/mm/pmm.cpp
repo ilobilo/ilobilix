@@ -4,7 +4,6 @@
 #include <lib/bitmap.hpp>
 #include <lib/alloc.hpp>
 #include <lib/panic.hpp>
-#include <lib/lock.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
@@ -16,7 +15,7 @@ namespace pmm
     static uintptr_t mem_usable_top = 0;
     static size_t lastindex = 0;
     static bitmap_t bitmap;
-    static lock_t lock;
+    static std::mutex lock;
 
     size_t usablemem = 0;
     size_t totalmem = 0;
@@ -49,7 +48,7 @@ namespace pmm
         if (count == 0)
             return nullptr;
 
-        lockit(lock);
+        std::unique_lock guard(lock);
         auto inner_alloc = [count](size_t limit) -> void*
         {
             size_t p = 0;
@@ -90,7 +89,7 @@ namespace pmm
         if (ptr == nullptr)
             return;
 
-        lockit(lock);
+        std::unique_lock guard(lock);
         size_t page = reinterpret_cast<size_t>(ptr) / page_size;
         for (size_t i = page; i < page + count; i++)
             bitmap[i] = false;

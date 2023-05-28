@@ -10,7 +10,6 @@
 
 #define SYMLOOP_MAX 40
 
-using ssize_t = long;
 using off_t = long;
 
 using dev_t = unsigned long;
@@ -80,6 +79,10 @@ enum types
     s_ifchr = 0020000,
     s_ififo = 0010000,
 };
+constexpr inline types mode2type(mode_t mode)
+{
+    return types(mode & s_ifmt ?: s_ifreg);
+}
 
 enum dtypes
 {

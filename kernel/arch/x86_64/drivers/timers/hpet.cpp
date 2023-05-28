@@ -47,7 +47,7 @@ namespace timers::hpet
         if (this->_int_mode == INT_NONE)
             return;
 
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         auto &comp = this->_device->regs->comparators[this->_num];
         comp.cmd &= ~(1 << 2);
@@ -115,7 +115,7 @@ namespace timers::hpet
                 auto [handler, vector] = idt::allocate_handler();
                 handler.set([this, &timer](cpu::registers_t *)
                 {
-                    lockit(timer.lock);
+                    std::unique_lock guard(timer.lock);
 
                     if (timer._func == false)
                         return;
@@ -170,7 +170,7 @@ namespace timers::hpet
                             if (this->regs->ist & (1 << i))
                             {
                                 auto &timer = this->comps[i];
-                                lockit(timer.lock);
+                                std::unique_lock guard(timer.lock);
 
                                 if (timer._func == false)
                                     return;
@@ -257,7 +257,7 @@ namespace timers::hpet
 
     void cancel_timer(comparator *comp)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         comp->cancel_timer();
     }
 

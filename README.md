@@ -35,8 +35,10 @@ Follow these steps to build and run the os:
 * ``pushd build-sysroot``
 * ``xbstrap init ..``
 * ``xbstrap install base``
-* Mind the slashes after directory names:\
-``rsync -rl system-root/ ../sysroot/``
+* Create symlink named ``sysroot`` in ilobilix source that links to ``build-sysroot/system-root``:\
+``ln -s $BUILD_SYSROOT_DIR$/system-root $KERNEL_DIR$/sysroot``\
+If you created ``build-sysroot`` in ilobilix source root and are in that directory, you can do:\
+``ln -s build-sysroot/system-root ../sysroot``
 * ``popd``
 
 1. Set up the build system:\
@@ -90,6 +92,7 @@ https://discord.gg/fM5GK3RpS7
 * fmt: https://github.com/fmtlib/fmt
 * printf: https://github.com/eyalroz/printf
 * cwalk: https://github.com/likle/cwalk
+* hashmap: https://github.com/ilobilo/parallel-hashmap
 * smart_ptr: https://github.com/ilobilo/smart_ptr
 * veque: https://github.com/ilobilo/veque
 * terminal: https://github.com/ilobilo/limine-terminal

@@ -55,6 +55,11 @@ namespace std
         using size_type = size_t;
         using difference_type = ptrdiff_t;
 
+        constexpr allocator() noexcept = default;
+
+        template<typename U>
+        constexpr allocator(const allocator<U> &other) noexcept { }
+
         [[nodiscard]] constexpr Type *allocate(size_t size)
         {
             return static_cast<Type*>(::operator new(size * sizeof(Type)));

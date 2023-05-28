@@ -74,7 +74,7 @@ namespace timers::hpet
             if (this->_int_mode == INT_NONE)
                 return false;
 
-            lockit(this->lock);
+            std::unique_lock guard(this->lock);
 
             if (mode == PERIODIC && this->_periodic == false)
                 return false;
@@ -141,7 +141,7 @@ namespace timers::hpet
     template<typename Func, typename ...Args>
     static comparator *start_timer(uint64_t ns, modes mode, Func &&func, Args &&...args)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         for (auto &comp : comparators)
         {

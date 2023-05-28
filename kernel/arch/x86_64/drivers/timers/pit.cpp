@@ -3,7 +3,6 @@
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/lib/io.hpp>
 #include <lib/time.hpp>
-#include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <atomic>
 

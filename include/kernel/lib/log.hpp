@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include <lib/lock.hpp>
 #include <format>
+#include <mutex>
 
 namespace log
 {
@@ -12,7 +12,7 @@ namespace log
     constexpr inline auto error_prefix = "[\033[31mERROR\033[0m] ";
 
     inline bool to_term = true;
-    inline lock_t lock;
+    inline std::mutex lock;
 
     void prints(const char *str, size_t length);
     void prints(const char *str);
@@ -54,14 +54,14 @@ namespace log
     template<typename ...Args>
     inline auto print(std::string_view fmt, Args &&...args) -> size_t
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         return detail::print(fmt, args...);
     }
 
     template<typename ...Args>
     inline auto println(std::string_view fmt = "", Args &&...args) -> size_t
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         auto ret = detail::print(fmt, args...);
         printc('\n');
         return ret + 1;
@@ -71,14 +71,14 @@ namespace log
         template<typename ...Args>                                                             \
         inline auto name(std::string_view fmt = "", Args &&...args) -> size_t                  \
         {                                                                                      \
-            lockit(lock);                                                                      \
+            std::unique_lock guard(lock);                                                      \
             prints(name ## _prefix);                                                           \
             return detail::print(fmt, args...);                                                \
         }                                                                                      \
         template<typename ...Args>                                                             \
         inline auto name ## ln(std::string_view fmt = "", Args &&...args) -> size_t            \
         {                                                                                      \
-            lockit(lock);                                                                      \
+            std::unique_lock guard(lock);                                                      \
             prints(name ## _prefix);                                                           \
             auto ret = detail::print(fmt, args...);                                            \
             printc('\n');                                                                      \

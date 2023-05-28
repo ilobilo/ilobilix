@@ -20,11 +20,13 @@ namespace vmm
 
         kernel_pagemap = new pagemap();
 
-        auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
-        for (size_t i = 0; i < gib1 * 4; i += psize)
         {
-            assert(kernel_pagemap->map(i, i, rwx | flags));
-            assert(kernel_pagemap->map(tohh(i), i, rw | flags));
+            auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
+            for (size_t i = 0; i < gib1 * 4; i += psize)
+            {
+                assert(kernel_pagemap->map(i, i, rwx | flags));
+                assert(kernel_pagemap->map(tohh(i), i, rw | flags));
+            }
         }
 
         for (size_t i = 0; i < memmap_request.response->entry_count; i++)
@@ -40,7 +42,23 @@ namespace vmm
             if (mmap->type == LIMINE_MEMMAP_FRAMEBUFFER)
                 cache = framebuffer;
 
-            for (uint64_t t = base; t < top; t += kernel_pagemap->page_size)
+            auto size = top - base;
+            auto [psize, flags] = kernel_pagemap->required_size(size);
+
+            auto alsize = align_down(size, psize);
+            auto diff = size - alsize;
+
+            for (uint64_t t = base; t < (base + alsize); t += psize)
+            {
+                if (t < gib1 * 4)
+                    continue;
+
+                assert(kernel_pagemap->map(t, t, rwx | flags, cache));
+                assert(kernel_pagemap->map(tohh(t), t, rw | flags, cache));
+            }
+            base += alsize;
+
+            for (uint64_t t = base; t < (base + diff); t += kernel_pagemap->page_size)
             {
                 if (t < gib1 * 4)
                     continue;

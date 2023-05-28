@@ -7,6 +7,7 @@ namespace vfs
 
     int sys_openat(int dirfd, const char *pathname, int flags, mode_t mode);
     int sys_open(const char *pathname, int flags, mode_t mode);
+    int sys_creat(const char *pathname, mode_t mode);
 
     int sys_close(int fdnum);
 
@@ -41,6 +42,12 @@ namespace vfs
     int sys_fchmodat(int dirfd, const char *pathname, mode_t mode, int flags);
     int sys_fchmod(int fdnum, mode_t mode);
     int sys_chmod(const char *pathname, mode_t mode);
+
+    int sys_mknodat(int dirfd, const char *pathname, mode_t mode, dev_t dev);
+    int sys_mknod(const char *pathname, mode_t mode, dev_t dev);
+
+    int sys_mkdirat(int dirfd, const char *pathname, mode_t mode);
+    int sys_mkdir(const char *pathname, mode_t mode);
 
     [[clang::no_sanitize("alignment")]]
     ssize_t sys_getdents(unsigned int dirfd, dirent *dirp, unsigned int count);

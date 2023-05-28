@@ -27,7 +27,7 @@ namespace tmpfs
 
         resource(tmpfs *fs, mode_t mode, vfs::cdev_t *cdev) : vfs::resource(fs, cdev)
         {
-            if ((mode & s_ifmt) == s_ifreg)
+            if (mode2type(mode) == s_ifreg)
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
@@ -65,7 +65,7 @@ namespace tmpfs
     ssize_t cdev_t::read(vfs::resource *_res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         auto real_count = count;
         if (off_t(offset + count) >= res->stat.st_size)
@@ -78,7 +78,7 @@ namespace tmpfs
     ssize_t cdev_t::write(vfs::resource *_res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         if (offset + count > res->cap)
         {
@@ -110,7 +110,7 @@ namespace tmpfs
     bool cdev_t::trunc(vfs::resource *_res, vfs::fdhandle *fd, size_t length)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         if (length > res->cap)
         {
@@ -138,7 +138,7 @@ namespace tmpfs
     void *cdev_t::mmap(vfs::resource *_res, size_t fpage, int flags)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         void *ret = nullptr;
         if (flags & vmm::mmap::map_shared)
@@ -156,7 +156,7 @@ namespace tmpfs
     {
         if (auto size = this->get_value("size"); size.has_value())
         {
-            size_t count = std::stoll(size.value(), nullptr);
+            size_t count = std::stoll(size.value());
             switch (size.value().back())
             {
                 case 'g':
@@ -178,7 +178,7 @@ namespace tmpfs
         }
         else if (auto blocks = this->get_value("nr_blocks"); blocks.has_value())
         {
-            size_t count = std::stoll(blocks.value(), nullptr);
+            size_t count = std::stoll(blocks.value());
             switch (blocks.value().back())
             {
                 case 'g':
@@ -199,7 +199,7 @@ namespace tmpfs
 
         if (auto inodes = this->get_value("nr_inodes"); inodes.has_value())
         {
-            size_t count = std::stoll(inodes.value(), nullptr);
+            size_t count = std::stoll(inodes.value());
             switch (inodes.value().back())
             {
                 case 'g':
@@ -259,7 +259,7 @@ namespace tmpfs
 
     vfs::node_t *tmpfs::create(vfs::node_t *parent, std::string_view name, mode_t mode)
     {
-        if (this->inodes >= this->max_inodes || (types(mode & s_ifmt) == s_ifreg && this->current_size + default_size > this->max_size))
+        if (this->inodes >= this->max_inodes || (mode2type(mode) == s_ifreg && this->current_size + default_size > this->max_size))
         {
             errno = ENOSPC;
             return nullptr;

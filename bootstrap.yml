@@ -412,6 +412,23 @@ packages:
     build:
       - args: ['cp', '-r', '@SOURCE_ROOT@/base-files/.', '@THIS_COLLECT_DIR@']
 
+  - name: userspace
+    labels: [aarch64]
+    architecture: '@OPTION:arch@'
+    source:
+      subdir: 'sources'
+      version: '1.0'
+    tools_required:
+      - system-gcc
+    pkgs_required:
+      - base-files
+    configure: []
+    build:
+      - args: ['mkdir', '-p', '@THIS_COLLECT_DIR@/usr/sbin']
+      - args: ['mkdir', '-p', '@THIS_COLLECT_DIR@/root']
+      - args: ['@OPTION:arch-triple@-gcc', '@SOURCE_ROOT@/userspace/init.c', '-o', '@THIS_COLLECT_DIR@/usr/sbin/init']
+      - args: ['@OPTION:arch-triple@-gcc', '@SOURCE_ROOT@/userspace/fbexample.c', '-o', '@THIS_COLLECT_DIR@/root/fbexample']
+
   - name: linux-headers
     labels: [aarch64]
     architecture: '@OPTION:arch@'
@@ -435,7 +452,7 @@ packages:
           make ARCH="$LINUX_ARCH" headers_install
       - args: ['find', 'usr/include', '-type', 'f', '!', '-name', '*.h', '-delete']
       - args: ['mkdir', '-p', '@THIS_COLLECT_DIR@/usr']
-      # remove this file, as mlibc will override this file with one suited to mlibc
+      # remove this file, as mlibc will override it with one suited to mlibc
       - args: ['rm', 'usr/include/linux/libc-compat.h']
       - args: ['cp', '-Tr', 'usr/include', '@THIS_COLLECT_DIR@/usr/include']
 
@@ -789,7 +806,7 @@ packages:
       - mlibc
       - ncurses
       - readline
-      # - libiconv
+      - libiconv
     configure:
       - args:
         - '@THIS_SOURCE_DIR@/configure'
@@ -901,6 +918,7 @@ packages:
     pkgs_required:
       - base-files
       - mlibc
+      - userspace
       - file
       - bash
       - coreutils

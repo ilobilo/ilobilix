@@ -3,9 +3,10 @@
 #pragma once
 
 #include <lib/types.hpp>
-#include <lib/lock.hpp>
+#include <optional>
 #include <cstdint>
 #include <vector>
+#include <mutex>
 
 namespace vfs { struct resource; }
 namespace vmm
@@ -136,7 +137,7 @@ namespace vmm
         size_t llpage_size = 0;
         size_t lpage_size = 0;
         size_t page_size = 0;
-        lock_t lock;
+        std::mutex lock;
 
         inline size_t get_psize(size_t flags)
         {
@@ -169,13 +170,13 @@ namespace vmm
 
         inline bool unmap(uintptr_t vaddr, size_t flags = 0)
         {
-            lockit(this->lock);
+            std::unique_lock guard(this->lock);
             return this->unmap_nolock(vaddr, flags);
         }
 
         bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching)
         {
-            lockit(this->lock);
+            std::unique_lock guard(this->lock);
             return this->setflags_nolock(vaddr, flags, cache);
         }
 

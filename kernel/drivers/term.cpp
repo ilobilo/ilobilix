@@ -14,7 +14,7 @@ namespace term
     terminal_t *main_term = nullptr;
     size_t term_count = 0;
 
-    limine_terminal *early_term = nullptr;
+    limine_term *early_term = nullptr;
 
     void print(const char *str, terminal_t *term)
     {
@@ -76,7 +76,7 @@ namespace term
     void early_init()
     {
         if (terminal_request.response != nullptr)
-            early_term = terminal_request.response->terminals[0];
+            early_term = static_cast<limine_term*>(terminal_request.response->terminals[0]);
     }
 
     void init()

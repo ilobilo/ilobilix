@@ -140,10 +140,10 @@ namespace proc
 
     extern std::unordered_map<pid_t, process*> processes;
 
-    inline lock_t pid_lock;
+    inline std::mutex pid_lock;
     inline pid_t alloc_pid(process *proc)
     {
-        lockit(pid_lock);
+        std::unique_lock guard(pid_lock);
         for (pid_t i = 0; i < std::numeric_limits<pid_t>::max(); i++)
         {
             if (processes.contains(i) == false)
@@ -157,7 +157,7 @@ namespace proc
 
     inline bool free_pid(pid_t pid)
     {
-        lockit(pid_lock);
+        std::unique_lock guard(pid_lock);
         return processes.erase(pid);
     }
 

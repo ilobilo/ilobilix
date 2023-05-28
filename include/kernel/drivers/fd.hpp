@@ -9,7 +9,7 @@ namespace vfs
 {
     struct fdhandle
     {
-        lock_t lock;
+        std::mutex lock;
         node_t *node;
         resource *res;
 
@@ -28,7 +28,7 @@ namespace vfs
 
     struct fd
     {
-        lock_t lock;
+        std::mutex lock;
         fdhandle *handle;
         int flags;
 
@@ -42,7 +42,7 @@ namespace vfs
         bool internal_close_fd(int num);
 
         public:
-        lock_t lock;
+        std::mutex lock;
         std::unordered_map<size_t, fd*> fds;
 
         ~fd_table();

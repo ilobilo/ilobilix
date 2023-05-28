@@ -32,7 +32,7 @@ namespace devtmpfs
 
         resource(devtmpfs *fs, mode_t mode, vfs::cdev_t *cdev) : vfs::resource(fs, cdev)
         {
-            if ((mode & s_ifmt) == s_ifreg)
+            if (mode2type(mode) == s_ifreg)
             {
                 this->cap = default_size;
                 this->data = malloc<uint8_t*>(this->cap);
@@ -70,7 +70,7 @@ namespace devtmpfs
     ssize_t cdev_t::read(vfs::resource *_res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         auto real_count = count;
         if (off_t(offset + count) >= res->stat.st_size)
@@ -83,7 +83,7 @@ namespace devtmpfs
     ssize_t cdev_t::write(vfs::resource *_res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         if (offset + count > res->cap)
         {
@@ -108,7 +108,7 @@ namespace devtmpfs
     bool cdev_t::trunc(vfs::resource *_res, vfs::fdhandle *fd, size_t length)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         if (length > res->cap)
         {
@@ -129,7 +129,7 @@ namespace devtmpfs
     void *cdev_t::mmap(vfs::resource *_res, size_t fpage, int flags)
     {
         auto res = static_cast<resource*>(_res);
-        lockit(res->lock);
+        std::unique_lock guard(res->lock);
 
         void *ret = nullptr;
         if (flags & vmm::mmap::map_shared)
@@ -205,11 +205,11 @@ namespace devtmpfs
     }
 
     std::unordered_map<dev_t, vfs::cdev_t*> devs;
-    lock_t lock;
+    std::mutex lock;
 
     bool register_dev(vfs::cdev_t *cdev, dev_t dev)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (devs.contains(dev) == true)
             return false;
         devs[dev] = cdev;
@@ -218,7 +218,7 @@ namespace devtmpfs
 
     bool unregister_dev(dev_t dev)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (devs.contains(dev) == false)
             return false;
         devs.erase(dev);
@@ -234,7 +234,7 @@ namespace devtmpfs
 
     vfs::node_t *mknod(vfs::node_t *parent, path_view_t path, dev_t dev, mode_t mode)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         auto [nparent, node, basename] = vfs::path2node(parent, path);
         if (node != nullptr)
@@ -243,9 +243,13 @@ namespace devtmpfs
         if (nparent == nullptr)
             return nullptr;
 
-        lockit(nparent->lock);
         node = nparent->fs->mknod(nparent, basename, dev, mode);
-        return nparent->res->children[node->name] = node;
+        if (node != nullptr)
+        {
+            std::unique_lock guard(nparent->lock);
+            nparent->res->children[node->name] = node;
+        }
+        return node;
     }
 
     vfs::node_t *add_dev(path_view_t path, dev_t dev, mode_t mode)

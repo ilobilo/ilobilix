@@ -3,15 +3,15 @@
 #pragma once
 
 #include <frg/manual_box.hpp>
-#include <lib/lock.hpp>
 #include <lib/misc.hpp>
 #include <memory>
+#include <mutex>
 
 namespace heap
 {
     struct slab_t
     {
-        lock_t lock;
+        std::mutex lock;
         uintptr_t firstfree;
         size_t size;
 
@@ -28,7 +28,7 @@ namespace heap
     class slaballoc
     {
         private:
-        lock_t lock;
+        std::mutex lock;
 
         struct bigallocMeta
         {

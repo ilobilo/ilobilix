@@ -75,7 +75,7 @@ namespace proc
 
         if ((args.flags & clone_files) == clone_files)
         {
-            lockit(old_proc->fd_table->lock);
+            std::unique_lock guard(old_proc->fd_table->lock);
             new_proc->fd_table = old_proc->fd_table;
         }
         else

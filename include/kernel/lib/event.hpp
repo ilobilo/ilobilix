@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <lib/lock.hpp>
 #include <deque>
 #include <span>
 
@@ -56,7 +55,7 @@ namespace event
 
     struct event_t
     {
-        lock_t lock;
+        std::mutex lock;
         size_t pending = 0;
         std::deque<listener> listeners;
 

@@ -1,0 +1,4 @@
+[wrap-git]
+url = https://github.com/ilobilo/parallel-hashmap
+revision = master
+depth = 1

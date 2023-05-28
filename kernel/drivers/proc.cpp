@@ -2,6 +2,7 @@
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <mm/pmm.hpp>
 #include <deque>
@@ -11,7 +12,7 @@
 namespace proc
 {
     std::unordered_map<pid_t, process*> processes;
-    static lock_t lock;
+    static std::mutex lock;
 
     void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg);
     void thread_delete(thread *thread);
@@ -29,7 +30,7 @@ namespace proc
 
     thread *next_thread()
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         if (active->size() == 0)
             std::swap(active, expired);
@@ -50,7 +51,7 @@ namespace proc
 
     void enqueue(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (thread->in_queue == true)
             return;
 
@@ -61,7 +62,7 @@ namespace proc
 
     void dequeue(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         thread->status = status::dequeued;
     }
 
@@ -72,7 +73,7 @@ namespace proc
 
     void unblock(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (thread->status != status::blocked)
             return;
 
@@ -121,17 +122,21 @@ namespace proc
 
     void pexit(process *proc, int code)
     {
+        if (proc->pid == 1)
+            PANIC("PID 1 exit()");
+
         arch::int_toggle(false);
 
         proc->fd_table.reset();
 
-        // if (proc->tty != nullptr && proc->tty->proc == proc)
-        //     proc->tty->proc = nullptr;
-
         for (const auto &child : proc->children)
         {
-            child->parent = proc->parent;
-            proc->parent->children.push_back(child);
+            // child->parent = proc->parent;
+            // proc->parent->children.push_back(child);
+
+            // pid 1 (init) inherits the children
+            child->parent = processes[1];
+            processes[1]->children.push_back(child);
         }
         proc->children.clear();
 
@@ -169,7 +174,6 @@ namespace proc
         {
             vmm::kernel_pagemap->load();
             yield();
-            arch::halt();
             std::unreachable();
         }
     }
@@ -265,7 +269,7 @@ namespace proc
 
     static void enqueue_notready(thread *thread)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         thread->in_queue = true;
         if (thread->status == status::running)
             thread->status = status::ready;

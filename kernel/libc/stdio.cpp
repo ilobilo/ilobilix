@@ -7,7 +7,7 @@
 
 extern "C"
 {
-    static lock_t lock;
+    static std::mutex lock;
 
     // Stubs for fmtlib
     FILE *stdout = (FILE*)&stdout;
@@ -29,7 +29,7 @@ extern "C"
 
     int fprintf(FILE *stream, const char *format, ...)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         va_list arg;
         va_start(arg, format);
@@ -45,7 +45,7 @@ extern "C"
 
     size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         if (stream == stderr)
             log::prints(log::error_prefix);
@@ -59,7 +59,7 @@ extern "C"
 
     int vprintf(const char *format, va_list arg)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         return vprintf_(format, arg);
     }
 

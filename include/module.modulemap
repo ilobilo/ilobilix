@@ -33,6 +33,7 @@ module std [system] {
     header "std/format"
     header "std/functional"
     header "std/memory"
+    header "std/mutex"
     header "std/random"
     header "std/smart_ptr"
     header "std/string"

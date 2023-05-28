@@ -3,7 +3,6 @@
 #include <drivers/elf.hpp>
 #include <init/kernel.hpp>
 #include <lib/misc.hpp>
-#include <lib/lock.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
@@ -118,7 +117,7 @@ namespace elf
         std::unordered_map<std::string_view, driver_t*> drivers;
         std::vector<module_t> modules;
         static uintptr_t base_addr = 0;
-        static lock_t lock;
+        static std::mutex lock;
 
         static std::vector<driver_t*> get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
         {
@@ -149,7 +148,7 @@ namespace elf
                                 log::infoln("  - '{}'", driver->deps[d]);
                         }
 
-                        drivers[driver->name] = driver;
+                        drivers[name] = driver;
                         ret.push_back(driver);
 
                         next:
@@ -204,7 +203,7 @@ namespace elf
                 return std::nullopt;
             }
 
-            lockit(lock);
+            std::unique_lock guard(lock);
 
             auto realsize = size;
             size = align_up(size, pmm::page_size);

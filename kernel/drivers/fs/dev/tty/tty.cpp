@@ -46,7 +46,7 @@ namespace tty
         if (this->tty->termios.c_lflag & icanon)
         {
             this->tty->canon_event.await();
-            lockit(this->tty->input_lock);
+            std::unique_lock guard(this->tty->input_lock);
 
             auto line = this->tty->canon_lines.pop_front_element();
             return line.copy(reinterpret_cast<char*>(buffer), count);
@@ -80,7 +80,7 @@ namespace tty
                 await();
         }
 
-        lockit(this->tty->input_lock);
+        std::unique_lock guard(this->tty->input_lock);
 
         size_t ret = 0;
         while (this->tty->raw_queue.empty() == false && ret < count)
@@ -91,14 +91,16 @@ namespace tty
 
     ssize_t cdev_t::write(vfs::resource *res, vfs::fdhandle *fd, const void *buffer, off_t offset, size_t count)
     {
-        auto str = std::string_view(static_cast<const char *>(buffer), count);
-        if (str.starts_with("mlibc") || str == "\n")
+        // TMP
+        auto cbuf = static_cast<const char *>(buffer);
+        auto str = std::string_view(cbuf, std::min(strlen(cbuf), count));
+        if (str.starts_with("mlibc: sys_") && str.ends_with("() is a stub\n"))
         {
-            // fmt::print("{}", str);
+            fmt::print("{}", str);
             return count;
         }
 
-        lockit(this->tty->output_lock);
+        std::unique_lock guard(this->tty->output_lock);
         for (const auto ch : std::string_view(static_cast<const char *>(buffer), count))
             this->tty->print(ch);
 
@@ -111,8 +113,8 @@ namespace tty
         {
             case tcgets:
             {
-                lockit(this->tty->input_lock);
-                lockit(this->tty->output_lock);
+                std::unique_lock iguard(this->tty->input_lock);
+                std::unique_lock oguard(this->tty->output_lock);
                 *reinterpret_cast<termios*>(argp) = this->tty->termios;
                 return 0;
             }
@@ -120,8 +122,8 @@ namespace tty
             case tcsetsw:
             case tcsetsf:
             {
-                lockit(this->tty->input_lock);
-                lockit(this->tty->output_lock);
+                std::unique_lock iguard(this->tty->input_lock);
+                std::unique_lock oguard(this->tty->output_lock);
                 this->tty->termios = *reinterpret_cast<termios*>(argp);
                 return 0;
             }

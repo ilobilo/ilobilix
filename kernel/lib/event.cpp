@@ -2,12 +2,13 @@
 
 #include <drivers/proc.hpp>
 #include <lib/event.hpp>
+#include <lib/lock.hpp>
 
 // namespace simple
 // {
 //     void event::trigger()
 //     {
-//         lockit(this->lock);
+//         std::unique_lock guard(this->lock);
 
 //         while (this->waiters.empty() == false)
 //         {
@@ -18,7 +19,7 @@
 
 //     void event::await()
 //     {
-//         lockit(this->lock);
+//         std::unique_lock guard(this->lock);
 
 //         auto thread = this_thread();
 //         this->waiters.push_back(thread);

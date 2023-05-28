@@ -32,7 +32,7 @@ namespace heap
 
     void *slab_t::alloc()
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
         if (this->firstfree == 0)
             this->init(this->size);
 
@@ -46,7 +46,7 @@ namespace heap
     {
         if (ptr == nullptr)
             return;
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         auto newhead = static_cast<uint64_t*>(ptr);
         newhead[0] = this->firstfree;

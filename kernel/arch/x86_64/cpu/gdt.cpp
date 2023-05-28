@@ -2,7 +2,6 @@
 
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <init/kernel.hpp>
-#include <lib/lock.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
@@ -10,11 +9,11 @@
 namespace gdt
 {
     TSS *tss = nullptr;
-    static lock_t lock;
+    static std::mutex lock;
 
     void init(size_t num)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         if (tss == nullptr)
         {
             log::infoln("GDT: Initialising...");

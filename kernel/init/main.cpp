@@ -80,7 +80,7 @@ void kernel_thread()
             assert(proc->open(at_fdcwd, "/dev/tty0", o_wronly, 0, 2) == 2);
 
             std::array argv { prog, std::string_view(args)... };
-            std::array envp { "TERM=vt100"sv };
+            std::array envp { "TERM=linux"sv };
 
             auto [auxv, ld_path] = ret.value();
             if (ld_path.empty() == false)
@@ -98,12 +98,9 @@ void kernel_thread()
             else proc::enqueue(new proc::thread(proc, auxv.at_entry, 0, argv, envp, auxv));
         }
         else assert(!"Could not load elf file");
-
-        while (proc::processes.size() != 1)
-            proc::yield();
     };
 
-    run_prog("/init");
+    run_prog("/usr/sbin/init");
 
     proc::dequeue();
     arch::halt();

@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <lib/path.hpp>
 #include <lib/time.hpp>
-#include <lib/lock.hpp>
 #include <cerrno>
 #include <vector>
 #include <memory>
@@ -45,7 +44,7 @@ namespace vfs
 
         std::atomic<size_t> refcount;
         filesystem *fs;
-        lock_t lock;
+        std::mutex lock;
         stat_t stat;
 
         cdev_t *cdev;
@@ -88,7 +87,7 @@ namespace vfs
         node_t *internal_reduce(bool symlinks, bool automount, size_t cnt);
 
         public:
-        lock_t lock;
+        std::mutex lock;
 
         filesystem *fs;
         resource *res;
@@ -125,7 +124,7 @@ namespace vfs
 
         std::atomic<ino_t> inodes = 0;
         dev_t dev_id = 0;
-        lock_t lock;
+        std::mutex lock;
 
         std::string name;
 

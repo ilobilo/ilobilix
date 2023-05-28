@@ -141,7 +141,7 @@ namespace vmm
 
     uintptr_t pagemap::virt2phys(uintptr_t vaddr, size_t flags)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         auto psize = this->get_psize(flags);
         ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
@@ -153,7 +153,7 @@ namespace vmm
 
     bool pagemap::map(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         ptentry *pml_entry = this->virt2pte(vaddr, true, this->get_psize(flags));
         if (pml_entry == nullptr)

@@ -85,6 +85,7 @@ namespace proc
             {
                 if (parent->res->stat.has_access(this->euid, this->egid, stat_t::write | stat_t::exec) == false)
                     return_err(-1, EACCES);
+
                 node = vfs::create(parent, basename, (mode & ~this->umask.get()) | s_ifreg);
                 node->res->stat.st_uid = this->euid;
                 if (parent->res->stat.st_mode & s_isgid)
@@ -137,7 +138,7 @@ namespace vfs
 {
     bool fdhandle::generate_dirents()
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
         if (this->node == nullptr || this->node->type() != s_ifdir)
             return_err(false, ENOTDIR);
 
@@ -206,13 +207,13 @@ namespace vfs
 
     bool fd_table::close_fd(int num)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
         return this->internal_close_fd(num);
     }
 
     int fd_table::fd2num(fd *fd, int old_num, bool specific)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         if (old_num < 0)
             return_err(-1, EBADF);
@@ -246,7 +247,7 @@ namespace vfs
 
     fd *fd_table::num2fd(int num)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         if (num < 0)
             return_err(nullptr, EBADF);

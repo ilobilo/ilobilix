@@ -10,7 +10,7 @@ namespace vfs
 {
     static std::unordered_map<std::string_view, filesystem*> filesystems;
     static node_t *root_node = new node_t("/");
-    static lock_t lock;
+    static std::mutex lock;
 
     node_t *get_root()
     {
@@ -100,8 +100,8 @@ namespace vfs
 
     bool register_fs(filesystem *fs)
     {
-        static lock_t reg_lock;
-        lockit(reg_lock);
+        static std::mutex reg_lock;
+        std::unique_lock guard(reg_lock);
 
         if (filesystems.contains(fs->name))
             return false;
@@ -211,7 +211,7 @@ namespace vfs
     // TODO: flags
     bool mount(node_t *parent, path_view_t source, path_view_t target, std::string_view fs_name, int flags, void *data)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         auto fs = find_fs(fs_name);
         if (fs == nullptr)
@@ -268,14 +268,11 @@ namespace vfs
 
     node_t *create(node_t *parent, path_view_t path, mode_t mode)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         auto [nparent, node, basename] = path2node(parent, path);
         if (node != nullptr)
-        {
-            errno = EEXIST;
-            return nullptr;
-        }
+            return_err(nullptr, EEXIST);
 
         if (nparent == nullptr)
             return nullptr;
@@ -283,36 +280,29 @@ namespace vfs
         node = nparent->fs->create(nparent, basename, mode);
         if (node != nullptr)
         {
-            lockit(nparent->lock);
+            std::unique_lock guard(nparent->lock);
             nparent->res->children[node->name] = node;
         }
-
         return node;
     }
 
     node_t *symlink(node_t *parent, path_view_t path, std::string_view target)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         auto [nparent, node, basename] = path2node(parent, path);
-
         if (node != nullptr)
-        {
-            errno = EEXIST;
-            return nullptr;
-        }
+            return_err(nullptr, EEXIST);
 
         if (nparent == nullptr)
             return nullptr;
 
         node = nparent->fs->symlink(nparent, basename, target);
-
         if (node != nullptr)
         {
-            lockit(nparent->lock);
+            std::unique_lock guard(nparent->lock);
             nparent->res->children[node->name] = node;
         }
-
         return node;
     }
 
@@ -344,7 +334,7 @@ namespace vfs
         new_node = new_tparent->fs->link(new_tparent, new_basename, old_node);
         if (new_node != nullptr)
         {
-            lockit(new_tparent->lock);
+            std::unique_lock guard(new_tparent->lock);
 
             // TODO: ???
             new_node->res->ref();
@@ -358,7 +348,7 @@ namespace vfs
 
     bool unlink(node_t *parent, path_view_t path, int flags)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         auto [nparent, node, basename] = path2node(parent, path, false);
 
@@ -386,7 +376,7 @@ namespace vfs
         bool ret = nparent->fs->unlink(node);
         if (ret == true)
         {
-            lockit(node->lock);
+            std::unique_lock guard(node->lock);
 
             // TODO: ???
             node->res->unref();
@@ -401,7 +391,7 @@ namespace vfs
 
     std::optional<stat_t> stat(node_t *parent, path_view_t path, int flags)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
         bool automount = not (flags & at_no_automount);
         auto [nparent, node, basename] = path2node(parent, path, automount);

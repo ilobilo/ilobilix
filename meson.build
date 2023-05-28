@@ -123,29 +123,41 @@ add_global_arguments([
     '-Wno-non-virtual-dtor',
     '-Wno-frame-address',
     '-DMAGIC_ENUM_NO_STREAMS=1',
-    '-D__cplusplus=202101L',
-    '-D__cpp_concepts=202002L',
-    '-D__cpp_lib_format=202207L',
-    '-fmodules',
-    '-fmodule-map-file=' + meson.source_root() / 'include/module.modulemap'
+    # '-D__cplusplus=202101L',
+    # '-D__cpp_concepts=202002L',
+    # '-D__cpp_lib_format=202207L',
+    # '-fmodules',
+    # '-fmodule-map-file=' + meson.source_root() / 'include/module.modulemap'
 ], language : 'cpp')
+
+cmake = import('cmake')
+
+phmap_opts = cmake.subproject_options()
+phmap_opts.add_cmake_defines({
+    'PHMAP_BUILD_EXAMPLES' : false,
+    'PHMAP_BUILD_TESTS' : false,
+    'PHMAP_INSTALL' : false
+})
 
 limine = subproject('limine')
 deps = [
-    import('cmake').subproject('frozen').dependency('frozen'),
+    cmake.subproject('parallel_hashmap', options : phmap_opts).dependency('phmap'),
+    cmake.subproject('frozen').dependency('frozen'),
+
     dependency('compiler_rt_builtins', default_options : 'custom_includes=' + meson.source_root() / 'include/libc'),
     dependency('demangler', default_options : 'only_itanium=true'),
     dependency('frigg', default_options : 'frigg_no_install=true'),
+    dependency('magic_enum', default_options : 'test=false'),
+
     dependency('libstdcxx_headers'),
     dependency('limine_terminal'),
-    dependency('limine'),
-    dependency('lai'),
-    dependency('fmt'),
-    dependency('printf'),
-    dependency('magic_enum'),
     dependency('smart_ptr'),
+    dependency('limine'),
+    dependency('printf'),
+    dependency('cwalk'),
     dependency('veque'),
-    dependency('cwalk')
+    dependency('lai'),
+    dependency('fmt')
 ]
 
 inc_deps = [ ]

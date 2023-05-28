@@ -66,7 +66,7 @@ namespace vmm
 
     std::optional<std::tuple<std::shared_ptr<mmap::local>, size_t, size_t>> pagemap::addr2range(uintptr_t addr)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         for (const auto &local : this->ranges)
         {
@@ -197,7 +197,7 @@ namespace vmm
             auto end = i;
             auto len = end - begin;
 
-            lockit(this->lock);
+            std::unique_lock guard(this->lock);
 
             if (begin > local->base && end < local->base + local->length)
             {

@@ -48,13 +48,7 @@ volatile limine_framebuffer_request framebuffer_request
     .response = nullptr
 };
 
-volatile limine_terminal_request terminal_request
-{
-    .id = LIMINE_TERMINAL_REQUEST,
-    .revision = 0,
-    .response = nullptr,
-    .callback = nullptr
-};
+volatile limine_term_request terminal_request { };
 
 volatile limine_smp_request smp_request
 {

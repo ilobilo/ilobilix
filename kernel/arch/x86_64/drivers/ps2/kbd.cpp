@@ -2,6 +2,7 @@
 
 #include <arch/x86_64/cpu/idt.hpp>
 #include <drivers/ps2/ps2.hpp>
+#include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
 

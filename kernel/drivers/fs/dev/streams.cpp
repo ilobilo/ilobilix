@@ -52,13 +52,13 @@ namespace streams
     {
         std::uniform_int_distribution<std::mt19937_64::result_type> dist;
         std::mt19937_64 rng;
-        smart_lock lock;
+        std::mutex lock;
 
         random_cdev(uint64_t seed) : dist(0, 0xFF), rng(seed) { }
 
         ssize_t read(vfs::resource *res, vfs::fdhandle *fd, void *buffer, off_t offset, size_t count)
         {
-            lockit(this->lock);
+            std::unique_lock guard(this->lock);
 
             auto u8buffer = static_cast<uint8_t*>(buffer);
             for (size_t i = 0; i < count; i++)

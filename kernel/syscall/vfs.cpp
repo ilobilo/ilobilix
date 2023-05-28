@@ -1,5 +1,6 @@
-#include <syscall/vfs.hpp>
+#include <drivers/fs/devtmpfs.hpp>
 #include <drivers/proc.hpp>
+#include <syscall/vfs.hpp>
 #include <lib/log.hpp>
 #include <cerrno>
 
@@ -90,6 +91,11 @@ namespace vfs
     int sys_open(const char *pathname, int flags, mode_t mode)
     {
         return sys_openat(at_fdcwd, pathname, flags, mode);
+    }
+
+    int sys_creat(const char *pathname, mode_t mode)
+    {
+        return sys_open(pathname, o_creat | o_wronly | o_trunc, mode);
     }
 
     int sys_close(int fdnum)
@@ -222,25 +228,25 @@ namespace vfs
                 return proc->dupfd(fdnum, arg, 0, false, true);
             case f_getfd:
             {
-                lockit(fd->lock);
+                std::unique_lock guard(fd->lock);
                 return fd->flags;
             }
             case f_setfd:
             {
-                lockit(fd->lock);
+                std::unique_lock guard(fd->lock);
                 fd->flags = arg;
                 return 0;
             }
             case f_getfl:
             {
-                lockit(fd->handle->lock);
+                std::unique_lock guard(fd->handle->lock);
                 return fd->handle->flags;
             }
             case f_setfl:
             {
                 if (arg & o_accmode)
                     return_err(-1, EINVAL);
-                lockit(fd->handle->lock);
+                std::unique_lock guard(fd->handle->lock);
                 fd->handle->flags = arg;
                 return 0;
             }
@@ -429,6 +435,78 @@ namespace vfs
     int sys_chmod(const char *pathname, mode_t mode)
     {
         return sys_fchmodat(at_fdcwd, pathname, mode, 0);
+    }
+
+    int sys_mknodat(int dirfd, const char *pathname, mode_t mode, dev_t dev)
+    {
+        auto type = mode2type(mode);
+        switch (type)
+        {
+            case s_ififo:
+            case s_ifsock:
+                log::errorln("mknod: s_ififo and s_ifsock are not yet supported!");
+                return_err(-1, EINVAL);
+            case s_ifdir:
+            case s_iflnk:
+                return_err(-1, EINVAL);
+            default:
+                break;
+        }
+
+        auto proc = this_thread()->parent;
+
+        auto parent = get_parent_dir(dirfd, pathname);
+        if (parent == nullptr)
+            return -1;
+
+        auto node = (type == s_ifreg) ?
+            devtmpfs::mknod(parent, pathname, dev, (mode & ~proc->umask.get()) | type) :
+            create(parent, pathname, mode);
+
+        if (node != nullptr)
+        {
+            node->res->stat.st_uid = proc->euid;
+            if (parent->res->stat.st_mode & s_isgid)
+                node->res->stat.st_gid = parent->res->stat.st_gid;
+            else
+                node->res->stat.st_gid = proc->egid;
+            return 0;
+        }
+        return -1;
+    }
+
+    int sys_mknod(const char *pathname, mode_t mode, dev_t dev)
+    {
+        return sys_mknodat(at_fdcwd, pathname, mode, dev);
+    }
+
+    int sys_mkdirat(int dirfd, const char *pathname, mode_t mode)
+    {
+        auto proc = this_thread()->parent;
+        mode = (mode & ~proc->umask.get() & 0777);
+
+        auto parent = get_parent_dir(dirfd, pathname);
+        if (parent == nullptr)
+            return -1;
+
+        auto node = create(parent, pathname, mode | s_ifdir);
+        if (node != nullptr)
+        {
+            node->res->stat.st_uid = proc->euid;
+            if (parent->res->stat.st_mode & s_isgid)
+            {
+                node->res->stat.st_gid = parent->res->stat.st_gid;
+                node->res->stat.st_mode |= s_isgid;
+            }
+            else node->res->stat.st_gid = proc->egid;
+            return 0;
+        }
+        return -1;
+    }
+
+    int sys_mkdir(const char *pathname, mode_t mode)
+    {
+        return sys_mkdirat(at_fdcwd, pathname, mode);
     }
 
     [[clang::no_sanitize("alignment")]]

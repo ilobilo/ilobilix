@@ -60,9 +60,9 @@ namespace smp
 
         auto cpu_entry = [](limine_smp_info *cpu)
         {
-            static lock_t lock;
+            static std::mutex lock;
             {
-                lockit(lock);
+                std::unique_lock guard(lock);
                 cpu_init(cpu);
 
                 log::infoln("SMP: CPU {} is up", this_cpu()->id);

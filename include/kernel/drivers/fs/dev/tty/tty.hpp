@@ -18,8 +18,8 @@ namespace tty
         public:
         termios termios;
 
-        lock_t input_lock;
-        lock_t output_lock;
+        std::mutex input_lock;
+        std::mutex output_lock;
 
         std::deque<char> raw_queue;
         event_t raw_event;
@@ -62,12 +62,12 @@ namespace tty
 
         void add_to_buf(char c)
         {
-            lockit(this->input_lock);
+            std::unique_lock guard(this->input_lock);
             this->internal_add_to_buf(c);
         }
         void add_to_buf(auto str)
         {
-            lockit(this->input_lock);
+            std::unique_lock guard(this->input_lock);
             for (const auto c : str)
                 this->internal_add_to_buf(c);
         }

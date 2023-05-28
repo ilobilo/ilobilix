@@ -8,6 +8,7 @@
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
 #include <init/kernel.hpp>
+#include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <lib/trace.hpp>
 #include <lib/log.hpp>
