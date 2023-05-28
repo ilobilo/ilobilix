@@ -1,9 +1,9 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <init/kernel.hpp>
 #include <lib/bitmap.hpp>
+#include <lib/alloc.hpp>
 #include <lib/panic.hpp>
-#include <lib/lock.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <mm/pmm.hpp>
@@ -15,7 +15,7 @@ namespace pmm
     static uintptr_t mem_usable_top = 0;
     static size_t lastindex = 0;
     static bitmap_t bitmap;
-    static lock_t lock;
+    static std::mutex lock;
 
     size_t usablemem = 0;
     size_t totalmem = 0;
@@ -48,7 +48,7 @@ namespace pmm
         if (count == 0)
             return nullptr;
 
-        lockit(lock);
+        std::unique_lock guard(lock);
         auto inner_alloc = [count](size_t limit) -> void*
         {
             size_t p = 0;
@@ -76,7 +76,7 @@ namespace pmm
             lastindex = 0;
             ret = inner_alloc(i);
             if (ret == nullptr)
-                PANIC("Out of memory!");
+                PANIC("PMM: Out of memory!");
         }
         memset(tohh(ret), 0, count * page_size);
 
@@ -89,14 +89,13 @@ namespace pmm
         if (ptr == nullptr)
             return;
 
-        lockit(lock);
+        std::unique_lock guard(lock);
         size_t page = reinterpret_cast<size_t>(ptr) / page_size;
         for (size_t i = page; i < page + count; i++)
             bitmap[i] = false;
 
-        // TODO: Should we remove this?
+        // TODO: Does this help?
         lastindex = std::min(lastindex, page);
-
         usedmem -= count * page_size;
     }
 
@@ -110,20 +109,23 @@ namespace pmm
         for (size_t i = 0; i < memmap_count; i++)
         {
             uintptr_t top = memmaps[i]->base + memmaps[i]->length;
-
             mem_top = std::max(mem_top, top);
 
             switch (memmaps[i]->type)
             {
                 case LIMINE_MEMMAP_USABLE:
                     usablemem += memmaps[i]->length;
-                    mem_usable_top = std::max(mem_usable_top, top);
-                    [[fallthrough]];
-                case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-                case LIMINE_MEMMAP_KERNEL_AND_MODULES:
-                    totalmem += memmaps[i]->length;
                     break;
+                case LIMINE_MEMMAP_KERNEL_AND_MODULES:
+                case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: // TODO: <- are we going to free those structs?
+                    usedmem += memmaps[i]->length;
+                    break;
+                default:
+                    continue;
             }
+
+            totalmem += memmaps[i]->length;
+            mem_usable_top = std::max(mem_usable_top, top);
         }
 
         size_t bitmapSize = align_up((mem_usable_top / page_size) / 8, page_size);
@@ -156,6 +158,7 @@ namespace pmm
                 bitmap[(memmaps[i]->base + t) / page_size] = false;
         }
 
+        // safe address + hhdm where we can map stuff
         mem_top = align_up(mem_top, 0x40000000);
         heap::allocator.initialize();
     }

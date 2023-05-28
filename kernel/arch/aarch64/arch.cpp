@@ -1,7 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
+#include <utility>
 
 namespace arch
 {
@@ -16,7 +17,7 @@ namespace arch
         {
             while (true)
                 asm volatile ("msr daifclr, #0b1111; wfi");
-            __builtin_unreachable();
+            std::unreachable();
         }
     }
 
@@ -74,5 +75,9 @@ namespace arch
         smp::bsp_init();
 
         smp::init();
+    }
+
+    void late_init()
+    {
     }
 } // namespace arch

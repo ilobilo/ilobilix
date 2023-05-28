@@ -1,0 +1,1880 @@
+From f2ff8e72b0f6902e6690a12ca108ae08db8e8f84 Mon Sep 17 00:00:00 2001
+From: ilobilo <ilia.chachanidze35@gmail.com>
+Date: Fri, 10 Mar 2023 23:17:43 +0400
+Subject: Add wip ilobilix sysdeps
+
+---
+ meson.build                                   |   4 +
+ sysdeps/ilobilix/aarch64/crt-src/crt0.S       |   9 +
+ sysdeps/ilobilix/aarch64/crt-src/crti.S       |  13 +
+ sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
+ sysdeps/ilobilix/aarch64/thread_entry.S       |  27 +
+ sysdeps/ilobilix/generic/entry.cpp            |  37 +
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 829 ++++++++++++++++++
+ sysdeps/ilobilix/generic/thread.cpp           |  62 ++
+ sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
+ sysdeps/ilobilix/include/abi-bits/blkcnt_t.h  |   1 +
+ sysdeps/ilobilix/include/abi-bits/blksize_t.h |   1 +
+ sysdeps/ilobilix/include/abi-bits/clockid_t.h |   1 +
+ sysdeps/ilobilix/include/abi-bits/dev_t.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/epoll.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/errno.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/fcntl.h     |   1 +
+ .../ilobilix/include/abi-bits/fsblkcnt_t.h    |   1 +
+ .../ilobilix/include/abi-bits/fsfilcnt_t.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/gid_t.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/in.h        |   1 +
+ sysdeps/ilobilix/include/abi-bits/ino_t.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/inotify.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/ioctls.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/limits.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/mode_t.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/mqueue.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/nlink_t.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/packet.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/pid_t.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/poll.h      |   1 +
+ sysdeps/ilobilix/include/abi-bits/ptrace.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/reboot.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/resource.h  |   1 +
+ .../ilobilix/include/abi-bits/seek-whence.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/shm.h       |   1 +
+ sysdeps/ilobilix/include/abi-bits/signal.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/socket.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/socklen_t.h |   1 +
+ sysdeps/ilobilix/include/abi-bits/stat.h      |   1 +
+ sysdeps/ilobilix/include/abi-bits/statfs.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/statvfs.h   |   1 +
+ .../ilobilix/include/abi-bits/suseconds_t.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/termios.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/time.h      |   1 +
+ sysdeps/ilobilix/include/abi-bits/uid_t.h     |   1 +
+ sysdeps/ilobilix/include/abi-bits/utsname.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/vm-flags.h  |   1 +
+ sysdeps/ilobilix/include/abi-bits/vt.h        |   1 +
+ sysdeps/ilobilix/include/abi-bits/wait.h      |   1 +
+ sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
+ sysdeps/ilobilix/include/ilobilix/syscall.h   | 167 ++++
+ .../ilobilix/include/mlibc/thread-entry.hpp   |  12 +
+ sysdeps/ilobilix/meson.build                  |  95 ++
+ sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
+ sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
+ sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
+ sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
+ 58 files changed, 1358 insertions(+)
+ create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
+ create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
+ create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
+ create mode 100644 sysdeps/ilobilix/aarch64/thread_entry.S
+ create mode 100644 sysdeps/ilobilix/generic/entry.cpp
+ create mode 100644 sysdeps/ilobilix/generic/sysdeps.cpp
+ create mode 100644 sysdeps/ilobilix/generic/thread.cpp
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/access.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/auxv.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/blksize_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/clockid_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/dev_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/epoll.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/errno.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/fcntl.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/gid_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/in.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/ino_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/inotify.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/ioctls.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/limits.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/mode_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/mqueue.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/nlink_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/packet.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/pid_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/poll.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/ptrace.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/reboot.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/resource.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/seek-whence.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/shm.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/signal.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/socket.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/socklen_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/stat.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/statfs.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/statvfs.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/suseconds_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/termios.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/time.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/uid_t.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/utsname.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/vm-flags.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/vt.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/wait.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/xattr.h
+ create mode 100644 sysdeps/ilobilix/include/ilobilix/syscall.h
+ create mode 100644 sysdeps/ilobilix/include/mlibc/thread-entry.hpp
+ create mode 100644 sysdeps/ilobilix/meson.build
+ create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crt0.S
+ create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crti.S
+ create mode 100644 sysdeps/ilobilix/x86_64/crt-src/crtn.S
+ create mode 100644 sysdeps/ilobilix/x86_64/thread_entry.S
+
+diff --git a/meson.build b/meson.build
+index 2fd3db9..bf36fe1 100644
+--- a/meson.build
++++ b/meson.build
+@@ -122,6 +122,10 @@ if host_machine.system() == 'linux'
+ 	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
+ 	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
+ 	subdir('sysdeps/linux')
++elif host_machine.system() == 'ilobilix'
++	rtdl_include_dirs += include_directories('sysdeps/ilobilix/include')
++	libc_include_dirs += include_directories('sysdeps/ilobilix/include')
++	subdir('sysdeps/ilobilix')
+ elif host_machine.system() == 'aero'
+ 	rtdl_include_dirs += include_directories('sysdeps/aero/include')
+ 	libc_include_dirs += include_directories('sysdeps/aero/include')
+diff --git a/sysdeps/ilobilix/aarch64/crt-src/crt0.S b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
+new file mode 100644
+index 0000000..91170a7
+--- /dev/null
++++ b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
+@@ -0,0 +1,9 @@
++.section .text
++.global _start
++_start:
++	adrp x0, main
++	add x0, x0, :lo12:main
++	bl __mlibc_entry
++
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/aarch64/crt-src/crti.S b/sysdeps/ilobilix/aarch64/crt-src/crti.S
+new file mode 100644
+index 0000000..0f5ca0f
+--- /dev/null
++++ b/sysdeps/ilobilix/aarch64/crt-src/crti.S
+@@ -0,0 +1,13 @@
++.section .init
++.global _init
++_init:
++	stp x29, x30, [sp, -16]!
++	mov x29, sp
++
++.section .fini
++.global _fini
++_fini:
++	stp x29, x30, [sp, -16]!
++	mov x29, sp
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/aarch64/crt-src/crtn.S b/sysdeps/ilobilix/aarch64/crt-src/crtn.S
+new file mode 100644
+index 0000000..cd95321
+--- /dev/null
++++ b/sysdeps/ilobilix/aarch64/crt-src/crtn.S
+@@ -0,0 +1,9 @@
++.section .init
++	ldp x29, x30, [sp], #16
++	ret
++
++.section .fini
++	ldp x29, x30, [sp], #16
++	ret
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/aarch64/thread_entry.S b/sysdeps/ilobilix/aarch64/thread_entry.S
+new file mode 100644
+index 0000000..a47a048
+--- /dev/null
++++ b/sysdeps/ilobilix/aarch64/thread_entry.S
+@@ -0,0 +1,27 @@
++.section .text
++.global __mlibc_spawn_thread
++.type __mlibc_spawn_thread, "function"
++__mlibc_spawn_thread:
++	// __mlibc_spawn_thread(flags, stack, pid_out, child_tid, tls)
++	//                         x0,     x1,     x2,        x3,  x4
++	//           syscall(NR_clone, flags, stack, ptid, tls, ctid)
++	//                         x8,    x0,    x1,   x2,  x3,   x4
++
++	// Swap x3 <-> x4
++	mov x5, x4
++	mov x4, x3
++	mov x3, x5
++
++	mov x8, 220 // NR_clone
++	svc 0
++	cbnz x0, .parent
++
++	ldp x0, x1, [sp], #16
++
++	bl __mlibc_enter_thread
++	brk #0
++
++.parent:
++	ret
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/generic/entry.cpp b/sysdeps/ilobilix/generic/entry.cpp
+new file mode 100644
+index 0000000..62b1c3c
+--- /dev/null
++++ b/sysdeps/ilobilix/generic/entry.cpp
+@@ -0,0 +1,37 @@
++#include <mlibc/elf/startup.h>
++#include <ilobilix/syscall.h>
++#include <stdint.h>
++#include <stdlib.h>
++
++// defined by the POSIX library
++void __mlibc_initLocale();
++
++extern "C" uintptr_t *__dlapi_entrystack();
++extern "C" void __dlapi_enter(uintptr_t *);
++
++extern char **environ;
++static mlibc::exec_stack_data __mlibc_stack_data;
++
++struct LibraryGuard
++{
++	LibraryGuard();
++};
++
++static LibraryGuard guard;
++
++LibraryGuard::LibraryGuard()
++{
++	__mlibc_initLocale();
++
++	// Parse the exec() stack.
++	mlibc::parse_exec_stack(__dlapi_entrystack(), &__mlibc_stack_data);
++	mlibc::set_startup_data(__mlibc_stack_data.argc, __mlibc_stack_data.argv, __mlibc_stack_data.envp);
++}
++
++extern "C" void __mlibc_entry(uintptr_t *entry_stack, int (*main_fn)(int argc, char *argv[], char *env[]))
++{
++	__dlapi_enter(entry_stack);
++	auto result = main_fn(__mlibc_stack_data.argc, __mlibc_stack_data.argv, environ);
++	exit(result);
++}
++
+diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
+new file mode 100644
+index 0000000..0a4ef4b
+--- /dev/null
++++ b/sysdeps/ilobilix/generic/sysdeps.cpp
+@@ -0,0 +1,829 @@
++#include <bits/ensure.h>
++#include <mlibc/allocator.hpp>
++#include <mlibc/debug.hpp>
++#include <mlibc/all-sysdeps.hpp>
++#include <mlibc/thread-entry.hpp>
++#include <errno.h>
++#include <dirent.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <asm/ioctls.h>
++#include <stdlib.h>
++#include <abi-bits/fcntl.h>
++#include <ilobilix/syscall.h>
++
++#define STUB_ONLY(name)                               \
++{                                                     \
++	sys_libc_log("mlibc: sys_" #name "() is a stub"); \
++	return 0;                                         \
++}
++
++namespace mlibc {
++
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6)
++{
++	return __syscall(n, a1, a2, a3, a4, a5, a6);
++}
++
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
++{
++	return __syscall(n, a1, a2, a3, a4, a5);
++}
++
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
++{
++	return __syscall(n, a1, a2, a3, a4);
++}
++
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3)
++{
++	return __syscall(n, a1, a2, a3);
++}
++
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2)
++{
++	return __syscall(n, a1, a2);
++}
++
++inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1)
++{
++	return __syscall(n, a1);
++}
++
++inline uintptr_t __do_syscall(uintptr_t n)
++{
++	return __syscall(n);
++}
++
++// Perhaps move do_syscall in syscall.h
++
++template<typename ...Args>
++requires (sizeof...(Args) > 0 && sizeof...(Args) <= 7)
++inline uintptr_t do_syscall(Args &&...args)
++{
++	return __do_syscall(uintptr_t(args)...);
++}
++
++inline int syscall_error(intptr_t ret)
++{
++	auto v = static_cast<intptr_t>(ret);
++	if(static_cast<uintptr_t>(v) > -4096UL)
++		return -v;
++	return 0;
++}
++
++// void sys_libc_log(const char *message)
++// {
++// 	size_t n = 0;
++// 	while(message[n])
++// 		n++;
++// 	do_syscall(SYS_write, 2, message, n);
++// 	char lf = '\n';
++// 	do_syscall(SYS_write, 2, &lf, 1);
++// }
++
++void sys_libc_log(const char *_message)
++{
++	auto len = strlen(_message);
++	char *message = static_cast<char*>(alloca(len + 1));
++
++	memcpy(message, _message, len);
++	message[len] = '\n';
++
++	do_syscall(SYS_write, 2, message, len + 1);
++}
++
++void sys_libc_panic()
++{
++	sys_libc_log("\nMLIBC PANIC\n");
++	sys_exit(1);
++	__builtin_unreachable();
++}
++
++void sys_exit(int status)
++{
++	do_syscall(SYS_exit, status);
++	__builtin_unreachable();
++}
++
++int sys_tcb_set(void *pointer)
++{
++#if defined(__x86_64__)
++	do_syscall(SYS_arch_prctl, 0x1002 /* ARCH_SET_FS */, pointer);
++#elif defined(__aarch64__)
++	uintptr_t thread_data = reinterpret_cast<uintptr_t>(pointer) + sizeof(Tcb) - 0x10;
++	asm volatile ("msr tpidr_el0, %0" :: "r"(thread_data));
++#else
++#	error "Missing architecture specific code."
++#endif
++	return 0;
++}
++
++int sys_futex_wait(int *pointer, int expected, const struct timespec *time) STUB_ONLY(futex_wait)
++// {
++// 	return do_syscall(SYS_futex_wait, pointer, expected, time);
++// }
++
++int sys_futex_wake(int *pointer) STUB_ONLY(futex_wake)
++// {
++// 	auto ret = do_syscall(SYS_futex_wake, pointer);
++
++// 	if (auto e = syscall_error(ret); e)
++// 		return e;
++
++// 	int num_woken = ret;
++
++// 	__ensure(num_woken >= 0 && num_woken <= 1);
++// 	return num_woken;
++// }
++
++int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd)
++{
++	auto ret = do_syscall(SYS_openat, dirfd, path, flags, mode);
++
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*fd = int(ret);
++	return 0;
++}
++
++int sys_open(const char *path, int flags, mode_t mode, int *fd)
++{
++	return sys_openat(AT_FDCWD, path, flags, mode, fd);
++}
++
++int sys_close(int fd)
++{
++	auto ret = do_syscall(SYS_close, fd);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_seek(int fd, off_t offset, int whence, off_t *new_offset)
++{
++	auto ret = do_syscall(SYS_lseek, fd, offset, whence);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*new_offset = off_t(ret);
++	return 0;
++}
++
++int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read)
++{
++	auto ret = do_syscall(SYS_read, fd, buf, count);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*bytes_read = ssize_t(ret);
++	return 0;
++}
++
++int sys_vm_map(void *hint, size_t size, int prot, int flags, int fd, off_t offset, void **window)
++{
++	auto ret = do_syscall(SYS_mmap, hint, size, prot, flags, fd, offset);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*window = (void*)ret;
++	return 0;
++}
++
++int sys_vm_unmap(void *pointer, size_t size)
++{
++	auto ret = do_syscall(SYS_munmap, pointer, size);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_vm_protect(void *pointer, size_t size, int prot)
++{
++	auto ret = do_syscall(SYS_mprotect, pointer, size, prot);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_anon_allocate(size_t size, void **pointer)
++{
++	return sys_vm_map(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0, pointer);
++}
++
++int sys_anon_free(void *pointer, size_t size)
++{
++	return sys_vm_unmap(pointer, size);
++}
++
++// All remaining functions are disabled in ldso.
++#ifndef MLIBC_BUILDING_RTDL
++
++// int sys_kill(pid_t, int)
++
++int sys_fork(pid_t *child)
++{
++#if defined(__x86_64__)
++	// internally sys_fork uses sys_clone
++	auto ret = do_syscall(SYS_fork);
++#elif defined(__aarch64__)
++	auto ret = do_syscall(SYS_clone, SIGCHLD, 0);
++#else
++#	error "Missing architecture specific code."
++#endif
++	if (int e = syscall_error(ret); e)
++		return e;
++	*child = int(ret);
++	return 0;
++}
++
++int sys_clone(void *tcb, pid_t *pid_out, void *stack)
++{
++	unsigned long flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND
++		| CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS | CLONE_SETTLS
++		| CLONE_PARENT_SETTID;
++
++#if defined(__aarch64__)
++	// TP should point to the address 16 bytes before the end of the TCB.
++	// TODO: We should change the sysdep so that we don't need to do this.
++	auto tp = reinterpret_cast<char *>(tcb) + sizeof(Tcb) - 0x10;
++	tcb = reinterpret_cast<void *>(tp);
++#endif
++
++	auto ret = __mlibc_spawn_thread(flags, stack, pid_out, NULL, tcb);
++	if (ret < 0)
++		return ret;
++    return 0;
++}
++
++int sys_tcgetattr(int fd, struct termios *attr)
++{
++	int ret;
++	if (int r = sys_ioctl(fd, TCGETS, attr, &ret) != 0)
++		return r;
++
++	return 0;
++}
++
++int sys_tcsetattr(int fd, int optional_action, const struct termios *attr)
++{
++	int ret;
++	switch (optional_action)
++	{
++		case TCSANOW:
++			optional_action = TCSETS;
++			break;
++		case TCSADRAIN:
++			optional_action = TCSETSW;
++			break;
++		case TCSAFLUSH:
++			optional_action = TCSETSF;
++			break;
++		default:
++			__ensure(!"Unsupported tcsetattr");
++	}
++
++	if (int r = sys_ioctl(fd, optional_action, (void *)attr, &ret) != 0)
++		return r;
++
++	return 0;
++}
++
++// int sys_timerfd_create(int, int *)
++
++int sys_ioctl(int fd, unsigned long request, void *arg, int *result)
++{
++	auto ret = do_syscall(SYS_ioctl, fd, request, arg);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*result = int(ret);
++	return 0;
++}
++
++int sys_isatty(int fd)
++{
++	struct winsize ws;
++	int ret;
++
++	if (!sys_ioctl(fd, TIOCGWINSZ, &ws, &ret))
++		return 0;
++
++	return ENOTTY;
++}
++
++gid_t sys_getgid() STUB_ONLY(getgid)
++gid_t sys_getegid() STUB_ONLY(getegid)
++uid_t sys_getuid() STUB_ONLY(getuid)
++uid_t sys_geteuid() STUB_ONLY(geteuid)
++pid_t sys_getpid()
++{
++	return pid_t(do_syscall(SYS_getpid));
++}
++pid_t sys_gettid() STUB_ONLY(gettid)
++pid_t sys_getppid()
++{
++	return pid_t(do_syscall(SYS_getppid));
++}
++pid_t sys_getpgid(pid_t pid, pid_t *pgid) STUB_ONLY(getpgid)
++pid_t sys_getsid(pid_t pid, pid_t *sid) STUB_ONLY(getsid)
++
++int sys_setpgid(pid_t pid, pid_t pgid) STUB_ONLY(setpgid)
++int sys_setuid(uid_t uid) STUB_ONLY(setuid)
++int sys_seteuid(uid_t euid) STUB_ONLY(seteuid)
++int sys_setgid(gid_t gid) STUB_ONLY(setgid)
++int sys_setegid(gid_t egid) STUB_ONLY(setegid)
++
++// TODO
++int sys_ttyname(int, char *, size_t)
++{
++	return ENOSYS;
++}
++
++int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY(clock_get)
++// {
++// 	struct timespec buf;
++// 	auto ret = do_syscall(SYS_getclock, clock, &buf);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++
++// 	*secs = buf.tv_sec;
++// 	*nanos = buf.tv_nsec;
++// 	return 0;
++// }
++
++int sys_getcwd(char *buffer, size_t size)
++{
++	auto ret = do_syscall(SYS_getcwd, buffer, size);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	return 0;
++}
++
++int sys_stat(fsfd_target fsfdt, int fd, const char *path, int flags, struct stat *statbuf)
++{
++	uintptr_t ret = 0;
++	switch (fsfdt)
++	{
++		case fsfd_target::fd:
++			ret = do_syscall(SYS_fstatat, fd, "", statbuf, flags | AT_EMPTY_PATH);
++			break;
++		case fsfd_target::path:
++			ret = do_syscall(SYS_fstatat, AT_FDCWD, path, statbuf, flags);
++			break;
++		case fsfd_target::fd_path:
++			ret = do_syscall(SYS_fstatat, fd, path, statbuf, flags);
++			break;
++		default:
++			__ensure(!"sys_stat: Invalid fsfdt");
++			__builtin_unreachable();
++	}
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_faccessat(int dirfd, const char *pathname, int mode, int flags)
++{
++	(void)flags;
++	struct stat buf;
++	if (int r = sys_stat(fsfd_target::fd_path, dirfd, pathname, mode & AT_SYMLINK_FOLLOW, &buf))
++		return r;
++
++	return 0;
++}
++
++int sys_access(const char *path, int mode)
++{
++	return sys_faccessat(AT_FDCWD, path, mode, 0);
++}
++
++int sys_open_dir(const char *path, int *handle)
++{
++	return sys_openat(AT_FDCWD, path, O_DIRECTORY, 0, handle);
++}
++
++int sys_read_entries(int handle, void *buffer, size_t max_size, size_t *bytes_read)
++{
++	auto ret = do_syscall(SYS_getdents64, handle, buffer, max_size);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*bytes_read = int(ret);
++	return 0;
++}
++
++// int sys_pipe(int *fds, int flags)
++// {
++// 	auto ret = do_syscall(SYS_pipe, fds, flags);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	return 0;
++// }
++
++int sys_chdir(const char *path)
++{
++	auto ret = do_syscall(SYS_chdir, path);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_fchdir(int fd)
++{
++	auto ret = do_syscall(SYS_chdir, fd);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_mkdir(const char *path, mode_t mode)
++{
++	auto ret = do_syscall(SYS_mkdirat, AT_FDCWD, path, mode);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_mkdirat(int dirfd, const char *path, mode_t mode)
++{
++	auto ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_mknodat(int dirfd, const char *path, int mode, int dev)
++{
++	auto ret = do_syscall(SYS_mknodat, dirfd, path, mode, dev);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written)
++{
++	auto ret = do_syscall(SYS_write, fd, buf, count);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*bytes_written = ssize_t(ret);
++	return 0;
++}
++
++int sys_readlink(const char *path, void *data, size_t max_size, ssize_t *length)
++{
++	auto ret = do_syscall(SYS_readlinkat, AT_FDCWD, path, data, max_size);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	*length = ssize_t(ret);
++	return 0;
++}
++
++int sys_link(const char *old_path, const char *new_path)
++{
++	return sys_linkat(AT_FDCWD, old_path, AT_FDCWD, new_path, 0);
++}
++
++int sys_linkat(int olddirfd, const char *old_path, int newdirfd, const char *new_path, int flags)
++{
++	auto ret = do_syscall(SYS_linkat, olddirfd, old_path, newdirfd, new_path, flags);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	return 0;
++}
++
++int sys_unlinkat(int fd, const char *path, int flags)
++{
++	auto ret = do_syscall(SYS_unlinkat, fd, path, flags);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	return 0;
++}
++
++int sys_fchmodat(int fd, const char *pathname, mode_t mode, int flags)
++{
++	auto ret = do_syscall(SYS_fchmodat, fd, pathname, mode, flags);
++	if (auto e = syscall_error(ret); e)
++		return e;
++
++	return 0;
++}
++
++int sys_fchmod(int fd, mode_t mode)
++{
++	return sys_fchmodat(fd, "", mode, AT_EMPTY_PATH);
++}
++
++int sys_chmod(const char *pathname, mode_t mode)
++{
++	return sys_fchmodat(AT_FDCWD, pathname, mode, 0);
++}
++
++int sys_pselect(int nfds, fd_set *readfds, fd_set *writefds,
++                fd_set *exceptfds, const struct timespec *timeout, const sigset_t *sigmask, int *num_events) STUB_ONLY(pselect)
++
++// int sys_rmdir(const char *pathname)
++// {
++// 	auto ret = do_syscall(SYS_rmdir, pathname);
++//  if (auto e = syscall_error(ret); e)
++//		return e;
++
++// 	return 0;
++// }
++
++// int sys_socket(int domain, int type_and_flags, int proto, int *fd)
++// {
++// 	auto ret = do_syscall(SYS_socket, domain, type_and_flags, proto);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	*fd = int(ret);
++// 	return 0;
++// }
++
++// int sys_socketpair(int, int, int, int *)
++
++// int sys_bind(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
++// {
++// 	auto ret = do_syscall(SYS_bind, fd, addr_ptr, addr_length);
++//  if (auto e = syscall_error(ret); e)
++//		return e;
++// 	return 0;
++// }
++
++// int sys_connect(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
++// {
++// 	auto ret = do_syscall(SYS_connect, fd, addr_ptr, addr_length);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	return 0;
++// }
++
++// int sys_accept(int fd, int *newfd, struct sockaddr *addr_ptr, socklen_t *addr_length)
++// {
++// 	auto ret = do_syscall(SYS_accept, fd, addr_ptr, addr_length);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	*newfd = int(ret);
++// 	return 0;
++// }
++
++int sys_getsockopt(int fd, int layer, int number, void *__restrict buffer, socklen_t *__restrict size)
++{
++	(void)fd;
++	(void)size;
++	if (layer == SOL_SOCKET && number == SO_PEERCRED)
++	{
++		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_PEERCRED is unimplemented" << frg::endlog;
++		*(int*)buffer = 0;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_SNDBUF)
++	{
++		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_SNDBUF is unimplemented" << frg::endlog;
++		*(int*)buffer = 4096;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_TYPE)
++	{
++		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_TYPE is unimplemented, hardcoding SOCK_STREAM" << frg::endlog;
++		*(int*)buffer = SOCK_STREAM;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_ERROR)
++	{
++		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_ERROR is unimplemented, hardcoding 0" << frg::endlog;
++		*(int*)buffer = 0;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_KEEPALIVE)
++	{
++		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_KEEPALIVE is unimplemented, hardcoding 0" << frg::endlog;
++		*(int*)buffer = 0;
++		return 0;
++	}
++	else mlibc::panicLogger() << "mlibc: Unexpected getsockopt() call, layer: " << layer << " number: " << number << frg::endlog;
++
++	return 0;
++}
++
++int sys_setsockopt(int fd, int layer, int number, const void *buffer, socklen_t size)
++{
++	(void)fd;
++	(void)buffer;
++	(void)size;
++	if (layer == SOL_SOCKET && number == SO_PASSCRED)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt(SO_PASSCRED) is not implemented correctly" << frg::endlog;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_ATTACH_FILTER)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt(SO_ATTACH_FILTER) is not implemented correctly" << frg::endlog;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_RCVBUFFORCE)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt(SO_RCVBUFFORCE) is not implemented correctly" << frg::endlog;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_SNDBUF)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt() call with SOL_SOCKET and SO_SNDBUF is unimplemented" << frg::endlog;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_KEEPALIVE)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt() call with SOL_SOCKET and SO_KEEPALIVE is unimplemented" << frg::endlog;
++		return 0;
++	}
++	else if (layer == SOL_SOCKET && number == SO_REUSEADDR)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt() call with SOL_SOCKET and SO_REUSEADDR is unimplemented" << frg::endlog;
++		return 0;
++	}
++	else if (layer == AF_NETLINK && number == SO_ACCEPTCONN)
++	{
++		mlibc::infoLogger() << "mlibc: setsockopt() call with AF_NETLINK and SO_ACCEPTCONN is unimplemented" << frg::endlog;
++		return 0;
++	}
++	else
++	{
++		mlibc::panicLogger() << "mlibc: Unexpected setsockopt() call, layer: " << layer << " number: " << number << frg::endlog;
++		sys_libc_panic();
++	}
++}
++
++// int sys_msg_recv(int sockfd, struct msghdr *hdr, int flags, ssize_t *length)
++// {
++// 	auto ret = do_syscall(SYS_recvmsg, sockfd, hdr, flags);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	*length = ssize_t(ret);
++// 	return 0;
++// }
++
++// int sys_peername(int fd, struct sockaddr *addr_ptr, socklen_t max_addr_length, socklen_t *actual_length)
++// {
++// 	auto ret = do_syscall(SYS_getpeername, fd, addr_ptr, &max_addr_length);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	*actual_length = max_addr_length;
++// 	return 0;
++// }
++
++// int sys_listen(int fd, int backlog)
++// {
++// 	auto ret = do_syscall(SYS_listen, fd, backlog);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	return 0;
++// }
++
++// int sys_inotify_create(int, int *)
++
++int sys_execve(const char *path, char *const argv[], char *const envp[])
++{
++	auto ret = do_syscall(SYS_execve, path, argv, envp);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_fcntl(int fd, int request, va_list args, int *result)
++{
++	auto ret = do_syscall(SYS_fcntl, fd, request, va_arg(args, uint64_t));
++	if (auto e = syscall_error(ret); e)
++		return e;
++	*result = int(ret);
++	return 0;
++}
++
++int sys_dup(int fd, int flags, int *newfd)
++{
++	(void)flags;
++	auto ret = do_syscall(SYS_dup, fd);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	*newfd = int(ret);
++	return 0;
++}
++
++int sys_dup2(int fd, int flags, int newfd)
++{
++	auto ret = do_syscall(SYS_dup3, fd, newfd, flags);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_sigprocmask(int, const sigset_t *__restrict, sigset_t *__restrict)
++{
++	mlibc::infoLogger() << "mlibc: sys_sigprocmask() is a stub" << frg::endlog;
++	return 0;
++}
++
++int sys_sigaction(int, const struct sigaction *, struct sigaction *)
++{
++	mlibc::infoLogger() << "mlibc: sys_sigaction() is a stub" << frg::endlog;
++	return 0;
++}
++
++// int sys_signalfd_create(sigset_t, int, int *)
++
++int sys_waitpid(pid_t pid, int *status, int flags, struct rusage *ru, pid_t *ret_pid)
++{
++	if (ru != NULL)
++	{
++		mlibc::infoLogger() << "mlibc: struct rusage in sys_waitpid is unsupported" << frg::endlog;
++		return ENOSYS;
++	}
++
++	auto ret = do_syscall(SYS_wait4, pid, status, flags, ru);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	*ret_pid = int(ret);
++	return 0;
++}
++
++// int sys_getgroups(size_t, const gid_t *, int *)
++
++// int sys_mount(const char *, const char *, const char *, unsigned long, const void *)
++
++// int sys_umount2(const char *, int)
++
++int sys_gethostname(char *buffer, size_t bufsize)
++{
++	struct utsname utsname;
++	if (int err = sys_uname(&utsname))
++		return err;
++	if (strlen(utsname.nodename) >= bufsize)
++		return ENAMETOOLONG;
++	strncpy(buffer, utsname.nodename, bufsize);
++	return 0;
++}
++
++// int sys_sethostname(const char *, size_t)
++
++// int sys_sleep(time_t *secs, long *nanos)
++// {
++// 	struct timespec time = { .tv_sec = *secs, .tv_nsec = *nanos };
++// 	struct timespec rem = { .tv_sec = 0, .tv_nsec = 0 };
++// 	auto ret = do_syscall(SYS_sleep, &time, &rem);
++// 	if (auto e = syscall_error(ret); e)
++//		return e;
++// 	*secs = rem.tv_sec;
++// 	*nanos = rem.tv_nsec;
++// 	return 0;
++// }
++
++int sys_getitimer(int, struct itimerval *)
++{
++	mlibc::infoLogger() << "mlibc: sys_getitimer() is unimplemented" << frg::endlog;
++	return ENOSYS;
++}
++
++int sys_setitimer(int, const struct itimerval *, struct itimerval *)
++{
++	mlibc::infoLogger() << "mlibc: sys_setitimer() is unimplemented" << frg::endlog;
++	return ENOSYS;
++}
++
++int sys_umask(mode_t mode, mode_t *old)
++{
++	auto ret = do_syscall(SYS_umask, mode);
++	*old = mode_t(ret);
++	return 0;
++}
++
++int sys_uname(struct utsname *buf)
++{
++	auto ret = do_syscall(SYS_uname, buf);
++	if (auto e = syscall_error(ret); e)
++		return e;
++	return 0;
++}
++
++int sys_fsync(int)
++{
++	mlibc::infoLogger() << "sys_fsync is a stub" << frg::endlog;
++	return 0;
++}
++
++
++int sys_getrlimit(int resource, struct rlimit *limit) STUB_ONLY(getrlimit)
++// {
++// 	auto ret = do_syscall(SYS_getrlimit, resource, limit);
++// 	if (auto e = syscall_error(ret); e)
++// 		return e;
++// 	return 0;
++// }
++
++#endif
++
++} // namespace mlibc
+diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
+new file mode 100644
+index 0000000..4787e8d
+--- /dev/null
++++ b/sysdeps/ilobilix/generic/thread.cpp
+@@ -0,0 +1,62 @@
++#include <mlibc/thread-entry.hpp>
++#include <mlibc/all-sysdeps.hpp>
++#include <mlibc/thread.hpp>
++#include <bits/ensure.h>
++#include <sys/mman.h>
++#include <stdint.h>
++#include <stddef.h>
++#include <errno.h>
++
++extern "C" void __mlibc_enter_thread(void *entry, void *user_arg) {
++	// The linux kernel already sets the TCB in sys_clone().
++	auto tcb = mlibc::get_current_tcb();
++
++	// Wait until our parent sets up the TID.
++	while(!__atomic_load_n(&tcb->tid, __ATOMIC_RELAXED))
++		mlibc::sys_futex_wait(&tcb->tid, 0, nullptr);
++
++	void *(*func)(void *) = reinterpret_cast<void *(*)(void *)>(entry);
++	auto result = func(user_arg);
++
++	tcb->returnValue = result;
++	__atomic_store_n(&tcb->didExit, 1, __ATOMIC_RELEASE);
++	mlibc::sys_futex_wake(&tcb->didExit);
++
++	mlibc::sys_thread_exit();
++}
++
++namespace mlibc {
++
++static constexpr size_t default_stacksize = 0x200000; // 2 mib
++
++int sys_prepare_stack(void **stack, void *entry, void *user_arg, void *tcb, size_t *stack_size, size_t *guard_size) {
++	(void)tcb;
++	if (!*stack_size)
++		*stack_size = default_stacksize;
++
++	uintptr_t map;
++	if (*stack) {
++		map = reinterpret_cast<uintptr_t>(*stack);
++		*guard_size = 0;
++	} else {
++		map = reinterpret_cast<uintptr_t>(
++				mmap(nullptr, *stack_size + *guard_size,
++					PROT_NONE,
++					MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
++				);
++		if (reinterpret_cast<void*>(map) == MAP_FAILED)
++			return EAGAIN;
++		int ret = mprotect(reinterpret_cast<void*>(map + *guard_size), *stack_size,
++				PROT_READ | PROT_WRITE);
++		if(ret)
++			return EAGAIN;
++		map += *stack_size + *guard_size;
++	}
++
++	auto sp = reinterpret_cast<uintptr_t*>(map);
++	*--sp = reinterpret_cast<uintptr_t>(user_arg);
++	*--sp = reinterpret_cast<uintptr_t>(entry);
++	*stack = reinterpret_cast<void*>(sp);
++	return 0;
++}
++} // namespace mlibc
+diff --git a/sysdeps/ilobilix/include/abi-bits/access.h b/sysdeps/ilobilix/include/abi-bits/access.h
+new file mode 120000
+index 0000000..cb83931
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/access.h
+@@ -0,0 +1 @@
++../../../../abis/linux/access.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/auxv.h b/sysdeps/ilobilix/include/abi-bits/auxv.h
+new file mode 120000
+index 0000000..c43f878
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/auxv.h
+@@ -0,0 +1 @@
++../../../../abis/linux/auxv.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h b/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
+new file mode 120000
+index 0000000..0b0ec27
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/blkcnt_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/blksize_t.h b/sysdeps/ilobilix/include/abi-bits/blksize_t.h
+new file mode 120000
+index 0000000..7dc8d7c
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/blksize_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/blksize_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/clockid_t.h b/sysdeps/ilobilix/include/abi-bits/clockid_t.h
+new file mode 120000
+index 0000000..6a42da5
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/clockid_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/clockid_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/dev_t.h b/sysdeps/ilobilix/include/abi-bits/dev_t.h
+new file mode 120000
+index 0000000..bca881e
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/dev_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/dev_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/epoll.h b/sysdeps/ilobilix/include/abi-bits/epoll.h
+new file mode 120000
+index 0000000..eb4b76d
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/epoll.h
+@@ -0,0 +1 @@
++../../../../abis/linux/epoll.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/errno.h b/sysdeps/ilobilix/include/abi-bits/errno.h
+new file mode 120000
+index 0000000..6e507de
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/errno.h
+@@ -0,0 +1 @@
++../../../../abis/linux/errno.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/fcntl.h b/sysdeps/ilobilix/include/abi-bits/fcntl.h
+new file mode 120000
+index 0000000..463e2c9
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/fcntl.h
+@@ -0,0 +1 @@
++../../../../abis/linux/fcntl.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h b/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
+new file mode 120000
+index 0000000..898dfb2
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/fsblkcnt_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h b/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
+new file mode 120000
+index 0000000..791755c
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/fsfilcnt_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/gid_t.h b/sysdeps/ilobilix/include/abi-bits/gid_t.h
+new file mode 120000
+index 0000000..6a77218
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/gid_t.h
+@@ -0,0 +1 @@
++../../../../abis/mlibc/gid_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/in.h b/sysdeps/ilobilix/include/abi-bits/in.h
+new file mode 120000
+index 0000000..418d1d5
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/in.h
+@@ -0,0 +1 @@
++../../../../abis/linux/in.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/ino_t.h b/sysdeps/ilobilix/include/abi-bits/ino_t.h
+new file mode 120000
+index 0000000..4c20aca
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/ino_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/ino_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/inotify.h b/sysdeps/ilobilix/include/abi-bits/inotify.h
+new file mode 120000
+index 0000000..b5cb282
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/inotify.h
+@@ -0,0 +1 @@
++../../../../abis/linux/inotify.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/ioctls.h b/sysdeps/ilobilix/include/abi-bits/ioctls.h
+new file mode 120000
+index 0000000..595106b
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/ioctls.h
+@@ -0,0 +1 @@
++../../../../abis/linux/ioctls.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/limits.h b/sysdeps/ilobilix/include/abi-bits/limits.h
+new file mode 120000
+index 0000000..6c88db2
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/limits.h
+@@ -0,0 +1 @@
++../../../../abis/linux/limits.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/mode_t.h b/sysdeps/ilobilix/include/abi-bits/mode_t.h
+new file mode 120000
+index 0000000..5d78fdf
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/mode_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/mode_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/mqueue.h b/sysdeps/ilobilix/include/abi-bits/mqueue.h
+new file mode 120000
+index 0000000..fa87b07
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/mqueue.h
+@@ -0,0 +1 @@
++../../../../abis/linux/mqueue.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/nlink_t.h b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
+new file mode 120000
+index 0000000..bb3b625
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/nlink_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/packet.h b/sysdeps/ilobilix/include/abi-bits/packet.h
+new file mode 120000
+index 0000000..998ef1a
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/packet.h
+@@ -0,0 +1 @@
++../../../../abis/linux/packet.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/pid_t.h b/sysdeps/ilobilix/include/abi-bits/pid_t.h
+new file mode 120000
+index 0000000..baa90f6
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/pid_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/pid_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/poll.h b/sysdeps/ilobilix/include/abi-bits/poll.h
+new file mode 120000
+index 0000000..8ea6a0a
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/poll.h
+@@ -0,0 +1 @@
++../../../../abis/linux/poll.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/ptrace.h b/sysdeps/ilobilix/include/abi-bits/ptrace.h
+new file mode 120000
+index 0000000..b2517b2
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/ptrace.h
+@@ -0,0 +1 @@
++../../../../abis/linux/ptrace.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/reboot.h b/sysdeps/ilobilix/include/abi-bits/reboot.h
+new file mode 120000
+index 0000000..77013a4
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/reboot.h
+@@ -0,0 +1 @@
++../../../../abis/linux/reboot.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/resource.h b/sysdeps/ilobilix/include/abi-bits/resource.h
+new file mode 120000
+index 0000000..88d7402
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/resource.h
+@@ -0,0 +1 @@
++../../../../abis/linux/resource.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/seek-whence.h b/sysdeps/ilobilix/include/abi-bits/seek-whence.h
+new file mode 120000
+index 0000000..df7bccf
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/seek-whence.h
+@@ -0,0 +1 @@
++../../../../abis/linux/seek-whence.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/shm.h b/sysdeps/ilobilix/include/abi-bits/shm.h
+new file mode 120000
+index 0000000..067d8c4
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/shm.h
+@@ -0,0 +1 @@
++../../../../abis/linux/shm.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/signal.h b/sysdeps/ilobilix/include/abi-bits/signal.h
+new file mode 120000
+index 0000000..4dcb0b7
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/signal.h
+@@ -0,0 +1 @@
++../../../../abis/linux/signal.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/socket.h b/sysdeps/ilobilix/include/abi-bits/socket.h
+new file mode 120000
+index 0000000..f1dc016
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/socket.h
+@@ -0,0 +1 @@
++../../../../abis/linux/socket.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/socklen_t.h b/sysdeps/ilobilix/include/abi-bits/socklen_t.h
+new file mode 120000
+index 0000000..41f3b11
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/socklen_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/socklen_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/stat.h b/sysdeps/ilobilix/include/abi-bits/stat.h
+new file mode 120000
+index 0000000..1f63b41
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/stat.h
+@@ -0,0 +1 @@
++../../../../abis/linux/stat.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/statfs.h b/sysdeps/ilobilix/include/abi-bits/statfs.h
+new file mode 120000
+index 0000000..e3d202f
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/statfs.h
+@@ -0,0 +1 @@
++../../../../abis/linux/statfs.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/statvfs.h b/sysdeps/ilobilix/include/abi-bits/statvfs.h
+new file mode 120000
+index 0000000..1fc80c2
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/statvfs.h
+@@ -0,0 +1 @@
++../../../../abis/linux/statvfs.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/suseconds_t.h b/sysdeps/ilobilix/include/abi-bits/suseconds_t.h
+new file mode 120000
+index 0000000..9ed6597
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/suseconds_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/suseconds_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/termios.h b/sysdeps/ilobilix/include/abi-bits/termios.h
+new file mode 120000
+index 0000000..ee8f0b0
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/termios.h
+@@ -0,0 +1 @@
++../../../../abis/linux/termios.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/time.h b/sysdeps/ilobilix/include/abi-bits/time.h
+new file mode 120000
+index 0000000..2a02625
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/time.h
+@@ -0,0 +1 @@
++../../../../abis/linux/time.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/uid_t.h b/sysdeps/ilobilix/include/abi-bits/uid_t.h
+new file mode 120000
+index 0000000..b306777
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/uid_t.h
+@@ -0,0 +1 @@
++../../../../abis/linux/uid_t.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/utsname.h b/sysdeps/ilobilix/include/abi-bits/utsname.h
+new file mode 120000
+index 0000000..b285754
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/utsname.h
+@@ -0,0 +1 @@
++../../../../abis/linux/utsname.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/vm-flags.h b/sysdeps/ilobilix/include/abi-bits/vm-flags.h
+new file mode 120000
+index 0000000..bbe258c
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/vm-flags.h
+@@ -0,0 +1 @@
++../../../../abis/linux/vm-flags.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/vt.h b/sysdeps/ilobilix/include/abi-bits/vt.h
+new file mode 120000
+index 0000000..5798a4a
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/vt.h
+@@ -0,0 +1 @@
++../../../../abis/linux/vt.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/wait.h b/sysdeps/ilobilix/include/abi-bits/wait.h
+new file mode 120000
+index 0000000..feb2840
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/wait.h
+@@ -0,0 +1 @@
++../../../../abis/linux/wait.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/xattr.h b/sysdeps/ilobilix/include/abi-bits/xattr.h
+new file mode 120000
+index 0000000..66412d7
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/xattr.h
+@@ -0,0 +1 @@
++../../../../abis/linux/xattr.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
+new file mode 100644
+index 0000000..6efc1db
+--- /dev/null
++++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
+@@ -0,0 +1,167 @@
++#ifndef _ILOBILIX__SYSCALL_H
++#define _ILOBILIX__SYSCALL_H
++
++#include <stdint.h>
++
++#if defined(__x86_64__)
++
++#define SYS_read 0
++#define SYS_write 1
++#define SYS_open 2
++#define SYS_close 3
++#define SYS_stat 4
++#define SYS_fstat 5
++#define SYS_lstat 6
++#define SYS_lseek 8
++#define SYS_mmap 9
++#define SYS_mprotect 10
++#define SYS_munmap 11
++#define SYS_ioctl 16
++#define SYS_dup 32
++#define SYS_dup2 33
++#define SYS_getpid 39
++#define SYS_clone 56
++#define SYS_fork 57
++#define SYS_execve 59
++#define SYS_exit 60
++#define SYS_wait4 61
++#define SYS_uname 63
++#define SYS_fcntl 72
++#define SYS_getdents 78
++#define SYS_getcwd 79
++#define SYS_chdir 80
++#define SYS_fchdir 81
++#define SYS_mkdir 83
++#define SYS_creat 85
++#define SYS_link 86
++#define SYS_unlink 87
++#define SYS_readlink 89
++#define SYS_fchmod 91
++#define SYS_umask 95
++#define SYS_getppid 110
++#define SYS_mknod 133
++#define SYS_arch_prctl 158
++#define SYS_getdents64 217
++#define SYS_openat 257
++#define SYS_mkdirat 258
++#define SYS_mknodat 259
++#define SYS_fstatat 262
++#define SYS_unlinkat 263
++#define SYS_linkat 265
++#define SYS_readlinkat 267
++#define SYS_fchmodat 268
++#define SYS_dup3 292
++
++#ifdef __SYSCALL_USE_INT__
++#   define __SYSCALL__ "int $0x80"
++#else
++#   define __SYSCALL__ "syscall"
++#endif
++
++static inline uintptr_t __syscall0(uintptr_t n)
++{
++    uintptr_t ret;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n) : "rcx", "r11", "memory");
++    return ret;
++}
++
++static inline uintptr_t __syscall1(uintptr_t n, uintptr_t a1)
++{
++    uintptr_t ret;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n), "D"(a1) : "rcx", "r11", "memory");
++    return ret;
++}
++
++static inline uintptr_t __syscall2(uintptr_t n, uintptr_t a1, uintptr_t a2)
++{
++    uintptr_t ret;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n), "D"(a1), "S"(a2) : "rcx", "r11", "memory");
++    return ret;
++}
++
++static inline uintptr_t __syscall3(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3)
++{
++    uintptr_t ret;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3) : "rcx", "r11", "memory");
++    return ret;
++}
++
++static inline uintptr_t __syscall4(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
++{
++    uintptr_t ret;
++    register uintptr_t r10 asm("r10") = a4;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10): "rcx", "r11", "memory");
++    return ret;
++}
++
++static inline uintptr_t __syscall5(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
++{
++    uintptr_t ret;
++    register uintptr_t r10 asm("r10") = a4;
++    register uintptr_t r8 asm("r8") = a5;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10), "r"(r8) : "rcx", "r11", "memory");
++    return ret;
++}
++
++static inline uintptr_t __syscall6(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6)
++{
++    uintptr_t ret;
++    register uintptr_t r10 asm("r10") = a4;
++    register uintptr_t r8 asm("r8") = a5;
++    register uintptr_t r9 asm("r9") = a6;
++    asm volatile (__SYSCALL__ : "=a"(ret) : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10), "r"(r8), "r"(r9) : "rcx", "r11", "memory");
++    return ret;
++}
++
++#undef __SYSCALL__
++
++#elif defined(__aarch64__)
++
++#define SYS_getcwd 17
++#define SYS_dup 23
++#define SYS_dup3 24
++#define SYS_fcntl 25
++#define SYS_ioctl 29
++#define SYS_mknodat 33
++#define SYS_mkdirat 34
++#define SYS_unlinkat 35
++#define SYS_linkat 37
++#define SYS_chdir 49
++#define SYS_fchdir 50
++#define SYS_fchmod 52
++#define SYS_fchmodat 53
++#define SYS_openat 56
++#define SYS_close 57
++#define SYS_getdents64 61
++#define SYS_lseek 62
++#define SYS_read 63
++#define SYS_write 64
++#define SYS_readlinkat 78
++#define SYS_fstatat 79
++#define SYS_exit 93
++#define SYS_uname 160
++#define SYS_umask 166
++#define SYS_getpid 172
++#define SYS_getppid 173
++#define SYS_munmap 216
++#define SYS_clone 220
++#define SYS_execve 221
++#define SYS_mmap 222
++#define SYS_mprotect 226
++#define SYS_wait4 260
++
++static inline uintptr_t __syscall0(uintptr_t n) { return -1; }
++static inline uintptr_t __syscall1(uintptr_t n, uintptr_t a1) { return -1; }
++static inline uintptr_t __syscall2(uintptr_t n, uintptr_t a1, uintptr_t a2) { return -1; }
++static inline uintptr_t __syscall3(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3) { return -1; }
++static inline uintptr_t __syscall4(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4) { return -1; }
++static inline uintptr_t __syscall5(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5) { return -1; }
++static inline uintptr_t __syscall6(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6) { return -1; }
++
++#endif
++
++#define GET_MACRO(_1,_2,_3,_4,_5,_6,_7,NAME,...) NAME
++#define __syscall(...) GET_MACRO(__VA_ARGS__, __syscall6, __syscall5, __syscall4, __syscall3, __syscall2, __syscall1, __syscall0)(__VA_ARGS__)
++#define syscall __syscall
++
++#endif
+diff --git a/sysdeps/ilobilix/include/mlibc/thread-entry.hpp b/sysdeps/ilobilix/include/mlibc/thread-entry.hpp
+new file mode 100644
+index 0000000..a20cab5
+--- /dev/null
++++ b/sysdeps/ilobilix/include/mlibc/thread-entry.hpp
+@@ -0,0 +1,12 @@
++#ifndef MLIBC_THREAD_ENTRY
++
++#include <mlibc/tcb.hpp>
++
++extern "C" int __mlibc_spawn_thread(int flags, void *stack, void *pid_out, void *child_tid, void *tcb);
++extern "C" void __mlibc_enter_thread(void *entry, void *user_arg);
++
++namespace mlibc {
++	void *prepare_stack(void *entry, void *user_arg);
++}
++
++#endif // MLIBC_THREAD_ENTRY
+diff --git a/sysdeps/ilobilix/meson.build b/sysdeps/ilobilix/meson.build
+new file mode 100644
+index 0000000..626d1e3
+--- /dev/null
++++ b/sysdeps/ilobilix/meson.build
+@@ -0,0 +1,95 @@
++
++rtdl_dso_sources += files(
++	'generic/sysdeps.cpp'
++)
++
++libc_sources += files(
++	'generic/entry.cpp',
++	'generic/sysdeps.cpp',
++	'generic/thread.cpp',
++	host_machine.cpu_family() / 'thread_entry.S'
++)
++
++if not no_headers
++	install_headers(
++		'include/abi-bits/auxv.h',
++		'include/abi-bits/seek-whence.h',
++		'include/abi-bits/vm-flags.h',
++		'include/abi-bits/errno.h',
++		'include/abi-bits/fcntl.h',
++		'include/abi-bits/in.h',
++		'include/abi-bits/stat.h',
++		'include/abi-bits/signal.h',
++		'include/abi-bits/reboot.h',
++		'include/abi-bits/resource.h',
++		'include/abi-bits/socket.h',
++		'include/abi-bits/termios.h',
++		'include/abi-bits/time.h',
++		'include/abi-bits/blkcnt_t.h',
++		'include/abi-bits/blksize_t.h',
++		'include/abi-bits/dev_t.h',
++		'include/abi-bits/gid_t.h',
++		'include/abi-bits/ino_t.h',
++		'include/abi-bits/mode_t.h',
++		'include/abi-bits/nlink_t.h',
++		'include/abi-bits/pid_t.h',
++		'include/abi-bits/uid_t.h',
++		'include/abi-bits/access.h',
++		'include/abi-bits/wait.h',
++		'include/abi-bits/limits.h',
++		'include/abi-bits/utsname.h',
++		'include/abi-bits/vt.h',
++		'include/abi-bits/ptrace.h',
++		'include/abi-bits/poll.h',
++		'include/abi-bits/epoll.h',
++		'include/abi-bits/packet.h',
++		'include/abi-bits/inotify.h',
++		'include/abi-bits/clockid_t.h',
++		'include/abi-bits/shm.h',
++		'include/abi-bits/mqueue.h',
++		'include/abi-bits/suseconds_t.h',
++		'include/abi-bits/fsfilcnt_t.h',
++		'include/abi-bits/fsblkcnt_t.h',
++		'include/abi-bits/socklen_t.h',
++		'include/abi-bits/statfs.h',
++		'include/abi-bits/statvfs.h',
++		'include/abi-bits/ioctls.h',
++		'include/abi-bits/xattr.h',
++		subdir: 'abi-bits'
++	)
++
++	install_headers(
++		'include/ilobilix/syscall.h',
++		subdir: 'ilobilix',
++	)
++endif
++
++if not headers_only
++	crt = custom_target('crt0',
++		build_by_default: true,
++		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
++		input: host_machine.cpu_family() / 'crt-src/crt0.S',
++		output: 'crt0.o',
++		install: true,
++		install_dir: get_option('libdir')
++	)
++
++	custom_target('crti',
++		build_by_default: true,
++		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
++		input: host_machine.cpu_family() / 'crt-src/crti.S',
++		output: 'crti.o',
++		install: true,
++		install_dir: get_option('libdir')
++	)
++
++	custom_target('crtn',
++		build_by_default: true,
++		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
++		input: host_machine.cpu_family() / 'crt-src/crtn.S',
++		output: 'crtn.o',
++		install: true,
++		install_dir: get_option('libdir')
++	)
++endif
++
+diff --git a/sysdeps/ilobilix/x86_64/crt-src/crt0.S b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
+new file mode 100644
+index 0000000..4a5cf86
+--- /dev/null
++++ b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
+@@ -0,0 +1,8 @@
++.section .text
++.global _start
++_start:
++    mov %rsp, %rdi
++    mov $main, %rsi
++    call __mlibc_entry
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/x86_64/crt-src/crti.S b/sysdeps/ilobilix/x86_64/crt-src/crti.S
+new file mode 100644
+index 0000000..911b078
+--- /dev/null
++++ b/sysdeps/ilobilix/x86_64/crt-src/crti.S
+@@ -0,0 +1,11 @@
++.section .init
++.global _init
++_init:
++	push %rax
++
++.section .fini
++.global _fini
++_fini:
++	push %rax
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/x86_64/crt-src/crtn.S b/sysdeps/ilobilix/x86_64/crt-src/crtn.S
+new file mode 100644
+index 0000000..0187e50
+--- /dev/null
++++ b/sysdeps/ilobilix/x86_64/crt-src/crtn.S
+@@ -0,0 +1,9 @@
++.section .init
++	pop %rax
++	ret
++
++.section .fini
++	pop %rax
++	ret
++.section .note.GNU-stack,"",%progbits
++
+diff --git a/sysdeps/ilobilix/x86_64/thread_entry.S b/sysdeps/ilobilix/x86_64/thread_entry.S
+new file mode 100644
+index 0000000..954c6dd
+--- /dev/null
++++ b/sysdeps/ilobilix/x86_64/thread_entry.S
+@@ -0,0 +1,23 @@
++
++.section .text
++.global __mlibc_spawn_thread
++.type __mlibc_spawn_thread, "function"
++__mlibc_spawn_thread:
++	xor %eax, %eax
++	/* The rest of the args are already in the right registers,
++	* only need to fixup rcx to r10
++	*/
++	mov %rcx, %r10
++	mov $56, %al
++	syscall
++	test %eax, %eax
++	jnz 1f
++	xor %ebp, %ebp
++	pop %rdi
++	pop %rsi
++	call __mlibc_enter_thread
++	hlt
++1:
++	ret
++.section .note.GNU-stack,"",%progbits
++
+-- 
+2.37.2
+

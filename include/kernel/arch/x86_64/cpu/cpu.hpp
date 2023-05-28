@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -43,9 +43,6 @@ namespace cpu
     void set_fs(uint64_t addr);
     uint64_t get_fs();
 
-    void write_cr(uint64_t reg, uint64_t val);
-    uint64_t read_cr(uint64_t reg);
-
     void wrxcr(uint32_t i, uint64_t value);
 
     void xsaveopt(uint8_t *region);
@@ -87,22 +84,12 @@ namespace cpu
         func(std::forward<Args>(args)...);
     }
 
-    #define read_gs(offset)                                                    \
-    ({                                                                         \
-        uint64_t value;                                                        \
-        asm volatile ("movq %%gs:" #offset ", %0" : "=r"(value) :: "memory");  \
-        value;                                                                 \
+    #define rdreg(reg)                                               \
+    ({                                                               \
+        uintptr_t val;                                               \
+        asm volatile ("mov %%" #reg ", %0" : "=r"(val) :: "memory"); \
+        val;                                                         \
     })
 
-    #define read_cr(num)                                                  \
-    ({                                                                    \
-        uint64_t value;                                                   \
-        asm volatile ("movq %%cr" #num ", %0" : "=r"(value) :: "memory"); \
-        value;                                                            \
-    })
-
-    #define write_cr(num, value)                                      \
-    {                                                                 \
-        asm volatile ("movq %0, %%cr" #num :: "r"(value) : "memory"); \
-    }
+    #define wrreg(reg, val) asm volatile ("mov %0, %%" #reg :: "r"(val) : "memory");
 } // namespace cpu

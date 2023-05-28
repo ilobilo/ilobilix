@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -63,7 +63,7 @@ namespace timers::hpet
 
         modes _mode;
 
-        std::function<void(cpu::registers_t*)> _func;
+        std::function<void()> _func;
 
         void start_timer_internal(uint64_t ns);
 
@@ -74,7 +74,7 @@ namespace timers::hpet
             if (this->_int_mode == INT_NONE)
                 return false;
 
-            lockit(this->lock);
+            std::unique_lock guard(this->lock);
 
             if (mode == PERIODIC && this->_periodic == false)
                 return false;
@@ -83,16 +83,19 @@ namespace timers::hpet
                 return false;
 
             this->_mode = mode;
-            this->_func = [func = std::forward<Func>(func), ...args = std::forward<Args>(args)](cpu::registers_t *regs) mutable
+            this->_func = [func = std::forward<Func>(func), ...args = std::forward<Args>(args)] mutable
             {
-                func(regs, args...);
+                func(args...);
             };
 
             this->start_timer_internal(ns);
-
             return true;
         }
 
+        inline bool supports_periodic()
+        {
+            return this->_periodic;
+        }
         void cancel_timer();
     };
 
@@ -133,15 +136,17 @@ namespace timers::hpet
     uint64_t time_ns();
     uint64_t time_ms();
 
-    static irq_lock lock;
+    inline irq_lock lock;
 
     template<typename Func, typename ...Args>
     static comparator *start_timer(uint64_t ns, modes mode, Func &&func, Args &&...args)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
 
-        for (auto comp : comparators)
+        for (auto &comp : comparators)
         {
+            if (mode == PERIODIC && comp->supports_periodic() == false)
+                continue;
             if (comp->start_timer(ns, mode, func, args...))
                 return comp;
         }
@@ -150,6 +155,5 @@ namespace timers::hpet
     }
 
     void cancel_timer(comparator *comp);
-
     void init();
 } // namespace timers::hpet

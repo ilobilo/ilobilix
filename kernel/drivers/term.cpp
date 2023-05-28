@@ -1,7 +1,8 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
+#include <drivers/fs/dev/tty/tty.hpp>
+#include <drivers/fs/devtmpfs.hpp>
 #include <drivers/term.hpp>
-#include <drivers/frm.hpp>
 #include <lib/panic.hpp>
 #include <lib/alloc.hpp>
 #include <lib/log.hpp>
@@ -13,7 +14,7 @@ namespace term
     terminal_t *main_term = nullptr;
     size_t term_count = 0;
 
-    limine_terminal *early_term = nullptr;
+    limine_term *early_term = nullptr;
 
     void print(const char *str, terminal_t *term)
     {
@@ -22,7 +23,7 @@ namespace term
             if (early_term != nullptr)
                 terminal_request.response->write(early_term, str, strlen(str));
         }
-        else term->write(str, strlen(str));
+        else term_write(term->ctx, str, strlen(str));
     }
 
     void printc(char c, terminal_t *term)
@@ -32,78 +33,58 @@ namespace term
             if (early_term != nullptr)
                 terminal_request.response->write(early_term, &c, 1);
         }
-        else term->write(&c, 1);
+        else term_write(term->ctx, &c, 1);
     }
 
     extern "C"
     {
-        void *alloc_mem(size_t size)
-        {
-            return calloc(size, 1);
-        }
+        void *term_alloc(size_t size) { return malloc(size); }
+        void *term_realloc(void *oldptr, size_t size) { return realloc(oldptr, size); }
+        void term_free(void *ptr, size_t size) { (void)size; free(ptr); }
+        void term_freensz(void *ptr) { free(ptr); }
 
-        void free_mem(void *ptr, size_t size)
-        {
-            free(ptr);
-        }
+        void *term_memcpy(void *dest, const void *src, size_t size) { return memcpy(dest, src, size); }
+        void *term_memset(void *dest, int val, size_t count) { return memset(dest, val, count); }
     } // extern "C"
 
-    void terminal_t::callback(term_t *_term, uint64_t type, uint64_t first, uint64_t second, uint64_t third)
-    {
-        auto term = reinterpret_cast<terminal_t*>(_term);
-        switch (type)
-        {
-            case TERM_CB_DEC:
-                break;
-            case TERM_CB_BELL:
-                break;
-            case TERM_CB_PRIVATE_ID:
-                break;
-            case TERM_CB_STATUS_REPORT:
-                break;
-            case TERM_CB_POS_REPORT:
-                term->pos.X = first;
-                term->pos.Y = second;
-                break;
-            case TERM_CB_KBD_LEDS:
-                break;
-            case TERM_CB_MODE:
-                break;
-            case TERM_CB_LINUX:
-                break;
-        }
-    }
+    // void terminal_t::callback(term_t *_term, uint64_t type, uint64_t first, uint64_t second, uint64_t third)
+    // {
+    //     auto term = reinterpret_cast<terminal_t*>(_term);
+    //     switch (type)
+    //     {
+    //         case TERM_CB_DEC:
+    //             break;
+    //         case TERM_CB_BELL:
+    //             break;
+    //         case TERM_CB_PRIVATE_ID:
+    //             break;
+    //         case TERM_CB_STATUS_REPORT:
+    //             break;
+    //         case TERM_CB_POS_REPORT:
+    //             term->x = first;
+    //             term->y = second;
+    //             break;
+    //         case TERM_CB_KBD_LEDS:
+    //             break;
+    //         case TERM_CB_MODE:
+    //             break;
+    //         case TERM_CB_LINUX:
+    //             break;
+    //     }
+    // }
 
     void early_init()
     {
         if (terminal_request.response != nullptr)
-            early_term = terminal_request.response->terminals[0];
+            early_term = static_cast<limine_term*>(terminal_request.response->terminals[0]);
     }
 
     void init()
     {
         log::infoln("Terminal: Initialising...");
 
-        #if defined(__x86_64__)
-        if (frm::frm_count == 0)
-        {
-            log::errorln("Couldn't get a framebuffer!");
-            assert(uefi != true, "Booted in UEFI mode, Can't use textmode!");
-
-            terminal_t *term = new terminal_t;
-
-            term->init(term->callback, true);
-            term->textmode();
-
-            terms.push_back(term);
-            main_term = term;
-
-            return;
-        }
-        #endif
-
         auto font_address = reinterpret_cast<uintptr_t>(&unifont);
-        cppimage_t *image = nullptr;
+        image_t *image = nullptr;
 
         auto font_mod = find_module("font");
         if (font_mod != nullptr)
@@ -113,38 +94,39 @@ namespace term
         if (back_mod == nullptr)
             log::errorln("Terminal background not found!");
         else
-        {
-            image = new cppimage_t;
-            image->open(reinterpret_cast<uintptr_t>(back_mod->address), back_mod->size);
-        }
+            image = image_open(back_mod->address, back_mod->size);
 
         font_t font
         {
             font_address,
-            8, 16, 1, 0, 0
+            UNIFONT_WIDTH,
+            UNIFONT_HEIGHT,
+            DEFAULT_FONT_SPACING,
+            DEFAULT_FONT_SCALE_X,
+            DEFAULT_FONT_SCALE_Y,
         };
 
         style_t style
         {
             DEFAULT_ANSI_COLOURS,
             DEFAULT_ANSI_BRIGHT_COLOURS,
-            0xA0000000,
-            0xFFFFFF,
-            static_cast<uint16_t>(image ? 64 : 0),
-            static_cast<uint16_t>(image ? 4 : 0)
+            DEFAULT_BACKGROUND,
+            DEFAULT_FOREGROUND_BRIGHT,
+            DEFAULT_BACKGROUND_BRIGHT,
+            DEFAULT_FOREGROUND_BRIGHT,
+            DEFAULT_MARGIN,
+            DEFAULT_MARGIN_GRADIENT
         };
 
         background_t back
         {
             image,
-            CENTERED,
-            0x00000000
+            IMAGE_CENTERED,
+            DEFAULT_BACKDROP
         };
 
         for (size_t i = 0; i < frm::frm_count; i++)
         {
-            terminal_t *term = new terminal_t;
-
             framebuffer_t frm
             {
                 reinterpret_cast<uintptr_t>(frm::frms[i]->address),
@@ -153,21 +135,63 @@ namespace term
                 frm::frms[i]->pitch
             };
 
-            if (frm::frms[i]->width > image->x_size || frm::frms[i]->height > image->y_size)
-                back.style = STRETCHED;
+            if (image && (frm::frms[i]->width > image->x_size || frm::frms[i]->height > image->y_size))
+                back.style = IMAGE_STRETCHED;
 
-            term->init(term->callback, uefi == false, 8);
-            term->vbe(frm, font, style, back);
+            auto term = terms.emplace_back(
+                new terminal_t(
+                    term_init(frm, font, style, back),
+                    frm::frms[i]->width,
+                    frm::frms[i]->height
+                )
+            );
 
-            terms.push_back(term);
             if (main_term == nullptr)
                 main_term = term;
         }
         term_count = frm::frm_count;
     }
 
-    // TODO
+    struct tty_t : tty::tty_t
+    {
+        terminal_t *term;
+
+        tty_t(terminal_t *term) : tty::tty_t(), term(term) { }
+
+        void print(char c)
+        {
+            printc(c, this->term);
+        }
+
+        int ioctl(vfs::resource *res, vfs::fdhandle *fd, size_t request, uintptr_t argp)
+        {
+            switch (request)
+            {
+                case tiocgwinsz:
+                    *reinterpret_cast<winsize*>(argp) = {
+                        uint16_t(this->term->ctx->cols),
+                        uint16_t(this->term->ctx->rows),
+                        uint16_t(this->term->xpix),
+                        uint16_t(this->term->ypix)
+                    };
+                    return 0;
+                default:
+                    // fmt::print("TTY: IOCTL: Unknown request 0x{:X}\n", request);
+                    return 0;
+            }
+            std::unreachable();
+        }
+    };
+
     void late_init()
     {
+        for (size_t i = 0; const auto &term : terms)
+        {
+            auto dev = makedev(4, i);
+            auto tty = new tty_t(term);
+
+            tty::register_tty(dev, tty);
+            devtmpfs::add_dev("tty"s + std::to_string(i++), dev, 0620 | s_ifchr);
+        }
     }
 } // namespace term

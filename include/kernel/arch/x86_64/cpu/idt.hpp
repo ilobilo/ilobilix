@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -13,7 +13,7 @@ namespace idt
 {
     static constexpr uint8_t INT_SYSCALL = 0x80;
 
-    constexpr uint8_t IRQ(uint8_t num)
+    constexpr inline uint8_t IRQ(uint8_t num)
     {
         return num + 0x20;
     }

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/gdt.hpp>
@@ -8,6 +8,7 @@
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
 #include <init/kernel.hpp>
+#include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <lib/trace.hpp>
 #include <lib/log.hpp>
@@ -42,7 +43,7 @@ namespace idt
             }
         }
 
-        PANIC("Out of interrupt handlers!");
+        PANIC("IDT: Out of interrupt handlers!");
     }
 
     void mask(uint8_t irq)
@@ -109,10 +110,18 @@ namespace idt
 
     static void exception_handler(cpu::registers_t *regs)
     {
-        if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1) && vmm::page_fault(read_cr(2)))
-            return;
+        if (regs->int_no == 14 && proc::initialised && !(regs->error_code & 0b1))
+        {
+            auto cr2 = rdreg(cr2);
+            if (vmm::page_fault(cr2))
+                return;
+            // log::errorln("CR2: 0x{:X}", cr2);
+        }
 
-        panic(regs, regs->rbp, regs->rip, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
+        if (regs->cs & 0x03)
+            panic(regs, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
+        else
+            panic(regs, regs->rbp, regs->rip, "Exception: {} on CPU {}", exception_messages[regs->int_no], (smp::initialised ? this_cpu()->id : 0));
     }
 
     static void eoi(uint64_t int_no)
@@ -139,7 +148,7 @@ namespace idt
             if (handler.eoi_first == false)
                 eoi(regs->int_no);
         }
-        else PANIC("Unknown interrupt!");
+        else PANIC("Unknown interrupt {}", regs->int_no);
     }
 
     extern "C" void *int_table[];

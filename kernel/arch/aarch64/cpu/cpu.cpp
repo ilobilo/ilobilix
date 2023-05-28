@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/aarch64/cpu/cpu.hpp>
 
@@ -28,7 +28,7 @@ namespace cpu
         return base;
     }
 
-    static inline constexpr uint64_t tlbi(uint16_t asid, uintptr_t address)
+    constexpr static inline uint64_t tlbi(uint16_t asid, uintptr_t address)
     {
         return (uint64_t(asid) << 48) | (address >> 12);
     }

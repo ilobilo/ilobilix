@@ -1,4 +1,12 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
+
+#pragma once
+
+#include_next <string_view>
+using namespace std::literals::string_view_literals;
+
+/*
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -8,6 +16,16 @@
 #include <functional>
 #include <algorithm>
 #include <utility>
+
+#if defined(__clang__) && __clang_major__ <= 15
+#   define SV_RANGES 0
+#else
+#   define SV_RANGES 1
+#endif
+
+#if SV_RANGES
+#   include <ranges>
+#endif
 
 namespace std
 {
@@ -41,8 +59,26 @@ namespace std
         constexpr basic_string_view(const Char *s) : _pointer(s), _length(Traits::length(s)) { }
 
         template<contiguous_iterator It, sized_sentinel_for<It> End>
-        requires (same_as<iter_value_t<It>, Char> && !convertible_to<End, size_t>)
+            requires (same_as<iter_value_t<It>, Char> && !convertible_to<End, size_t>)
         constexpr basic_string_view(It first, End last) : _pointer(to_address(first)), _length(last - first) { }
+
+#if SV_RANGES
+        template<ranges::contiguous_range R>
+            requires (
+                ranges::sized_range<R> &&
+                !same_as<remove_cvref_t<R>, basic_string_view> &&
+                !same_as<ranges::range_value_t<R>, Char> &&
+                !convertible_to<R, const Char *> &&
+                (!requires(remove_cvref_t<R> &d) {
+                    d.operator ::std::basic_string_view<Char, Traits>();
+                }) &&
+                (!requires {
+                    typename remove_reference_t<R>::traits_type;
+                } ||
+                same_as<typename remove_reference_t<R>::traits_type, Traits>)
+        )
+        explicit constexpr basic_string_view(R &&r) : _pointer(ranges::data(r)), _length(ranges::size(r)) { }
+#endif
 
         constexpr basic_string_view(nullptr_t) = delete;
 
@@ -95,7 +131,7 @@ namespace std
 
         constexpr const_reference at(size_type index) const
         {
-            assert(index < this->_length);
+            assert(index < this->_length, "string_view::at: index out of range");
             return this->operator[](index);
         }
 
@@ -154,13 +190,15 @@ namespace std
 
         constexpr size_type copy(Char *dest, size_type count, size_type pos = 0) const
         {
-            assert(pos <= this->_length);
-            return Traits::copy(dest, this->_pointer + pos, min(count, this->_length - pos));
+            assert(pos <= this->_length, "string_view::copy: pos out of range");
+            auto len = min(count, this->_length - pos);
+            Traits::copy(dest, this->_pointer + pos, len);
+            return len;
         }
 
         constexpr basic_string_view substr(size_type pos = 0, size_type count = npos) const
         {
-            assert(pos <= this->_length);
+            assert(pos <= this->_length, "string_view::substr: pos out of range");
             return basic_string_view(_pointer + pos, min(count, this->_length - pos));
         }
 
@@ -437,7 +475,7 @@ namespace std
         public:
         size_t operator()(const string_view &str) const
         {
-            return detail::hash_impl::hash(str.data(), str.length());
+            return _hash(str.data(), str.length());
         }
     };
 
@@ -447,9 +485,20 @@ namespace std
         public:
         size_t operator()(const wstring_view &str) const
         {
-            return detail::hash_impl::hash(str.data(), str.length());
+            return _hash(str.data(), str.length());
         }
     };
+
+#if SV_RANGES
+    template<typename Char, typename Traits>
+    constexpr inline bool ranges::enable_borrowed_range<basic_string_view<Char, Traits>> = true;
+
+    template<typename Char, typename Traits>
+    constexpr inline bool ranges::enable_view<basic_string_view<Char, Traits>> = true;
+
+    template<typename R>
+    basic_string_view(R &&) -> basic_string_view<ranges::range_value_t<R>>;
+#endif
 
     template<typename It, typename End>
     basic_string_view(It, End) -> basic_string_view<iter_value_t<It>>;
@@ -472,3 +521,4 @@ namespace std
 } // namespace std
 
 using namespace std::literals::string_view_literals;
+*/

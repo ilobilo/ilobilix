@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/drivers/pci/pci_legacy.hpp>
 #include <arch/x86_64/lib/io.hpp>
@@ -20,7 +20,7 @@ namespace pci::legacy
             case sizeof(uint32_t):
                 return io::in<uint32_t>(0xCFC + (offset & 3));
             default:
-                PANIC("PCI: Invalid integer size!");
+                PANIC("PCI: Invalid integer size {}", width);
         }
     }
 
@@ -41,7 +41,7 @@ namespace pci::legacy
                 io::out<uint32_t>(0xCFC + (offset & 3), value);
                 break;
             default:
-                PANIC("PCI: Invalid integer size!");
+                PANIC("PCI: Invalid integer size {}", width);
         }
     }
 

@@ -5,4 +5,4 @@ depth = 1
 patch_filename = lai.tar
 
 [provide]
-lai = dependency
+lai = lai_dep

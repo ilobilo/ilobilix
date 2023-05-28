@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <init/kernel.hpp>
@@ -123,25 +123,27 @@ namespace vmm
 
     uintptr_t pagemap::virt2phys(uintptr_t vaddr, size_t flags)
     {
-        lockit(this->lock);
+        std::unique_lock guard(lock);
 
-        ptentry *pml_entry = this->virt2pte(vaddr, false, this->get_psize(flags));
+        auto psize = this->get_psize(flags);
+        ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
         if (pml_entry == nullptr || !pml_entry->getflags(Present))
             return invalid_addr;
 
-        return pml_entry->getaddr();
+        return pml_entry->getaddr() + (vaddr % psize);
     }
 
     bool pagemap::map(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         auto map_one = [this](uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache, size_t psize)
         {
             ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
             if (pml_entry == nullptr)
             {
-                log::errorln("VMM: Could not get page map entry!");
+                if (print_errors)
+                    log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
                 return false;
             }
 
@@ -166,16 +168,15 @@ namespace vmm
         return map_one(vaddr, paddr, flags, cache, psize);
     }
 
-    bool pagemap::unmap(uintptr_t vaddr, size_t flags)
+    bool pagemap::unmap_nolock(uintptr_t vaddr, size_t flags)
     {
-        lockit(this->lock);
-
         auto unmap_one = [this](uintptr_t vaddr, size_t psize)
         {
             ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
             if (pml_entry == nullptr)
             {
-                log::errorln("VMM: Could not get page map entry!");
+                if (print_errors)
+                    log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
                 return false;
             }
 
@@ -198,15 +199,14 @@ namespace vmm
         return unmap_one(vaddr, psize);
     }
 
-    bool pagemap::setflags(uintptr_t vaddr, size_t flags, caching cache)
+    bool pagemap::setflags_nolock(uintptr_t vaddr, size_t flags, caching cache)
     {
-        lockit(this->lock);
-
         auto psize = this->get_psize(flags);
         ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
         if (pml_entry == nullptr)
         {
-            log::errorln("VMM: Could not get page map entry!");
+            if (print_errors)
+                log::errorln("VMM: Could not get page map entry for address 0x{:X}", vaddr);
             return false;
         }
 
@@ -221,16 +221,15 @@ namespace vmm
 
     void pagemap::load()
     {
-        lockit(this->lock);
-        write_cr(3, fromhh(reinterpret_cast<uint64_t>(this->toplvl)));
+        wrreg(cr3, fromhh(reinterpret_cast<uint64_t>(this->toplvl)));
     }
 
     void pagemap::save()
     {
-        lockit(this->lock);
-        this->toplvl = reinterpret_cast<ptable*>(tohh(read_cr(3)));
+        this->toplvl = reinterpret_cast<ptable*>(tohh(rdreg(cr3)));
     }
 
+    static size_t counter = 0;
     pagemap::pagemap() : toplvl(new ptable)
     {
         this->llpage_size = gib1;
@@ -242,7 +241,11 @@ namespace vmm
             for (size_t i = 256; i < 512; i++)
                 get_next_lvl(this->toplvl, i, true);
 
-            cpu::enablePAT();
+            if (counter < smp_request.response->cpu_count)
+            {
+                cpu::enablePAT();
+                counter++;
+            }
         }
         else
         {

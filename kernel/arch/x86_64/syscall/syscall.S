@@ -1,4 +1,4 @@
-# Copyright (C) 2022  ilobilo
+# Copyright (C) 2022-2023  ilobilo
 
 .include "arch/x86_64/cpu/cpu.inc"
 
@@ -9,13 +9,13 @@ syscall_entry:
     mov gs:[16], rsp
     mov rsp, gs:[24]
 
-    push 0x23
-    push gs:[16]
-    push r11
-    push 0x1B
-    push rcx
-    push 0
-    push 0
+    push 0x1B # ss
+    push gs:[16] # rsp
+    push r11 # rflags
+    push 0x23 # cs
+    push rcx # rip
+    push 0 # error_code
+    push 0 # int_no
 
     pushall
 

@@ -1,0 +1,270 @@
+diff -ruN a/builtins/psize.c b/builtins/psize.c
+--- a/builtins/psize.c	2023-03-08 18:28:41.969107145 +0400
++++ b/builtins/psize.c	2023-03-08 18:43:35.657105259 +0400
+@@ -21,33 +21,15 @@
+ /*  Write output in 128-byte chunks until we get a sigpipe or write gets an
+     EPIPE.  Then report how many bytes we wrote.  We assume that this is the
+     pipe size. */
+-#include <config.h>
+-
+-#if defined (HAVE_UNISTD_H)
+-#  ifdef _MINIX
+-#    include <sys/types.h>
+-#  endif
+-#  include <unistd.h>
+-#endif
+-
+-#include <stdio.h>
+-#ifndef _MINIX
+-#include "../bashtypes.h"
+-#endif
+ #include <signal.h>
+-#include <errno.h>
+ 
+-#include "../command.h"
+-#include "../general.h"
+-#include "../sig.h"
+-
+-#ifndef errno
+-extern int errno;
+-#endif
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
+ 
+ int nw;
+ 
+-sighandler
++void
+ sigpipe (sig)
+      int sig;
+ {
+diff -ruN a/lib/termcap/termcap.c b/lib/termcap/termcap.c
+--- a/lib/termcap/termcap.c	2023-03-08 18:28:41.908866242 +0400
++++ b/lib/termcap/termcap.c	2023-03-08 18:47:56.299787021 +0400
+@@ -630,7 +630,7 @@
+   bufp->ateof = 0;
+   *bufp->ptr = '\0';
+ 
+-  lseek (fd, 0L, 0);
++  lseek (fd, 0L, SEEK_SET);
+ 
+   while (!bufp->ateof)
+     {
+diff -ruN a/mksyntax.c b/mksyntax.c
+--- a/mksyntax.c	2023-03-08 18:28:41.953042904 +0400
++++ b/mksyntax.c	2023-03-08 18:45:03.688055468 +0400
+@@ -20,30 +20,19 @@
+    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+-#include "config.h"
+-
+ #include <stdio.h>
++#include <string.h>
+ #include "bashansi.h"
+ #include "chartypes.h"
+ #include <errno.h>
+ 
+-#ifdef HAVE_UNISTD_H
+-#  include <unistd.h>
+-#endif
++#include <unistd.h>
+ 
+ #include "syntax.h"
+ 
+ extern int optind;
+ extern char *optarg;
+ 
+-#ifndef errno
+-extern int errno;
+-#endif
+-
+-#ifndef HAVE_STRERROR
+-extern char *strerror();
+-#endif
+-
+ struct wordflag {
+ 	int	flag;
+ 	char	*fstr;
+@@ -376,40 +365,3 @@
+   exit (0);
+ }
+ 
+-
+-#if !defined (HAVE_STRERROR)
+-
+-#include <bashtypes.h>
+-#if defined (HAVE_SYS_PARAM_H)
+-#  include <sys/param.h>
+-#endif
+-
+-#if defined (HAVE_UNISTD_H)
+-#  include <unistd.h>
+-#endif
+-
+-/* Return a string corresponding to the error number E.  From
+-   the ANSI C spec. */
+-#if defined (strerror)
+-#  undef strerror
+-#endif
+-
+-char *
+-strerror (e)
+-     int e;
+-{
+-  static char emsg[40];
+-#if defined (HAVE_SYS_ERRLIST)
+-  extern int sys_nerr;
+-  extern char *sys_errlist[];
+-
+-  if (e > 0 && e < sys_nerr)
+-    return (sys_errlist[e]);
+-  else
+-#endif /* HAVE_SYS_ERRLIST */
+-    {
+-      sprintf (emsg, "Unknown system error %d", e);
+-      return (&emsg[0]);
+-    }
+-}
+-#endif /* HAVE_STRERROR */
+diff -ruN a/shell.c b/shell.c
+--- a/shell.c	2023-03-08 18:28:41.936978663 +0400
++++ b/shell.c	2023-03-08 18:48:42.412002272 +0400
+@@ -1647,7 +1647,7 @@
+ #endif
+ 
+   /* Only do this with non-tty file descriptors we can seek on. */
+-  if (fd_is_tty == 0 && (lseek (fd, 0L, 1) != -1))
++  if (fd_is_tty == 0 && (lseek (fd, 0L, SEEK_CUR) != -1))
+     {
+       /* Check to see if the `file' in `bash file' is a binary file
+ 	 according to the same tests done by execute_simple_command (),
+@@ -1684,7 +1684,7 @@
+ 	  exit (EX_BINARY_FILE);
+ 	}
+       /* Now rewind the file back to the beginning. */
+-      lseek (fd, 0L, 0);
++      lseek (fd, 0L, SEEK_SET);
+     }
+ 
+   /* Open the script.  But try to move the file descriptor to a randomly
+diff -ruN a/support/bashversion.c b/support/bashversion.c
+--- a/support/bashversion.c	2023-03-08 18:28:41.912882302 +0400
++++ b/support/bashversion.c	2023-03-08 18:45:28.038513607 +0400
+@@ -18,15 +18,12 @@
+    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+-#include "config.h"
+-
+ #include "stdc.h"
+ 
+ #include <stdio.h>
++#include <string.h>
+ 
+-#if defined (HAVE_UNISTD_H)
+-#  include <unistd.h>
+-#endif
++#include <unistd.h>
+ 
+ #include "bashansi.h"
+ 
+diff -ruN a/support/config.sub b/support/config.sub
+--- a/support/config.sub	2023-03-08 18:28:41.912882302 +0400
++++ b/support/config.sub	2023-03-08 18:47:18.141692485 +0400
+@@ -1754,7 +1754,7 @@
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | ilobilix* )
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff -ruN a/support/man2html.c b/support/man2html.c
+--- a/support/man2html.c	2023-03-08 18:28:41.908866242 +0400
++++ b/support/man2html.c	2023-03-08 18:45:57.165420573 +0400
+@@ -62,9 +62,6 @@
+  *    that all these features work on all manpages. (I didn't have the
+  *    time to look through all the available manpages.)
+  */
+-#ifdef HAVE_CONFIG_H
+-#include <config.h>
+-#endif
+ 
+ #define NROFF 0
+ 
+@@ -123,27 +120,6 @@
+ #define BD_LITERAL  1
+ #define BD_INDENT   2
+ 
+-#ifndef HAVE_STRERROR
+-static char *
+-strerror(int e)
+-{
+-	static char emsg[40];
+-
+-#if defined (HAVE_SYS_ERRLIST)
+-	extern int sys_nerr;
+-	extern char *sys_errlist[];
+-
+-	if (e > 0 && e < sys_nerr)
+-		return (sys_errlist[e]);
+-	else
+-#endif				/* HAVE_SYS_ERRLIST */
+-	{
+-		sprintf(emsg, "Unknown system error %d", e);
+-		return (&emsg[0]);
+-	}
+-}
+-#endif				/* !HAVE_STRERROR */
+-
+ static char *
+ strgrow(char *old, int len)
+ {
+diff -ruN a/support/mksignames.c b/support/mksignames.c
+--- a/support/mksignames.c	2023-03-08 18:28:41.912882302 +0400
++++ b/support/mksignames.c	2023-03-08 18:46:15.597476735 +0400
+@@ -19,17 +19,11 @@
+    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+-#include <config.h>
+-
+ #include <sys/types.h>
+ #include <signal.h>
+ 
+ #include <stdio.h>
+-#if defined (HAVE_STDLIB_H)
+-#  include <stdlib.h>
+-#else
+-#  include "ansi_stdlib.h"
+-#endif /* HAVE_STDLIB_H */
++#include <stdlib.h>
+ 
+ /* Duplicated from signames.c */
+ #if !defined (NSIG)
+diff -ruN a/support/signames.c b/support/signames.c
+--- a/support/signames.c	2023-03-08 18:28:41.912882302 +0400
++++ b/support/signames.c	2023-03-08 18:46:29.464412617 +0400
+@@ -18,18 +18,12 @@
+    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
+-#include <config.h>
+-
+ #include <stdio.h>
+ 
+ #include <sys/types.h>
+ #include <signal.h>
+ 
+-#if defined (HAVE_STDLIB_H)
+-#  include <stdlib.h>
+-#else
+-#  include "ansi_stdlib.h"
+-#endif /* HAVE_STDLIB_H */
++#include <stdlib.h>
+ 
+ #if !defined (NSIG)
+ #  define NSIG 64

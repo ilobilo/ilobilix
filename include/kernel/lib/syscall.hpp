@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <fmt/ranges.h>
@@ -6,24 +6,24 @@
 #include <cerrno>
 #include <array>
 
+#include <magic_enum_format.hpp>
+#include <magic_enum.hpp>
+
 namespace syscall
 {
-    using args_array = std::array<uintptr_t, 6>;
-
     template<typename>
     struct signature;
 
     template<typename Ret, typename ...Args>
     struct signature<Ret(Args...)>
     {
-        using type = std::tuple<Args...>;
+        using type = Ret(Args...);
+        using args = std::tuple<Args...>;
+        using ret = Ret;
     };
 
-    // template<typename T, typename Base = std::remove_cvref_t<std::remove_pointer_t<T>>>
-    // using to_formattable_ptr = typename std::conditional_t<std::is_pointer_v<T> && !std::same_as<Base, void> && !std::same_as<Base, char>, const void *, T>;
-
     template<typename Type>
-    using to_formattable_ptr = typename std::conditional_t<std::is_pointer_v<Type> && !fmt::is_formattable<Type>::value, const void *, Type>;
+    using to_formattable_ptr = typename std::conditional_t<std::is_pointer_v<Type> && (!fmt::is_formattable<Type>::value || std::same_as<Type, char *> /* for char* buffers */), const void *, Type>;
 
     template<typename ...Ts>
     auto ptr(const std::tuple<Ts...> &tup)
@@ -33,31 +33,53 @@ namespace syscall
 
     class wrapper
     {
-        using voidptr = void*;
-
         private:
-        void (*print)(args_array arr, const char *name);
+        uintptr_t (*entry)(void *func, std::array<uintptr_t, 6> arr, const char *name, bool (*check_func)(uintptr_t));
+        bool (*check_func)(uintptr_t ret);
         const char *name;
-        voidptr storage;
+        void *storage;
 
         public:
-        constexpr wrapper(const char *_name, const auto &func) : print([](args_array arr, const char *name)
-        {
-            typename signature<std::remove_cvref_t<decltype(func)>>::type args;
-            size_t i = 0;
-
-            std::apply([&](auto &&...args)
+        constexpr wrapper(const char *_name, const auto &func, bool (*check_func)(uintptr_t) = [](uintptr_t ret) { return intptr_t(ret) < 0; })
+            : entry([](void *storage, std::array<uintptr_t, 6> arr, const char *name, bool (*check_func)(uintptr_t)) -> uintptr_t
             {
-                (std::invoke([&]<typename Type>(Type &arg)
+                using sign = signature<std::remove_cvref_t<decltype(func)>>;
+                typename sign::args args;
+                size_t i = 0;
+
+                std::apply([&](auto &&...args)
                 {
-                    arg = Type(arr[i++]);
-                }, args), ...);
-            }, args);
+                    (std::invoke([&]<typename Type>(Type &arg)
+                    {
+                        arg = Type(arr[i++]);
+                    }, args), ...);
+                }, args);
 
-            auto [pid, tid] = proc::pid();
-            log::infoln("syscall: [{}:{}] {}{}", pid, tid, name, ptr(args));
-        }), name(_name), storage(voidptr(&func)) { }
+#if SYSCALL_DEBUG
+                auto [pid, tid] = proc::pid();
+                log::infoln("syscall: [{}:{}] {}{}", pid, tid, name, ptr(args));
+#endif
 
-        uintptr_t run(args_array args) const;
+                errno = no_error;
+                auto ret = std::apply(reinterpret_cast<typename sign::type*>(storage), args);
+
+                auto val = magic_enum::enum_cast<errno_t>(errno);
+                if (val.has_value() && check_func(uintptr_t(ret)))
+                {
+#if SYSCALL_DEBUG
+                    log::infoln("syscall: [{}:{}] {} -> {}", pid, tid, name, val.value());
+#endif
+                    return -intptr_t(val.value());
+                }
+#if SYSCALL_DEBUG
+                else log::infoln("syscall: [{}:{}] {} -> {}", pid, tid, name, ret);
+#endif
+                return uintptr_t(ret);
+            }), check_func(check_func), name(_name), storage((void*)(&func)) { }
+
+        uintptr_t run(std::array<uintptr_t, 6> args) const
+        {
+            return this->entry(this->storage, args, this->name, this->check_func);
+        }
     };
 } // namespace syscall

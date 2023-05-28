@@ -1,8 +1,8 @@
 [wrap-git]
-url = https://github.com/V01D-NULL/limine-terminal-port
+url = https://github.com/ilobilo/limine-terminal
 revision = master
 depth = 1
-patch_filename = limine_terminal.tar
+clone-recursive = true
 
 [provide]
 limine_terminal = limine_terminal_dep

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
@@ -14,30 +14,25 @@ namespace proc
         return nullptr;
     }
 
-    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv)
+    void thread_finalise(thread *thread, uintptr_t pc, uintptr_t arg)
     {
-        // auto proc = thread->parent;
-
         if (thread->user == true) { }
         else
         {
-            uintptr_t pstack = pmm::alloc<uintptr_t>(default_stack_size / pmm::page_size);
-            thread->stack = tohh(pstack) + default_stack_size;
+            uintptr_t pstack = pmm::alloc<uintptr_t>(kernel_stack_size / pmm::page_size);
+            thread->stack = tohh(pstack) + kernel_stack_size;
 
-            thread->stacks.push_back(pstack);
+            thread->stacks.push_back(std::make_pair(pstack, kernel_stack_size));
         }
     }
 
     void thread_delete(thread *thread)
     {
-        for (const auto &stack : thread->stacks)
-            pmm::free(stack, default_stack_size / pmm::page_size);
     }
 
     void save_thread(thread *thread, cpu::registers_t *regs)
     {
         thread->regs = *regs;
-
         thread->el0_base = cpu::get_el0_base();
     }
 

@@ -1,6 +1,7 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/initrd/ustar.hpp>
+#include <drivers/fs/devtmpfs.hpp>
 #include <drivers/vfs.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
@@ -36,6 +37,9 @@ namespace ustar
             auto size = oct2int<size_t>(current->size, sizeof(current->size));
             auto mtim = oct2int<time_t>(current->mtime, sizeof(current->mtime));
 
+            auto devmajor = oct2int<time_t>(current->devmajor, sizeof(current->devmajor));
+            auto devminor = oct2int<time_t>(current->devminor, sizeof(current->devminor));
+
             vfs::node_t *node = nullptr;
 
             if (name == "./")
@@ -52,17 +56,19 @@ namespace ustar
                         log::errorln("USTAR: Could not write to regular file '{}'", name);
                     break;
                 case LNKTYPE:
-                    node = vfs::link(nullptr, name, target);
+                    node = vfs::link(nullptr, name, nullptr, target);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not create hardlink '{}'", name);
+                        log::errorln("USTAR: Could not create hardlink '{}' -> '{}'", name, target);
                     break;
                 case SYMTYPE:
                     node = vfs::symlink(nullptr, name, target);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not create symlink '{}'", name);
+                        log::errorln("USTAR: Could not create symlink '{}' -> '{}'", name, target);
                     break;
                 case CHRTYPE:
-                    log::errorln("USTAR: TODO: CHARDEV");
+                    devtmpfs::mknod(nullptr, name, makedev(devmajor, devminor), mode | s_ifchr);
+                    if (node != nullptr)
+                        log::errorln("USTAR: Could not create character file '{}' ({}:{})", name, devmajor, devminor);
                     break;
                 case BLKTYPE:
                     log::errorln("USTAR: TODO: BLKDEV");

@@ -1,10 +1,11 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/initrd/ustar.hpp>
 #include <drivers/initrd/ilar.hpp>
 #include <init/kernel.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
+#include <mm/pmm.hpp>
 
 namespace initrd
 {
@@ -29,6 +30,12 @@ namespace initrd
             log::infoln("Initrd: Archive format is ILAR");
             ilar::init(address);
         }
-        else log::errorln("Initrd: Unknown archive format!");
+        else
+        {
+            log::errorln("Initrd: Unknown archive format!");
+            return;
+        }
+
+        pmm::free(fromhh(address), (align_up(mod->size, 512) + 512) / pmm::page_size);
     }
 } // namespace initrd

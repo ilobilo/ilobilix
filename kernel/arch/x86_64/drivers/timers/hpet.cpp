@@ -1,6 +1,7 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/drivers/timers/hpet.hpp>
+#include <arch/x86_64/drivers/timers/pit.hpp>
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
 #include <drivers/pci/pci.hpp>
@@ -46,7 +47,7 @@ namespace timers::hpet
         if (this->_int_mode == INT_NONE)
             return;
 
-        lockit(this->lock);
+        std::unique_lock guard(this->lock);
 
         auto &comp = this->_device->regs->comparators[this->_num];
         comp.cmd &= ~(1 << 2);
@@ -112,14 +113,14 @@ namespace timers::hpet
             if (timer._fsb == true)
             {
                 auto [handler, vector] = idt::allocate_handler();
-                handler.set([this, &timer](cpu::registers_t *regs)
+                handler.set([this, &timer](cpu::registers_t *)
                 {
-                    lockit(timer.lock);
+                    std::unique_lock guard(timer.lock);
 
                     if (timer._func == false)
                         return;
 
-                    timer._func(regs);
+                    timer._func();
 
                     if (timer._mode != PERIODIC)
                     {
@@ -145,7 +146,7 @@ namespace timers::hpet
                 this->regs->comparators[i].cmd |= (1 << 14);
                 timer._int_mode = timer.INT_FSB;
             }
-            else if (ioapic::initialised == true && __builtin_popcount(gsi_mask) <= 24) // TODO: Fix this on VBOX
+            else if (ioapic::initialised == true && std::popcount(gsi_mask) <= 24) // TODO: Fix this on VBOX
             {
                 if (gsi == 0xFFFFFFFF)
                 {
@@ -162,19 +163,19 @@ namespace timers::hpet
                     assert(gsi != 0xFFFFFFFF);
 
                     gsi_vector = gsi + 0x20;
-                    idt::handlers[gsi_vector].set([this](cpu::registers_t *regs)
+                    idt::handlers[gsi_vector].set([this](cpu::registers_t *)
                     {
                         for (size_t i = 0; i < this->comp_count; i++)
                         {
                             if (this->regs->ist & (1 << i))
                             {
                                 auto &timer = this->comps[i];
-                                lockit(timer.lock);
+                                std::unique_lock guard(timer.lock);
 
                                 if (timer._func == false)
                                     return;
 
-                                timer._func(regs);
+                                timer._func();
 
                                 if (timer._mode != PERIODIC)
                                 {
@@ -187,7 +188,7 @@ namespace timers::hpet
                         }
                     });
 
-                    ioapic::set(gsi, gsi_vector, ioapic::deliveryMode::FIXED, ioapic::destMode::PHYSICAL, ioapic::EDGE_LEVEL, this_cpu()->arch_id);
+                    ioapic::set(gsi, gsi_vector, ioapic::deliveryMode::FIXED, ioapic::destMode::PHYSICAL, ioapic::flags::EDGE_LEVEL, this_cpu()->arch_id);
                 }
 
                 this->regs->comparators[i].cmd |= ((gsi & 0x1F) << 9) | (1 << 1);
@@ -256,7 +257,7 @@ namespace timers::hpet
 
     void cancel_timer(comparator *comp)
     {
-        lockit(lock);
+        std::unique_lock guard(lock);
         comp->cancel_timer();
     }
 
@@ -274,6 +275,16 @@ namespace timers::hpet
 
         for (size_t i = 0; table != nullptr; i++, table = acpi::findtable<acpi::HPETHeader>("HPET", i))
             devices.push_back(new device(table));
+
+#if !SYSCALL_DEBUG
+        arch::int_toggle(false);
+
+        static constexpr size_t ns = 1'000'000;
+        if (start_timer(ns, PERIODIC, [] { time::timer_handler(ns); }))
+            idt::mask(pit::vector - 0x20);
+
+        arch::int_toggle(true);
+#endif
 
         initialised = true;
     }

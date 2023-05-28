@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -55,14 +55,19 @@ namespace std
         using size_type = size_t;
         using difference_type = ptrdiff_t;
 
+        constexpr allocator() noexcept = default;
+
+        template<typename U>
+        constexpr allocator(const allocator<U> &other) noexcept { }
+
         [[nodiscard]] constexpr Type *allocate(size_t size)
         {
             return static_cast<Type*>(::operator new(size * sizeof(Type)));
         }
 
-        constexpr void deallocate(Type *ptr, size_t = 0)
+        constexpr void deallocate(Type *ptr, size_t size)
         {
-            ::operator delete(ptr);
+            ::operator delete(ptr, size);
         }
 
         friend constexpr bool operator==(const allocator &, const allocator &) noexcept

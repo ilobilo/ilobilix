@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <drivers/pci/pci.hpp>
 #include <drivers/acpi.hpp>
@@ -32,35 +32,20 @@ namespace pci
 
         for (size_t num = 0; num < count; num++)
         {
-            bar_t ret = { 0, 0, PCI_BARTYPE_INVALID, false };
-            bool skipnext = false;
+            bar_t ret = { 0, 0, PCI_BARTYPE_INVALID, false, false };
+            bool bit64 = false;
 
-            uint32_t offset = PCI_BAR0 + num * sizeof(uint32_t);
-            uint32_t bar = device->read<uint32_t>(offset);
+            auto offset = PCI_BAR0 + num * sizeof(uint32_t);
+            auto bar = device->read<uint32_t>(offset);
 
-            auto barlen = [&device, bar](uint32_t offset, bool mmio)
-            {
-                // TODO: Fix this? (Doesn't work with rx550)
-
-                // device->write<uint32_t>(offset, 0xFFFFFFFF);
-
-                // size_t length = (~(device->read<uint32_t>(offset) & ~(mmio ? 0b1111 : 0b11)) + 0x01);
-                // if (mmio == false)
-                //     length &= 0xFFFF;
-
-                // device->write<uint32_t>(offset, bar);
-
-                // return length;
-
-                static_cast<void>(device);
-                static_cast<void>(bar);
-                return 0;
-            };
+            device->write<uint32_t>(offset, 0xFFFFFFFF);
+            auto lenlow = device->read<uint32_t>(offset);
+            device->write<uint32_t>(offset, bar);
 
             if (bar & 0x01)
             {
-                uintptr_t addr = bar & 0xFFFFFFFC;
-                size_t length = barlen(offset, false);
+                uintptr_t addr = bar & ~0b11;
+                size_t length = (~(lenlow & ~0b11) + 1) & 0xFFFF;
 
                 ret.base = addr;
                 ret.len = length;
@@ -75,18 +60,27 @@ namespace pci
                 switch (auto type = (bar >> 1) & 0x03)
                 {
                     case 0x00:
-                        length = barlen(offset, true);
-                        addr = bar & 0xFFFFFFF0;
+                        length = ~(lenlow & ~0b1111) + 1;
+                        addr = bar & ~0b1111;
                         break;
                     case 0x02:
+                    {
                         if (num == count - 1)
                             continue;
 
-                        length = barlen(offset, true) | (static_cast<uint64_t>(barlen(offset + 0x04, true)) << 32);
-                        addr = (bar & 0xFFFFFFF0) | (static_cast<uint64_t>(device->read<uint32_t>(offset + 0x04)) << 32);
+                        auto offseth = offset + sizeof(uint32_t);
+                        auto barh = device->read<uint32_t>(offseth);
 
-                        skipnext = true;
+                        device->write<uint32_t>(offseth, 0xFFFFFFFF);
+                        auto lenhigh = device->read<uint32_t>(offseth);
+                        device->write<uint32_t>(offseth, barh);
+
+                        length = ~((uint64_t(lenhigh) << 32) | (lenlow & ~0b1111)) + 1;
+                        addr = (uint64_t(barh) << 32) | (bar & ~0b1111);
+
+                        bit64 = true;
                         break;
+                    }
                     default:
                         log::warnln("PCI: Unknown MMIO bar type 0x{:X}", type);
                         break;
@@ -96,12 +90,14 @@ namespace pci
                 ret.len = length;
                 ret.type = PCI_BARTYPE_MMIO;
                 ret.prefetchable = bar & (1 << 3);
+                ret.bit64 = bit64;
 
                 if (ret.base == 0 && ret.len == 0)
                     ret.type = PCI_BARTYPE_INVALID;
             }
-
-            bars[skipnext ? num++ : num] = ret;
+            bars[num] = ret;
+            if (bit64 == true)
+                bars[++num] = { 0, 0, PCI_BARTYPE_INVALID, false, false };
         }
     }
 
@@ -118,7 +114,7 @@ namespace pci
 
     bool device_t::msi_set(uint64_t cpuid, uint16_t vector, uint16_t index)
     {
-        uint16_t flags = acpi::fadthdr->BootArchitectureFlags;
+        uint16_t flags = ::acpi::fadthdr->BootArchitectureFlags;
         if (this->msi == 0 || flags & (1 << 3))
             return false;
 

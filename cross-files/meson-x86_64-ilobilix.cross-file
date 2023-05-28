@@ -1,0 +1,12 @@
+[binaries]
+c = 'x86_64-ilobilix-gcc'
+cpp = 'x86_64-ilobilix-g++'
+ar = 'x86_64-ilobilix-ar'
+strip = 'x86_64-ilobilix-strip'
+pkgconfig = 'x86_64-ilobilix-pkg-config'
+
+[host_machine]
+system = 'ilobilix'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -61,5 +61,5 @@ struct [[gnu::packed]] driver_t
 
 #define DRIVER(name, init, fini, deps...) __DRIVER_expand(__DRIVER_random(name), name, init, fini, deps)
 
-#define __init extern "C"
-#define __fini extern "C"
+#define __init__ extern "C"
+#define __fini__ extern "C"

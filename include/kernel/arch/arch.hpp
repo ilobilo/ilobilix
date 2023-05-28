@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -26,4 +26,5 @@ namespace arch
     [[noreturn]] void reboot();
 
     void init();
+    void late_init();
 } // namespace arch

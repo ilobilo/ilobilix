@@ -1,34 +1,30 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
-#include <cpp/term.hpp>
+#include <limine_terminal/term.h>
+
+#include <drivers/frm.hpp>
 #include <lib/misc.hpp>
-#include <lib/lock.hpp>
 #include <vector>
+#include <mutex>
 
 namespace term
 {
-    struct terminal_t : cppterm_t
+    struct terminal_t
     {
-        private:
-        point pos = { 0, 0 };
+        std::mutex lock;
+        term_t *ctx;
 
-        public:
-        lock_t lock;
+        size_t xpix;
+        size_t ypix;
 
-        point getpos()
-        {
-            this->write("\033[6n", 5);
-            return this->pos;
-        }
-
-        static void callback(term_t *_term, uint64_t type, uint64_t first, uint64_t second, uint64_t third);
+        terminal_t(term_t *ctx, size_t xpix, size_t ypix) : ctx(ctx), xpix(xpix), ypix(ypix) { }
     };
 
     extern std::vector<terminal_t*> terms;
     extern terminal_t *main_term;
     extern size_t term_count;
 
-    extern limine_terminal *early_term;
+    extern limine_term *early_term;
 
     void print(const char *str, terminal_t *term = main_term);
     void printc(char c, terminal_t *term = main_term);

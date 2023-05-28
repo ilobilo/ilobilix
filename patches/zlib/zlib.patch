@@ -1,0 +1,12 @@
+diff -ruN a/configure b/configure
+--- a/configure	2022-10-10 22:11:12.000000000 +0400
++++ b/configure	2023-03-09 19:29:07.655895379 +0400
+@@ -222,7 +222,7 @@
+     uname=`(uname -s || echo unknown) 2>/dev/null`
+   fi
+   case "$uname" in
+-  Linux* | linux* | *-linux* | GNU | GNU/* | solaris*)
++  Linux* | linux* | *-linux* | GNU | GNU/* | solaris* | ilobilix*)
+         case "$mname" in
+         *sparc*)
+             LDFLAGS="${LDFLAGS} -Wl,--no-warn-rwx-segments" ;;

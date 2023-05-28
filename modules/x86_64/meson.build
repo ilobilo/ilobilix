@@ -4,7 +4,6 @@ modules = [
 
 args += [
     '-march=x86-64',
-    '-mabi=sysv',
     '-msoft-float',
     '-mno-mmx',
     '-mno-sse',

@@ -1,11 +1,11 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
 #include <drivers/vfs.hpp>
 #include <module.hpp>
 #include <mm/vmm.hpp>
-#include <lib/elf.h>
+#include <elf.h>
 
 #include <unordered_map>
 #include <string_view>
@@ -39,7 +39,7 @@ namespace elf
         void init();
     } // namespace syms
 
-    namespace module
+    namespace modules
     {
         struct module_t
         {
@@ -66,7 +66,7 @@ namespace elf
         void destroy_all();
 
         void init();
-    } // namespace module
+    } // namespace modules
 
     namespace exec
     {

@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 
 #include <drivers/serial.hpp>
@@ -6,7 +6,6 @@
 #include <drivers/smp.hpp>
 
 #include <init/kernel.hpp>
-#include <init/main.hpp>
 
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
@@ -14,8 +13,8 @@
 
 const char *cmdline = nullptr;
 uintptr_t hhdm_offset = 0;
-bool lvl5 = LVL5_PAGING != 0;
-bool uefi = true;
+bool lvl5 = false;
+bool uefi = false;
 
 #if LVL5_PAGING
 volatile limine_5_level_paging_request _5_level_paging_request
@@ -49,24 +48,18 @@ volatile limine_framebuffer_request framebuffer_request
     .response = nullptr
 };
 
-volatile limine_terminal_request terminal_request
-{
-    .id = LIMINE_TERMINAL_REQUEST,
-    .revision = 0,
-    .response = nullptr,
-    .callback = nullptr
-};
+volatile limine_term_request terminal_request { };
 
 volatile limine_smp_request smp_request
 {
     .id = LIMINE_SMP_REQUEST,
     .revision = 0,
     .response = nullptr,
-    #if defined(__x86_64__)
+#if defined(__x86_64__)
     .flags = LIMINE_SMP_X2APIC
-    #else
+#else
     .flags = 0
-    #endif
+#endif
 };
 
 volatile limine_memmap_request memmap_request
@@ -123,7 +116,7 @@ volatile limine_stack_size_request stack_size_request
     .id = LIMINE_STACK_SIZE_REQUEST,
     .revision = 0,
     .response = nullptr,
-    .stack_size = default_stack_size
+    .stack_size = kernel_stack_size
 };
 
 limine_file *find_module(const char *name)
@@ -143,20 +136,17 @@ extern "C" void _start()
     serial::early_init();
     term::early_init();
 
-    uefi = efi_system_table_request.response != nullptr;
-    #if LVL5_PAGING
+#if LVL5_PAGING
     lvl5 = _5_level_paging_request.response != nullptr;
-    #endif
+#endif
 
-    // #if defined(__aarch64__)
-    // assert(dtb_request.response, "Could not get dtb response!");
-    // #endif
+// #if defined(__aarch64__)
+//     assert(dtb_request.response, "Could not get dtb response!");
+// #endif
 
-    #if defined(__x86_64__)
-    if (uefi == true)
-    #endif
-        assert(framebuffer_request.response, "Could not get framebuffer response!");
+    uefi = efi_system_table_request.response != nullptr;
 
+    assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
     assert(memmap_request.response, "Could not get memmap response!");
     assert(rsdp_request.response, "Could not get rsdp response!");
@@ -170,6 +160,6 @@ extern "C" void _start()
     cmdline = kernel_file_request.response->kernel_file->cmdline;
     hhdm_offset = hhdm_request.response->offset;
 
-    main();
+    kmain();
     arch::halt();
 }

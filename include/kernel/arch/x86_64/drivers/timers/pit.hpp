@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -6,6 +6,8 @@
 
 namespace timers::pit
 {
+    extern uint8_t vector;
+
     uint64_t time_ms();
     void msleep(uint64_t ms);
 

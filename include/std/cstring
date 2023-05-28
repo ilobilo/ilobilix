@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #pragma once
 
@@ -6,29 +6,26 @@
 
 namespace std
 {
-    extern "C"
-    {
-        void *memcpy(void *dest, const void *src, size_t len);
-        int memcmp(const void *ptr1, const void *ptr2, size_t len);
-        void *memset(void *dest, int ch, size_t len);
-        void *memmove(void *dest, const void *src, size_t len);
-        void *memchr(const void *ptr, int ch, size_t len);
+    using ::memcpy;
+    using ::memcmp;
+    using ::memset;
+    using ::memmove;
+    using ::memchr;
 
-        size_t strlen(const char *str);
-        char *strdup(const char *str);
+    using ::strlen;
+    using ::strdup;
 
-        char *strcat(char *dest, const char *src);
-        char *strncat(char *dest, const char *src, size_t len);
+    using ::strcat;
+    using ::strncat;
 
-        char *strchr(const char *str, int ch);
+    using ::strchr;
 
-        int strcmp(const char *str1, const char *str2);
-        int strncmp(const char *str1, const char *str2, size_t len);
+    using ::strcmp;
+    using ::strncmp;
 
-        char *strcpy(char *dest, const char *src);
-        char *strncpy(char *dest, const char *src, size_t len);
+    using ::strcpy;
+    using ::strncpy;
 
-        char *strstr(const char *str, const char *substr);
-        void strrev(char *str);
-    }
+    using ::strstr;
+    using ::strrev;
 } // namespace std

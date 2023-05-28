@@ -1,4 +1,4 @@
-// Copyright (C) 2022  ilobilo
+// Copyright (C) 2022-2023  ilobilo
 
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <lib/mmio.hpp>
@@ -10,7 +10,8 @@ namespace cpu
     {
         uint32_t cpuid_max = 0;
         asm volatile ("cpuid" : "=a"(cpuid_max) : "a"(leaf & 0x80000000) : "ebx", "ecx", "edx");
-        if (leaf > cpuid_max) return false;
+        if (leaf > cpuid_max)
+            return false;
         asm volatile ("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx) : "a"(leaf), "c"(subleaf));
         return true;
     }
@@ -102,20 +103,20 @@ namespace cpu
 
     void stac()
     {
-        if (read_cr(4) & (1 << 21))
+        if (rdreg(cr4) & (1 << 21))
             asm volatile ("stac" ::: "cc");
     }
 
     void clac()
     {
-        if (read_cr(4) & (1 << 21))
+        if (rdreg(cr4) & (1 << 21))
             asm volatile ("clac" ::: "cc");
     }
 
     void enableSSE()
     {
-        write_cr(0, (read_cr(0) & ~(1 << 2)) | (1 << 1));
-        write_cr(4, read_cr(4) | (3 << 9));
+        wrreg(cr0, (rdreg(cr0) & ~(1 << 2)) | (1 << 1));
+        wrreg(cr4, rdreg(cr4) | (3 << 9));
     }
 
     void enablePAT()
@@ -129,7 +130,7 @@ namespace cpu
         if (cpu::id(7, 0, a, b, c, d))
         {
             if (b & CPUID_SMEP)
-                write_cr(4, read_cr(4) | (1 << 20));
+                wrreg(cr4, rdreg(cr4) | (1 << 20));
         }
     }
 
@@ -140,7 +141,7 @@ namespace cpu
         {
             if (b & CPUID_SMAP)
             {
-                write_cr(4, read_cr(4) | (1 << 21));
+                wrreg(cr4, rdreg(cr4) | (1 << 21));
                 clac();
             }
         }
@@ -152,7 +153,7 @@ namespace cpu
         if (cpu::id(7, 0, a, b, c, d))
         {
             if (c & CPUID_UMIP)
-                write_cr(4, read_cr(4) | (1 << 11));
+                wrreg(cr4, rdreg(cr4) | (1 << 11));
         }
     }
 } // namespace cpu
