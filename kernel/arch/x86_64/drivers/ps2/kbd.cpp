@@ -15,7 +15,7 @@ namespace ps2::kbd
 {
     uint8_t vector = 0;
 
-    // TODO: don't use same variables for every tty
+    // TODO: use different variables for each tty
     static union
     {
         struct
@@ -184,7 +184,7 @@ namespace ps2::kbd
         shoulnt_be_called, shoulnt_be_called, shoulnt_be_called
     };
 
-    event_t ev;
+    static event_t ev;
     void kbd_worker()
     {
         while (true)

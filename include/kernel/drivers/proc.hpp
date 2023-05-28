@@ -129,11 +129,11 @@ namespace proc
 
         thread(process *parent);
 
-        thread(process *parent, uintptr_t pc, uintptr_t arg);
-        thread(process *parent, uintptr_t pc, uintptr_t arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
+        thread(process *parent, uintptr_t pc, uintptr_t arg = 0);
+        thread(process *parent, uintptr_t pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
 
-        thread(process *parent, auto pc, auto arg) : thread(parent, uintptr_t(pc), uintptr_t(arg)) { }
-        thread(process *parent, auto pc, auto arg, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : thread(parent, uintptr_t(pc), uintptr_t(arg), argv, envp, auxv) { }
+        thread(process *parent, auto pc, auto arg = 0) : thread(parent, uintptr_t(pc), uintptr_t(arg)) { }
+        thread(process *parent, auto pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : thread(parent, uintptr_t(pc), argv, envp, auxv) { }
 
         ~thread();
     };

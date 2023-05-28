@@ -269,7 +269,7 @@ namespace vmm
 
     void arch_init()
     {
-        // TODO: Is anything here correct?
+        // TODO: Is anything here correct? idk
 
         uint64_t aa64mmfr0 = 0;
         asm volatile ("mrs %0, id_aa64mmfr0_el1" : "=r"(aa64mmfr0));
@@ -288,7 +288,7 @@ namespace vmm
             psize = psize_64kib;
         else PANIC("VMM: Unknown page size!");
 
-        // Especially here
+        // TODO: Especially here
 
         bool feat_lpa = (aa64mmfr0 & 0b1111) == 0b0110;
         bool feat_lva = ((aa64mmfr2 << 16) & 0b1111) == 0b0001;
