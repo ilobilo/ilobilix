@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/ilobilo/string
+revision = master
+depth = 1
+
+[provide]
+string = string_dep

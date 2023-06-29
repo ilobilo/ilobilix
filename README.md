@@ -30,7 +30,7 @@ Follow these steps to build and run the os:
 ``git clone --depth=1 https://github.com/ilobilo/ilobilix``
 
 2. Currently you have to manually build the sysroot:
-* Set the architecture in boostrap.yml
+* Set the architecture in `boostrap.yml`
 * ``mkdir build-sysroot``
 * ``pushd build-sysroot``
 * ``xbstrap init ..``
@@ -47,7 +47,7 @@ If you created ``build-sysroot`` in ilobilix source root and are in that directo
 4. Build and run the kernel:\
 ``ninja -C builddir``
 
-Note: you can also check github workflows for example
+Note: you can also check github workflow file\
 Note: optionally you can add run_bios or run_efi to ninja arguments\
 Note: on aarch64, only run_efi is supported\
 Note: if firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_efi

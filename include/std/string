@@ -2,6 +2,17 @@
 
 #pragma once
 
+#define NOSTD_STRING_FLOAT 0
+#include <nostd/string.hpp>
+
+namespace std
+{
+    using namespace nostd;
+} // namespace std
+using namespace nostd::literals::string_literals;
+
+// string has been moved to an external repository
+/*
 #pragma GCC system_header
 
 #define USE_NEW_STRING 1
@@ -13,6 +24,8 @@
 #include <cassert>
 #include <cstdlib>
 #include <memory>
+
+#include <lib/hash.hpp>
 
 constexpr inline size_t hasher(const void *ptr, uint64_t len)
 {
@@ -56,8 +69,8 @@ namespace std
         using allocator_type = Allocator;
         using size_type = typename alloc_traits::size_type;
         using difference_type = typename alloc_traits::difference_type;
-        using reference = typename allocator_type::reference;
-        using const_reference = typename allocator_type::const_reference;
+        using reference = value_type &;
+        using const_reference = const value_type &;
         using pointer = typename alloc_traits::pointer;
         using const_pointer = typename alloc_traits::const_pointer;
         using iterator = value_type *;
@@ -501,8 +514,8 @@ namespace std
         }
 
         constexpr basic_string &operator=(basic_string &&str) noexcept (
-            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
-            allocator_traits<Allocator>::is_always_equal::value
+            alloc_traits::propagate_on_container_move_assignment::value ||
+            alloc_traits::is_always_equal::value
         )
         {
             return this->assign(str);
@@ -555,8 +568,8 @@ namespace std
         }
 
         constexpr basic_string &assign(basic_string &&str) noexcept (
-            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
-            allocator_traits<Allocator>::is_always_equal::value
+            alloc_traits::propagate_on_container_move_assignment::value ||
+            alloc_traits::is_always_equal::value
         )
         {
             if (this->_allocator == str._allocator)
@@ -1273,7 +1286,7 @@ namespace std
             static_assert(detail::dependent_false<Char>, "std::basic_string::resize_and_overwrite(count, op) not implemented!");
         }
 
-        constexpr void swap(basic_string &str) noexcept(allocator_traits<allocator_type>::propagate_on_container_swap::value || allocator_traits<allocator_type>::is_always_equal::value)
+        constexpr void swap(basic_string &str) noexcept(alloc_traits::propagate_on_container_swap::value || alloc_traits::is_always_equal::value)
         {
             using std::swap;
             swap(this->storage, str.storage);
@@ -1705,15 +1718,15 @@ namespace std
             }
         }
 
-        constexpr void to_chars(char *first, size_t len, auto val)
-        {
-            constexpr static char digits[201] =
+        static constexpr char digits[201] =
                 "0001020304050607080910111213141516171819"
                 "2021222324252627282930313233343536373839"
                 "4041424344454647484950515253545556575859"
                 "6061626364656667686970717273747576777879"
                 "8081828384858687888990919293949596979899";
 
+        constexpr void to_chars(char *first, size_t len, auto val)
+        {
             size_t pos = len - 1;
             while (val >= 100)
             {
@@ -1764,16 +1777,6 @@ namespace std
     // constexpr inline string to_string(float val);
     // constexpr inline string to_string(double val);
     // constexpr inline string to_string(long double val);
-
-    // constexpr inline int stoi(const wstring &str, size_t *pos = nullptr, int base = 10);
-    // constexpr inline long stol(const wstring &str, size_t *pos = nullptr, int base = 10);
-    // constexpr inline unsigned long stoul(const wstring &str, size_t *pos = nullptr, int base = 10);
-    // constexpr inline long long stoll(const wstring &str, size_t *pos = nullptr, int base = 10);
-    // constexpr inline unsigned long long stoull(const wstring &str, size_t *pos = nullptr, int base = 10);
-
-    // constexpr inline float stof(const wstring &str, size_t *pos = nullptr);
-    // constexpr inline double stod(const wstring &str, size_t *pos = nullptr);
-    // constexpr inline long double stold(const wstring &str, size_t *pos = nullptr);
 
     // constexpr inline wstring to_wstring(int val);
     // constexpr inline wstring to_wstring(unsigned val);
@@ -2001,15 +2004,15 @@ namespace std
         }
 
         constexpr basic_string &operator=(const basic_string &str) noexcept(
-            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
-            allocator_traits<Allocator>::is_always_equal::value)
+            alloc_traits::propagate_on_container_move_assignment::value ||
+            alloc_traits::is_always_equal::value)
         {
             return this->assign(str);
         }
 
         constexpr basic_string &operator=(basic_string &&str) noexcept(
-            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
-            allocator_traits<Allocator>::is_always_equal::value) = default;
+            alloc_traits::propagate_on_container_move_assignment::value ||
+            alloc_traits::is_always_equal::value) = default;
 
         constexpr basic_string &operator=(const Char *s)
         {
@@ -2064,8 +2067,8 @@ namespace std
         }
 
         constexpr basic_string &assign(basic_string &&str) noexcept(
-            allocator_traits<Allocator>::propagate_on_container_move_assignment::value ||
-            allocator_traits<Allocator>::is_always_equal::value)
+            alloc_traits::propagate_on_container_move_assignment::value ||
+            alloc_traits::is_always_equal::value)
         {
             return this->swap(str);
         }
@@ -3264,3 +3267,4 @@ namespace std
 using namespace std::literals::string_literals;
 
 #endif
+*/

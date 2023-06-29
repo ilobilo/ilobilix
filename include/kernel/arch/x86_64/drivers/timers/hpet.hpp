@@ -79,7 +79,7 @@ namespace timers::hpet
             if (mode == PERIODIC && this->_periodic == false)
                 return false;
 
-            if (this->_func != false)
+            if (static_cast<bool>(this->_func) != false)
                 return false;
 
             this->_mode = mode;

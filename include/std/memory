@@ -67,7 +67,7 @@ namespace std
 
         constexpr void deallocate(Type *ptr, size_t size)
         {
-            ::operator delete(ptr, size);
+            ::operator delete(ptr, size * sizeof(Type));
         }
 
         friend constexpr bool operator==(const allocator &, const allocator &) noexcept

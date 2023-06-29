@@ -2,6 +2,7 @@
 
 #include <misc/cxxabi.hpp>
 #include <lib/panic.hpp>
+#include <lib/hash.hpp>
 #include <lib/log.hpp>
 #include <cxxabi.h>
 #include <cstdint>

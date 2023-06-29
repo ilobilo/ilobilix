@@ -328,6 +328,12 @@ namespace proc
         return { thread->parent->pid, thread->tid };
     }
 
+    std::tuple<std::string_view, pid_t, tid_t> pid_name()
+    {
+        auto thread = this_thread();
+        return { thread->parent->name, thread->parent->pid, thread->tid };
+    }
+
     // Pid 0 is for kernel process
     // Pid -1 and down are for idle processes
     static std::atomic<pid_t> idle_pids(-1);
