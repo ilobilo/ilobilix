@@ -292,6 +292,7 @@ tools:
         - '--with-sysroot=@SYSROOT_DIR@'
         - '--disable-werror'
         - '--enable-targets=x86_64-elf,x86_64-pe'
+        # - '--enable-default-hash-style=gnu'
         - 'CFLAGS=-O2'
     compile:
       - args: ['make', '-j@PARALLELISM@', 'all-binutils', 'all-gas', 'all-ld']
@@ -805,7 +806,7 @@ packages:
     pkgs_required:
       - mlibc
       - ncurses
-      - readline
+      # - readline
       - libiconv
     configure:
       - args:
@@ -814,7 +815,9 @@ packages:
         - '--prefix=/usr'
         - '--without-bash-malloc'
         - '--disable-nls'
-        - '--with-installed-readline=$SYSROOT_DIR$/usr'
+        - '--disable-readline'
+        - '--without-readline'
+        # - '--with-installed-readline=$SYSROOT_DIR$/usr'
         environ:
           ac_cv_func_wcswidth: 'no'
     build:

@@ -28,4 +28,36 @@ namespace std
 
     using ::strstr;
     using ::strrev;
+
+// #if __has_feature(cxx_constexpr_string_builtins)
+//     constexpr inline auto __constexpr_memcmp(const void *ptr1, const void *ptr2, size_t len)
+//     {
+//         return __builtin_memcmp(ptr1, ptr2, len);
+//     }
+
+//     constexpr inline auto __constexpr_strlen(const char *str)
+//     {
+//         return __builtin_strlen(str);
+//     }
+
+//     constexpr inline auto __constexpr_char_memchr(const char *haystack, int needle, size_t size)
+//     {
+//         return __builtin_char_memchr(haystack, needle, size);
+//     }
+
+//     constexpr inline auto __constexpr_wmemcmp(const wchar_t *ptr1, const wchar_t *ptr2, size_t len)
+//     {
+//         return __builtin_wmemcmp(ptr1, ptr2, len);
+//     }
+
+//     constexpr inline auto __constexpr_wcslen(const wchar_t *str)
+//     {
+//         return __builtin_wcslen(str);
+//     }
+
+//     constexpr inline auto __constexpr_wmemchr(const wchar_t *haystack, int needle, size_t size)
+//     {
+//         return __builtin_wmemchr(haystack, needle, size);
+//     }
+// #endif
 } // namespace std

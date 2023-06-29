@@ -170,18 +170,18 @@ namespace ps2::kbd
         add({ '\033', char(value) });
     }
 
-    static void shoulnt_be_called(bool released, uint8_t value)
+    static void shouldnt_be_called(bool released, uint8_t value)
     {
-        PANIC("PS2: bruh: {}, {}", released, value);
+        PANIC("PS2: bruh momento: {}, {}", released, value);
     }
 
     void (*handlers[15])(bool, uint8_t)
     {
         latin_handler, func_handler, spec_handler,
-        pad_handler, shoulnt_be_called, shoulnt_be_called,
+        pad_handler, shouldnt_be_called, shouldnt_be_called,
         cur_handler, shift_handler, meta_handler,
-        shoulnt_be_called, shoulnt_be_called, shoulnt_be_called,
-        shoulnt_be_called, shoulnt_be_called, shoulnt_be_called
+        shouldnt_be_called, shouldnt_be_called, shouldnt_be_called,
+        shouldnt_be_called, shouldnt_be_called, shouldnt_be_called
     };
 
     static event_t ev;

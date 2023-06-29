@@ -23,7 +23,7 @@ iso_files = [
     meson.source_root() / 'misc/bg.png',
     meson.source_root() / 'misc/dtb.img',
     meson.source_root() / 'misc/font.bin',
-    meson.source_root() / 'limine.cfg'
+    meson.source_root() / 'misc/limine.cfg'
 ]
 
 qemu_args = [
@@ -152,6 +152,7 @@ deps = [
     dependency('libstdcxx_headers'),
     dependency('limine_terminal'),
     dependency('smart_ptr'),
+    dependency('string'),
     dependency('limine'),
     dependency('printf'),
     dependency('cwalk'),

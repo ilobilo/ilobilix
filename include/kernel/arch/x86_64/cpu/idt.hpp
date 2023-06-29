@@ -80,7 +80,7 @@ namespace idt
 
         bool clear()
         {
-            bool ret = this->handler;
+            bool ret = static_cast<bool>(this->handler);
             this->handler.clear();
             return ret;
         }

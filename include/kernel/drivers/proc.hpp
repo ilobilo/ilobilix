@@ -182,6 +182,7 @@ namespace proc
     [[noreturn]] void pexit(int code);
 
     std::pair<pid_t, tid_t> pid();
+    std::tuple<std::string_view, pid_t, tid_t> pid_name();
 
     extern bool initialised;
     [[noreturn]] void init(bool start = false);

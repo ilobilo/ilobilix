@@ -48,8 +48,8 @@
     log::errorln("{}", fmt::vformat(format, args));
     if (proc::initialised == true)
     {
-        auto [pid, tid] = proc::pid();
-        log::errorln("Process ID: {}, Thread ID: {}", pid, tid);
+        auto [name, pid, tid] = proc::pid_name();
+        log::errorln("Process '{}', PID: {}, TID: {}", name, pid, tid);
     }
 
     log::errorln();

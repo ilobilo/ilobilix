@@ -117,7 +117,7 @@ namespace timers::hpet
                 {
                     std::unique_lock guard(timer.lock);
 
-                    if (timer._func == false)
+                    if (static_cast<bool>(timer._func) == false)
                         return;
 
                     timer._func();
@@ -172,7 +172,7 @@ namespace timers::hpet
                                 auto &timer = this->comps[i];
                                 std::unique_lock guard(timer.lock);
 
-                                if (timer._func == false)
+                                if (static_cast<bool>(timer._func) == false)
                                     return;
 
                                 timer._func();
