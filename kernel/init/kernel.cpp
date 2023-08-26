@@ -1,6 +1,5 @@
 // Copyright (C) 2022-2023  ilobilo
 
-
 #include <drivers/serial.hpp>
 #include <drivers/term.hpp>
 #include <drivers/smp.hpp>

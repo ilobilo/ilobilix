@@ -1,3 +1,5 @@
+# Copyright (C) 2022-2023  ilobilo
+
 all_modules = { }
 
 c_args = get_option('modules_cflags').split()

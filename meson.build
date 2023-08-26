@@ -1,3 +1,5 @@
+# Copyright (C) 2022-2023  ilobilo
+
 project('ilobilix', ['c', 'cpp'],
     version : 'v0.1',
     license: 'GPL-3.0',

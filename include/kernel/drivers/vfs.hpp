@@ -6,8 +6,6 @@
 #include <lib/path.hpp>
 #include <lib/time.hpp>
 #include <cerrno>
-#include <vector>
-#include <memory>
 #include <tuple>
 
 namespace proc { struct process; }
