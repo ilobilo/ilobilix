@@ -6,8 +6,14 @@
 #include <smart_ptr>
 #include <new>
 
+#include <lib/math.hpp>
+#include <mm/pmm.hpp>
+
 namespace std
 {
+    template<typename Alloc>
+    struct allocator_traits;
+
     namespace detail
     {
         template<typename Type>
@@ -44,6 +50,50 @@ namespace std
     template<typename Type, typename ...Args>
     detail::invalid_make_unique_t<Type> make_unique(Args &&...) = delete;
 
+    template<typename Allocator>
+    struct deallocator
+    {
+        using value_type = typename Allocator::value_type;
+        Allocator alloc;
+        size_t size;
+        explicit deallocator(const Allocator &alloc, size_t size) : alloc(alloc), size(size) { }
+        void operator()(value_type* ptr)
+        {
+            using Traits = allocator_traits<Allocator>;
+            for (ptrdiff_t i = this->size - 1; i >= 0; --i)
+                Traits::destroy(this->alloc, ptr + i);
+            Traits::deallocate(this->alloc, ptr, this->size);
+        }
+    };
+
+    template<typename Allocator, typename U>
+    using Rebind = typename allocator_traits<Allocator>::template rebind_alloc<U>;
+
+    template<typename Type, typename Allocator, typename ...Args> requires (!is_array_v<Type>)
+    inline unique_ptr<Type, deallocator<Rebind<Allocator, Type>>> allocate_unique(const Allocator &allocator, Args &&...args)
+    {
+        using Alloc = Rebind<Allocator, Type>;
+        using Traits = allocator_traits<Alloc>;
+        Alloc alloc(allocator);
+        Type *ptr = Traits::allocate(alloc, 1);
+        Traits::construct(alloc, ptr, forward<Args>(args)...);
+        deallocator<Alloc> dealloc(alloc, 1);
+        return unique_ptr<Type, deallocator<Alloc>>(ptr, dealloc);
+    }
+    template<typename Type, typename Allocator> requires (is_array_v<Type> && extent_v<Type> == 0)
+    inline unique_ptr<Type, deallocator<Rebind<Allocator, remove_extent_t<Type>>>> allocate_unique(const Allocator &allocator, size_t size)
+    {
+        using Elem = remove_extent_t<Type>;
+        using Alloc = Rebind<Allocator, Elem>;
+        using Traits = allocator_traits<Alloc>;
+        Alloc alloc(allocator);
+        Elem *ptr = Traits::allocate(alloc, size);
+        for (size_t i = 0; i < size; ++i)
+            Traits::construct(alloc, ptr + i);
+        deallocator<Alloc> dealloc(alloc, size);
+        return unique_ptr<Type, deallocator<Alloc>>(ptr, dealloc);
+    }
+
     template<typename Type>
     struct allocator
     {
@@ -60,19 +110,35 @@ namespace std
         template<typename U>
         constexpr allocator(const allocator<U> &other) noexcept { }
 
-        [[nodiscard]] constexpr Type *allocate(size_t size)
+        [[nodiscard]] constexpr Type *allocate(size_t count)
         {
-            return static_cast<Type*>(::operator new(size * sizeof(Type)));
+            return static_cast<Type*>(::operator new(count * sizeof(Type)));
         }
 
-        constexpr void deallocate(Type *ptr, size_t size)
+        constexpr void deallocate(Type *ptr, size_t count)
         {
-            ::operator delete(ptr, size * sizeof(Type));
+            ::operator delete(ptr, count * sizeof(Type));
         }
 
         friend constexpr bool operator==(const allocator &, const allocator &) noexcept
         {
             return true;
+        }
+    };
+
+    template<typename Type>
+    struct physical_allocator : allocator<Type>
+    {
+        [[nodiscard]] constexpr Type *allocate(size_t count)
+        {
+            auto size = count * sizeof(Type);
+            return pmm::alloc<Type*>(div_roundup(size, pmm::page_size));
+        }
+
+        constexpr void deallocate(Type *ptr, size_t count)
+        {
+            auto size = count * sizeof(Type);
+            pmm::free(div_roundup(size, pmm::page_size));
         }
     };
 

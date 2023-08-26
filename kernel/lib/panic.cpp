@@ -14,7 +14,7 @@
 [[noreturn]] void vpanic(const char *file, int line, const char *func, std::string_view format, fmt::format_args args)
 {
     log::println();
-    log::errorln("{}", fmt::vformat(format, args));
+    log::errorln(format, args);
     log::errorln("File: {}", file);
     log::errorln("Line: {}", line);
     log::errorln("Function: {}", func);

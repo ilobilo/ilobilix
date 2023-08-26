@@ -14,26 +14,16 @@ namespace term
     terminal_t *main_term = nullptr;
     size_t term_count = 0;
 
-    limine_term *early_term = nullptr;
-
     void print(const char *str, terminal_t *term)
     {
-        if (term == nullptr)
-        {
-            if (early_term != nullptr)
-                terminal_request.response->write(early_term, str, strlen(str));
-        }
-        else term_write(term->ctx, str, strlen(str));
+        if (term != nullptr)
+            term_write(term->ctx, str, strlen(str));
     }
 
     void printc(char c, terminal_t *term)
     {
-        if (term == nullptr)
-        {
-            if (early_term != nullptr)
-                terminal_request.response->write(early_term, &c, 1);
-        }
-        else term_write(term->ctx, &c, 1);
+        if (term != nullptr)
+            term_write(term->ctx, &c, 1);
     }
 
     extern "C"
@@ -74,12 +64,6 @@ namespace term
     // }
 
     void early_init()
-    {
-        if (terminal_request.response != nullptr)
-            early_term = static_cast<limine_term*>(terminal_request.response->terminals[0]);
-    }
-
-    void init()
     {
         log::infoln("Terminal: Initialising...");
 
@@ -183,7 +167,7 @@ namespace term
         }
     };
 
-    void late_init()
+    void init()
     {
         for (size_t i = 0; const auto &term : terms)
         {

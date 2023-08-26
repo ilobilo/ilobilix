@@ -18,6 +18,7 @@
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
 
+#include <lib/interrupts.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 
@@ -125,7 +126,7 @@ namespace arch
         halt(false);
     }
 
-    void init()
+    void early_init()
     {
         smp::bsp_init();
 
@@ -140,8 +141,16 @@ namespace arch
         smp::init();
     }
 
-    void late_init()
+    void init()
     {
         ps2::init();
     }
 } // namespace arch
+
+namespace interrupts
+{
+    std::pair<handler&, size_t> allocate_handler()
+    {
+        return idt::allocate_handler();
+    }
+} // namespace interrupts

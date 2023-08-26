@@ -7,7 +7,6 @@
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 #include <smart_ptr>
-#include <errno.h>
 #include <cstddef>
 #include <cstring>
 
@@ -449,15 +448,17 @@ namespace elf
             if (driver->initialised == true)
                 return true;
 
+            std::string_view name(driver->name);
+
             for (size_t i = 0; i < driver->depcount; i++)
             {
                 const auto &dep = driver->deps[i];
-                if (!strcmp(driver->name, dep))
+                if (name == dep)
                     continue;
 
                 if (drivers.contains(dep) == false)
                 {
-                    log::errorln("ELF: Dependency '{}' of driver '{}' not found!", dep, driver->name);
+                    log::errorln("ELF: Dependency '{}' of driver '{}' not found!", dep, name);
                     return false;
                 }
 
@@ -466,7 +467,7 @@ namespace elf
                 {
                     if (deps == false)
                     {
-                        log::errorln("ELF: Dependency '{}' of driver '{}' unresolved!", dep, driver->name);
+                        log::errorln("ELF: Dependency '{}' of driver '{}' unresolved!", dep, name);
                         return false;
                     }
                     run(depdriver, deps);
@@ -476,10 +477,10 @@ namespace elf
             bool ret = false;
             if (driver->init)
             {
-                log::infoln("ELF: Running driver '{}'", std::string_view(driver->name));
+                log::infoln("ELF: Running driver '{}'", name);
                 ret = driver->init();
             }
-            else log::errorln("ELF: Driver '{}' does not have init() function!", driver->name);
+            else log::errorln("ELF: Driver '{}' does not have init() function!", name);
 
             return driver->initialised = ret;
         }

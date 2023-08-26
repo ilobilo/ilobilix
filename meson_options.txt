@@ -4,7 +4,7 @@ option('kernel_cxxflags', type : 'string', description : 'Extra cpp compiler arg
 option('modules_cflags', type : 'string', description : 'Extra c compiler arguments for modules')
 option('modules_cxxflags', type : 'string', description : 'Extra cpp compiler arguments for modules')
 
-option('kernel_ubsan', type : 'boolean', value : true, description : 'Enable ubsanitizer in kernel')
+option('kernel_ubsan', type : 'boolean', value : false, description : 'Enable ubsanitizer in kernel')
 option('modules_ubsan', type : 'boolean', value : false, description : 'Enable ubsanitizer in modules')
 
 option('5lvl_paging', type : 'boolean', value : false, description : 'Enable 5 level paging in kernel')
@@ -15,5 +15,3 @@ option('gdb', type : 'boolean', value : false, description : 'Add -s -S to qemu.
 
 option('noaccel', type : 'boolean', value : false, description : 'Disable qemu accelerators')
 option('vnc', type : 'boolean', value : false, description : 'Start VNC server on 127.0.0.1:5901')
-
-option('norun', type : 'boolean', value : false, description : 'Do not run qemu')

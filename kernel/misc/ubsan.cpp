@@ -69,6 +69,11 @@ extern "C"
             print("no space for object", data->location);
     }
 
+    void __ubsan_handle_function_type_mismatch(function_type_mismatch_v1_data *data, uintptr_t ptr)
+    {
+        print("call to a function through pointer to incorrect function", data->location);
+    }
+
     void __ubsan_handle_function_type_mismatch_v1(function_type_mismatch_v1_data *data, uintptr_t ptr, uintptr_t calleeRTTI, uintptr_t fnRTTI)
     {
         print("call to a function through pointer to incorrect function", data->location);

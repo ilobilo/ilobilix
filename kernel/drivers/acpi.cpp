@@ -1,8 +1,10 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <acpispec/tables.h>
 #include <lai/helpers/sci.h>
 #include <lai/helpers/pm.h>
 #include <lai/drivers/ec.h>
+
 #include <drivers/acpi.hpp>
 #include <init/kernel.hpp>
 #include <lib/alloc.hpp>
@@ -14,7 +16,6 @@
 #include <mm/vmm.hpp>
 #include <lai/host.h>
 #include <lai/core.h>
-#include <string>
 
 #if defined(__x86_64__)
 #include <arch/x86_64/cpu/ioapic.hpp>
@@ -110,6 +111,8 @@ namespace acpi
 
     void ec_init()
     {
+        log::infoln("ACPI: Initialising ECs...");
+
         LAI_CLEANUP_STATE lai_state_t state;
         lai_init_state(&state);
 
@@ -117,22 +120,40 @@ namespace acpi
         lai_eisaid(&pnp_id, ACPI_EC_PNP_ID);
 
         lai_ns_iterator it = LAI_NS_ITERATOR_INITIALIZER;
-        lai_nsnode_t *node;
-
+        lai_nsnode_t *node = nullptr;
         while ((node = lai_ns_iterate(&it)))
         {
             if (lai_check_device_pnp_id(node, &pnp_id, &state))
                 continue;
 
-            auto driver = pmm::alloc<lai_ec_driver*>(div_roundup(sizeof(lai_ec_driver), pmm::page_size));
+            auto driver = new lai_ec_driver;
             lai_init_ec(node, driver);
 
             lai_ns_child_iterator child_it = LAI_NS_CHILD_ITERATOR_INITIALIZER(node);
             lai_nsnode_t *child_node = nullptr;
-
             while ((child_node = lai_ns_child_iterate(&child_it)))
+            {
                 if (lai_ns_get_node_type(child_node) == LAI_NODETYPE_OPREGION)
-                    lai_ns_override_opregion(child_node, &lai_ec_opregion_override, driver);
+                    if (lai_ns_get_opregion_address_space(child_node) == ACPI_OPREGION_EC)
+                        lai_ns_override_opregion(child_node, &lai_ec_opregion_override, driver);
+            }
+
+            // lai_nsnode_t* reg = lai_resolve_path(node, "_REG");
+            // if (reg != nullptr)
+            // {
+            //     LAI_CLEANUP_VAR lai_variable_t address_space = LAI_VAR_INITIALIZER;
+            //     LAI_CLEANUP_VAR lai_variable_t enable = LAI_VAR_INITIALIZER;
+
+            //     address_space.type = LAI_INTEGER;
+            //     address_space.integer = 3;
+
+            //     enable.type = LAI_INTEGER;
+            //     enable.integer = 1;
+
+            //     lai_api_error_t error = lai_eval_largs(nullptr, reg, &state, &address_space, &enable, nullptr);
+            //     if (error != LAI_ERROR_NONE)
+            //         log::errorln("ACPI: Failed to evaluate EC _REG: {}", lai_api_error_to_string(error));
+            // }
         }
     }
 
@@ -148,10 +169,14 @@ namespace acpi
 
     void enable()
     {
+        // lai_enable_tracing(LAI_TRACE_OP);
         ec_init();
 
-        #if defined(__x86_64__)
+        log::infoln("ACPI: Enabling...");
+#if defined(__x86_64__)
         lai_enable_acpi(ioapic::initialised ? 1 : 0);
+
+        log::infoln("ACPI: Remapping SCI interrupt...");
 
         uint8_t sci_int = fadthdr->SCI_Interrupt;
 
@@ -172,9 +197,9 @@ namespace acpi
             }
         });
         idt::unmask(sci_int);
-        #else
+#else
         lai_enable_acpi(0);
-        #endif
+#endif
     }
 
     void init()
@@ -229,7 +254,7 @@ namespace acpi
         madt_init();
 
         lai_set_acpi_revision(rsdp->revision);
-        lai_create_namespace();
+        // lai_create_namespace(); // see arch/*/drivers/pci/pci.cpp
     }
 } // namespace acpi
 

@@ -59,7 +59,7 @@ namespace vmm
 
         ptable *pml4, *pml3, *pml2, *pml1;
 
-        pml4 = lvl5 ? get_next_lvl(this->toplvl, pml5_entry, allocate) : this->toplvl;
+        pml4 = if_max_pgmode(get_next_lvl(this->toplvl, pml5_entry, allocate)) : this->toplvl;
         if (pml4 == nullptr)
             return nullptr;
 
@@ -256,10 +256,8 @@ namespace vmm
 
     bool is_canonical(uintptr_t addr)
     {
-        if (lvl5 == true)
-            return (addr <= 0x00FFFFFFFFFFFFFFULL) || (addr >= 0xFF00000000000000ULL);
-        else
-            return (addr <= 0x00007FFFFFFFFFFFULL) || (addr >= 0xFFFF800000000000ULL);
+        return if_max_pgmode((addr <= 0x00FFFFFFFFFFFFFFULL) || (addr >= 0xFF00000000000000ULL)) :
+                             (addr <= 0x00007FFFFFFFFFFFULL) || (addr >= 0xFFFF800000000000ULL);
     }
 
     uintptr_t flags2arch(size_t flags)
@@ -296,7 +294,7 @@ namespace vmm
 
     void arch_destroy_pmap(pagemap *pmap)
     {
-        destroy_level(pmap->toplvl, 0, 256, lvl5 ? 5 : 4);
+        destroy_level(pmap->toplvl, 0, 256, if_max_pgmode(5) : 4);
     }
 
     void arch_init()

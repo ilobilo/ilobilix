@@ -17,21 +17,21 @@
 
 namespace idt
 {
-    int_handler_t handlers[256];
+    interrupts::handler handlers[256];
     uint8_t panic_int;
     IDTEntry idt[256];
     IDTPtr idtr;
 
     IDTPtr invalid { 0, 0 };
 
-    std::pair<int_handler_t&, uint8_t> allocate_handler(uint8_t hint)
+    std::pair<interrupts::handler&, uint8_t> allocate_handler(uint8_t hint)
     {
         hint = std::max(hint, IRQ(0));
 
         if (acpi::madthdr->legacy_pic() == true)
         {
             if ((hint >= IRQ(0) && hint <= IRQ(15)) && handlers[hint].get() == false)
-                return std::pair<int_handler_t&, uint8_t>(handlers[hint], hint);
+                return { handlers[hint], hint };
         }
 
         for (size_t i = hint; i < 256; i++)
@@ -39,7 +39,7 @@ namespace idt
             if (handlers[i].get() == false && handlers[i].is_reserved() == false)
             {
                 handlers[i].reserve();
-                return std::pair<int_handler_t&, uint8_t>(handlers[i], i);
+                return { handlers[i], i };
             }
         }
 

@@ -13,7 +13,7 @@ namespace frm
     limine_framebuffer *main_frm = nullptr;
     size_t frm_count = 0;
 
-    void init()
+    void early_init()
     {
         log::infoln("Framebuffer: Initialising...");
 
@@ -144,7 +144,7 @@ namespace frm
         }
     };
 
-    void late_init()
+    void init()
     {
         for (size_t i = 0; const auto &frm : frms)
         {

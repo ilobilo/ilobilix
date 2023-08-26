@@ -2,12 +2,9 @@
 
 #pragma once
 
+#include <lib/interrupts.hpp>
 #include <cpu/cpu.hpp>
-#include <functional>
-#include <utility>
-#include <cstddef>
 #include <cstdint>
-#include <tuple>
 
 namespace idt
 {
@@ -44,70 +41,14 @@ namespace idt
         }
     };
 
-    class int_handler_t
-    {
-        private:
-        std::function<void(cpu::registers_t*)> handler;
-        bool reserved = false;
-
-        public:
-        bool eoi_first = false;
-
-        template<typename Func, typename ...Args>
-        bool set(Func &&func, Args &&...args)
-        {
-            if (this->get())
-                return false;
-            this->handler = [func = std::forward<Func>(func), ...args = std::forward<Args>(args)](cpu::registers_t *regs) mutable
-            {
-                func(regs, args...);
-            };
-            return true;
-        }
-
-        bool is_reserved()
-        {
-            return this->reserved == true;
-        }
-
-        bool reserve()
-        {
-            if (this->is_reserved())
-                return false;
-
-            return this->reserved = true;
-        }
-
-        bool clear()
-        {
-            bool ret = static_cast<bool>(this->handler);
-            this->handler.clear();
-            return ret;
-        }
-
-        bool get()
-        {
-            return bool(this->handler);
-        }
-
-        bool operator()(cpu::registers_t *regs)
-        {
-            if (this->get() == false)
-                return false;
-
-            this->handler(regs);
-            return true;
-        }
-    };
-
-    extern int_handler_t handlers[];
+    extern interrupts::handler handlers[];
     extern uint8_t panic_int;
     extern IDTEntry idt[];
     extern IDTPtr idtr;
 
     extern IDTPtr invalid;
 
-    std::pair<int_handler_t&, uint8_t> allocate_handler(uint8_t hint = IRQ(0));
+    std::pair<interrupts::handler&, uint8_t> allocate_handler(uint8_t hint = IRQ(0));
 
     void mask(uint8_t irq);
     void unmask(uint8_t irq);

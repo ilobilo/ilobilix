@@ -2,11 +2,9 @@
 
 #pragma once
 
-#include <fmt/core.h>
+#include <fmt/color.h>
 
 namespace std
 {
-    using fmt::formatter;
-    using fmt::format;
-    using fmt::print;
+    using namespace fmt;
 } // namespace std

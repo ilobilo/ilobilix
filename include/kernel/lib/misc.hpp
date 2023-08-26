@@ -3,16 +3,33 @@
 #pragma once
 
 #include <init/kernel.hpp>
+// #include <lib/math.hpp>
 #include <type_traits>
 #include <algorithm>
-#include <concepts>
-#include <utility>
 #include <cstdint>
-#include <cstddef>
-#include <memory>
 #include <cctype>
 #include <cerrno>
 #include <limits>
+// #include <ranges>
+
+// namespace detail
+// {
+//     template <typename C>
+//     struct to_helper { };
+
+//     template <typename Container, std::ranges::range Range>
+//     requires std::convertible_to<std::ranges::range_value_t<Range>, typename Container::value_type>
+//     Container operator|(Range &&r, to_helper<Container>)
+//     {
+//         return Container { r.begin(), r.end() };
+//     }
+// } // namespace detail
+
+// template <std::ranges::range Container> requires (!std::ranges::view<Container>)
+// auto to()
+// {
+//     return detail::to_helper<Container> { };
+// }
 
 constexpr inline bool remove_from(auto &container, auto &&val)
 {
@@ -22,26 +39,6 @@ constexpr inline bool remove_from(auto &container, auto &&val)
 constexpr inline bool remove_from_if(auto &container, auto pred)
 {
     return container.erase(std::remove_if(container.begin(), container.end(), pred), container.end()) != container.end();
-}
-
-constexpr inline auto align_down(auto n, auto a)
-{
-    return (n & ~(a - 1));
-}
-
-constexpr inline auto align_up(auto n, auto a)
-{
-    return align_down(n + a - 1, a);
-}
-
-constexpr inline auto div_roundup(auto n, auto a)
-{
-    return align_down(n + a - 1, a) / a;
-}
-
-constexpr inline auto next_pow2(uint64_t n)
-{
-    return n == 1UL ? 1UL : 1UL << (64 - __builtin_clzl(n - 1UL));
 }
 
 template<typename Type>
@@ -62,45 +59,10 @@ constexpr inline Type fromhh(Type a)
     return !ishh(a) ? a : Type(uintptr_t(a) - hhdm_offset);
 }
 
-template<typename Type>
-constexpr inline Type pow(Type base, Type exp)
-{
-    int result = 1;
-    for (; exp > 0; exp--)
-        result *= base;
-    return result;
-}
-
-template<typename Type>
-constexpr inline Type abs(Type num)
-{
-    return num < 0 ? -num : num;
-}
-
-template<typename Type>
-constexpr inline Type sign(Type num)
-{
-    return num > 0 ? 1 : (num < 0 ? -1 : 0);
-}
-
-constexpr inline uint64_t jdn(uint8_t days, uint8_t months, uint16_t years)
-{
-    return (1461 * (years + 4800 + (months - 14) / 12)) / 4 + (367 * (months - 2 - 12 * ((months - 14) / 12))) / 12 - (3 * ((years + 4900 + (months - 14) / 12) / 100)) / 4 + days - 32075;
-}
-constexpr inline uint64_t jdn_1970 = jdn(1, 1, 1970);
-
-constexpr inline uint64_t epoch(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
-{
-    uint64_t jdn_current = jdn(days, months, centuries * 100 + years);
-    uint64_t diff = jdn_current - jdn_1970;
-
-    return (diff * (60 * 60 * 24)) + hours * 3600 + minutes * 60 + seconds;
-}
-
-inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
-{
-    return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
-}
+// inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
+// {
+//     return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
+// }
 
 template<typename Ret>
 constexpr inline Ret str2int(const char *nptr, char **endptr, int _base)
@@ -201,110 +163,6 @@ constexpr inline Ret str2int(const char *nptr, char **endptr, int _base)
     return negative ? -total : total;
 }
 
-// template<typename Type>
-// struct ref_val_wrapper
-// {
-//     private:
-//     Type *_ref;
-//     Type _val;
-
-//     enum class which { /* other, */ ref, val };
-//     which _which;
-
-//     public:
-//     constexpr ref_val_wrapper(Type &ref) : _ref(std::addressof(ref)), _which(which::ref) { }
-//     constexpr ref_val_wrapper(Type &&val) : _val(std::move(val)), _which(which::val) { }
-
-//     constexpr ref_val_wrapper(const ref_val_wrapper &other) : _which(other._which)
-//     {
-//         switch (this->_which)
-//         {
-//             case which::ref:
-//                 this->_ref = other._ref;
-//                 break;
-//             case which::val:
-//                 this->_val = other._val;
-//                 break;
-//             default:
-//                 std::unreachable();
-//         }
-//     }
-
-//     constexpr ref_val_wrapper(ref_val_wrapper &&other) : _which(std::move(other._which))
-//     {
-//         switch (this->_which)
-//         {
-//             case which::ref:
-//                 this->_ref = std::move(other._ref);
-//                 break;
-//             case which::val:
-//                 this->_val = std::move(other._val);
-//                 break;
-//             default:
-//                 std::unreachable();
-//         }
-//     }
-
-//     constexpr ref_val_wrapper &operator=(Type &ref)
-//     {
-//         this->_ref = std::addressof(ref);
-//         this->_which = which::ref;
-//         return *this;
-//     }
-
-//     constexpr ref_val_wrapper &operator=(Type &&val)
-//     {
-//         this->_val = std::move(val);
-//         this->_which = which::val;
-//         return *this;
-//     }
-
-//     constexpr ref_val_wrapper &operator=(ref_val_wrapper &other) = default;
-//     constexpr ref_val_wrapper &operator=(ref_val_wrapper &&other) = default;
-
-//     constexpr ref_val_wrapper &assign(Type &ref)
-//     {
-//         this->_val = ref;
-//         this->_which = which::val;
-//         return *this;
-//     }
-
-//     constexpr ref_val_wrapper &assign(Type &&val)
-//     {
-//         this->_val = std::move(val);
-//         this->_which = which::val;
-//         return *this;
-//     }
-
-//     constexpr Type &get()
-//     {
-//         switch (this->_which)
-//         {
-//             case which::ref:
-//                 return *this->_ref;
-//             case which::val:
-//                 return this->_val;
-//             default:
-//                 std::unreachable();
-//         }
-//     }
-
-//     constexpr bool is_ref()
-//     {
-//         switch (this->_which)
-//         {
-//             case which::ref:
-//                 return true;
-//             case which::val:
-//                 return false;
-//             default:
-//                 std::unreachable();
-//         }
-//     }
-
-//     operator Type() { return this->get(); }
-// };
-
 template<typename Type>
 struct chain_wrapper
 {
@@ -347,3 +205,61 @@ struct chain_wrapper
 
     operator Type() { return this->get(); }
 };
+
+// An experiment
+
+// #include <mutex>
+
+// template<typename Type>
+// class mutex_wrapper
+// {
+//     private:
+//     std::mutex lock;
+//     Type storage;
+
+//     public:
+//     class locked_type
+//     {
+//         private:
+//         std::unique_lock<std::mutex> locker;
+//         Type &storage;
+
+//         public:
+//         constexpr locked_type(mutex_wrapper &parent) : locker(parent.lock), storage(parent.storage) { }
+//         constexpr locked_type(mutex_wrapper &parent, std::adopt_lock_t al) : locker(parent.lock, al), storage(parent.storage) { }
+
+//         constexpr locked_type(locked_type &&other) = default;
+//         constexpr locked_type(const locked_type &other) = delete;
+
+//         constexpr Type *operator->() noexcept { return std::addressof(this->storage); }
+//         constexpr Type &operator*() noexcept { return this->storage; }
+//         constexpr operator Type &() noexcept { return this->storage; }
+//         constexpr Type &get() noexcept { return this->storage; }
+//     };
+
+//     template<typename ...Args>
+//     constexpr explicit mutex_wrapper(Args &&...args) : storage(std::forward<Args>(args)...) { }
+
+//     constexpr mutex_wrapper(const mutex_wrapper &other) noexcept = delete;
+//     constexpr mutex_wrapper(mutex_wrapper &&other) noexcept = delete;
+
+//     constexpr mutex_wrapper &operator=(const mutex_wrapper &other) noexcept = delete;
+//     constexpr mutex_wrapper &operator=(mutex_wrapper &&other) noexcept = delete;
+
+//     constexpr Type *operator->() noexcept { return std::addressof(this->storage); }
+//     constexpr Type &operator*() noexcept { return this->storage; }
+//     constexpr operator Type &() noexcept { return this->storage; }
+//     constexpr Type &get() noexcept { return this->storage; }
+
+//     [[nodiscard]] constexpr bool is_locked() { return this->lock.is_locked(); }
+//     [[nodiscard]] constexpr locked_type with_lock() noexcept { return locked_type(*this); }
+//     [[nodiscard]] constexpr std::optional<locked_type> try_with_lock() noexcept
+//     {
+//         if (this->lock.try_lock())
+//             return locked_type(*this, std::adopt_lock);
+//         return std::nullopt;
+//     }
+// };
+
+// template<typename Type>
+// mutex_wrapper(Type) -> mutex_wrapper<Type>;

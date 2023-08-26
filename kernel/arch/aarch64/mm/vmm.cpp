@@ -114,7 +114,7 @@ namespace vmm
         ttbr *pml4, *pml3, *pml2, *pml1;
         auto half = (vaddr & (1ULL << 63)) ? this->toplvl->ttbr1 : this->toplvl->ttbr0;
 
-        pml4 = lvl5 ? get_next_lvl(half, pml5_entry, allocate) : half;
+        pml4 = if_max_pgmode(get_next_lvl(half, pml5_entry, allocate)) : half;
         if (pml4 == nullptr)
             return nullptr;
 

@@ -24,12 +24,9 @@ namespace term
     extern terminal_t *main_term;
     extern size_t term_count;
 
-    extern limine_term *early_term;
-
     void print(const char *str, terminal_t *term = main_term);
     void printc(char c, terminal_t *term = main_term);
 
     void early_init();
     void init();
-    void late_init();
 } // namespace term

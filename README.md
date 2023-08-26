@@ -17,19 +17,19 @@ Make sure you have following programs installed:
 * qemu-system-x86_64
 * qemu-system-aarch64
 
-Note: currently only llvm, clang and lld are supported\
-Note: you may need more tools to build the sysroot, such as flex, bison, automake, autoconf, etc
+Note: you may need more tools to build the sysroot, such as flex, bison, automake, autoconf, texinfo, gmp, mpc, mpfr etc
 
+<!-- On debian based systems, I recommend installing llvm, clang and lld from here: https://apt.llvm.org\ -->
 If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install most of them with this command:\
 ``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``\
-For meson and ninja, first make sure you have python installed and then run:\
-``sudo python -m pip install meson ninja xbstrap``
+For meson, ninja and xbstrap, first make sure you have python and python-pip installed and then run:\
+``python -m pip install meson ninja xbstrap``
 
 Follow these steps to build and run the os:
 1. Clone this repo with:\
 ``git clone --depth=1 https://github.com/ilobilo/ilobilix``
 
-2. Currently you have to manually build the sysroot:
+1. Currently you have to manually build the sysroot:
 * Set the architecture in `boostrap.yml`
 * ``mkdir build-sysroot``
 * ``pushd build-sysroot``
@@ -41,16 +41,17 @@ If you created ``build-sysroot`` in ilobilix source root and are in that directo
 ``ln -s build-sysroot/system-root ../sysroot``
 * ``popd``
 
-3. Set up the build system:\
+1. Set up the build system:\
 ``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64).cross-file -Doptions=values``
 
-4. Build and run the kernel:\
+1. Build and run the kernel:\
 ``ninja -C builddir``
 
-Note: you can also check github workflow file\
-Note: optionally you can add run_bios or run_efi to ninja arguments\
-Note: on aarch64, only run_efi is supported\
-Note: if firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_efi
+Notes:
+* You can also check github workflow file.
+* Optionally you can add run_bios, run_uefi or norun to ninja arguments.
+* On aarch64, only run_uefi is available.
+* If firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_uefi.
 
 ### Options
 
@@ -60,7 +61,7 @@ Note: if firmware type is not specified and architecture supports bios mode, run
 | kernel_cxxflags   |               | Extra cpp compiler arguments for kernel  |
 | modules_cflags    |               | Extra c compiler arguments for modules   |
 | modules_cxxflags  |               | Extra cpp compiler arguments for modules |
-| kernel_ubsan      | true          | Enable ubsanitizer in kernel             |
+| kernel_ubsan      | false         | Enable ubsanitizer in kernel             |
 | modules_ubsan     | false         | Enable ubsanitizer in modules            |
 | 5lvl_paging       | false         | Enable 5 level paging in kernel          |
 | syscall_debug     | false         | Print syscall log on serial              |
@@ -68,7 +69,6 @@ Note: if firmware type is not specified and architecture supports bios mode, run
 | gdb               | false         | Add -s -S to qemu. Enables 'qemu_debug'  |
 | noaccel           | false         | Disable qemu accelerators                |
 | vnc               | false         | Start qemu VNC server on 127.0.0.1:5901  |
-| norun             | false         | Do no run qemu                           |
 
 ## Discord server
 https://discord.gg/fM5GK3RpS7
@@ -113,7 +113,7 @@ https://discord.gg/fM5GK3RpS7
 - [x] PCI
 - [x] PCIe
 - [x] MSI
-- [ ] MSI-X
+- [x] MSI-X
 - [x] Modules x86_64
 - [ ] Modules aarch64
 - [ ] DTB
@@ -132,6 +132,9 @@ https://discord.gg/fM5GK3RpS7
 - [ ] SYSFS
 - [x] USTAR
 - [x] ILAR
+- [ ] AHCI
+- [x] NVME
+- [ ] Block Device Interface
 - [ ] EchFS
 - [ ] EXT2
 - [ ] FAT32

@@ -1,5 +1,8 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <lib/interrupts.hpp>
+#include <lib/panic.hpp>
+
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
 #include <utility>
@@ -38,7 +41,8 @@ namespace arch
 
     void pause()
     {
-        asm volatile ("yield");
+        // asm volatile ("yield");
+        asm volatile ("isb" ::: "memory");
     }
 
     void int_toggle(bool on)
@@ -70,14 +74,22 @@ namespace arch
     [[noreturn]] void shutdown();
     [[noreturn]] void reboot();
 
-    void init()
+    void early_init()
     {
         smp::bsp_init();
 
         smp::init();
     }
 
-    void late_init()
+    void init()
     {
     }
 } // namespace arch
+
+namespace interrupts
+{
+    std::pair<handler&, size_t> allocate_handler()
+    {
+        PANIC("Not implemented!");
+    }
+} // namespace interrupts
