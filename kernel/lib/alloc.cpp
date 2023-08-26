@@ -1,7 +1,7 @@
 // Copyright (C) 2022-2023  ilobilo
 
 #include <lib/alloc.hpp>
-#include <lib/misc.hpp>
+#include <lib/math.hpp>
 #include <lai/host.h>
 #include <mm/pmm.hpp>
 #include <cstring>

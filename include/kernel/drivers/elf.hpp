@@ -12,7 +12,6 @@
 #include <optional>
 #include <cstdint>
 #include <vector>
-#include <tuple>
 #include <span>
 
 namespace elf

@@ -43,10 +43,6 @@ namespace proc
 
         std::atomic<tid_t> next_tid;
 
-        // ref_val_wrapper<vfs::node_t*> root;
-        // ref_val_wrapper<vfs::node_t*> cwd;
-        // ref_val_wrapper<mode_t> umask;
-
         chain_wrapper<vfs::node_t*> root;
         chain_wrapper<vfs::node_t*> cwd;
         chain_wrapper<mode_t> umask;

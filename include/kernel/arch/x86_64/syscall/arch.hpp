@@ -1,3 +1,7 @@
+// Copyright (C) 2022-2023  ilobilo
+
+#pragma once
+
 #include <lib/types.hpp>
 
 namespace arch

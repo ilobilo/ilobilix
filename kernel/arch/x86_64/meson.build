@@ -1,3 +1,5 @@
+# Copyright (C) 2022-2023  ilobilo
+
 src += files(
     'cpu/cpu.cpp',
     'cpu/gdt.cpp',

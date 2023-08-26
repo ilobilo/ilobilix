@@ -1,4 +1,5 @@
-# Shamelessly copied from the one in bootstrap-managarm
+# Copyright (C) 2022-2023  ilobilo
+# Created by copying from multiple OSes
 
 declare_options:
   - name: arch

@@ -4,7 +4,6 @@
 
 #include <frg/manual_box.hpp>
 #include <lib/misc.hpp>
-#include <memory>
 #include <mutex>
 
 namespace heap

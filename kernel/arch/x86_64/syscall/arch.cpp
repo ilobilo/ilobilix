@@ -1,3 +1,5 @@
+// Copyright (C) 2022-2023  ilobilo
+
 #include <drivers/proc.hpp>
 
 namespace arch

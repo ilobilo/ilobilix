@@ -1,8 +1,9 @@
+// Copyright (C) 2022-2023  ilobilo
+
 #include <drivers/fs/devtmpfs.hpp>
 #include <drivers/proc.hpp>
 #include <syscall/vfs.hpp>
 #include <lib/log.hpp>
-#include <cerrno>
 
 namespace vfs
 {

@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <atomic>
-
 namespace ps2::kbd
 {
     void init();

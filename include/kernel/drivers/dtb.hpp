@@ -3,6 +3,7 @@
 #pragma once
 
 #include <lib/endian.hpp>
+#include <cstdint>
 
 namespace dtb
 {

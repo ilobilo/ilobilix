@@ -1,3 +1,5 @@
+# Copyright (C) 2022-2023  ilobilo
+
 src = files(
     'init/kernel.cpp',
     'init/main.cpp',

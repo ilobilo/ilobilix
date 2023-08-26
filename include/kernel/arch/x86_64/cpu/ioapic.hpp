@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include <utility>
 #include <cstddef>
 #include <cstdint>
-#include <tuple>
 
 namespace ioapic
 {

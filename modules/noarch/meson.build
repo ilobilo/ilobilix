@@ -1,3 +1,5 @@
+# Copyright (C) 2022-2023  ilobilo
+
 modules = [
     'test_noarch',
     'nvme'

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <concepts>
-#include <cstdint>
 #include <bit>
 
 template<std::endian New, std::endian Old = std::endian::native, std::integral Type>
