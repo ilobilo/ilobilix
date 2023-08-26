@@ -38,9 +38,9 @@ void kernel_thread()
     vfs::create(nullptr, "/tmp", 01777 | s_ifdir);
     vfs::mount(nullptr, "", "/tmp", "tmpfs", 0, new char[] { "mode=01777" });
 
-    frm::late_init();
-    term::late_init();
-    arch::late_init();
+    frm::init();
+    term::init();
+    arch::init();
 
     tty::init();
     pty::init();
@@ -48,6 +48,8 @@ void kernel_thread()
     elf::modules::init();
     elf::modules::load(nullptr, "/usr/lib/modules/");
     elf::modules::run_all();
+
+    // arch::halt();
 
     printf("\033[2J\033[H");
     log::to_term = vmm::print_errors = false;
@@ -118,11 +120,11 @@ void kmain()
     dtb::init();
 #endif
 
-    frm::init();
-    term::init();
+    frm::early_init();
+    term::early_init();
 
     acpi::init();
-    arch::init();
+    arch::early_init();
 
     pci::init();
     acpi::enable();

@@ -4,6 +4,7 @@
 #include <drivers/acpi.hpp>
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
+#include <lib/misc.hpp>
 #include <lib/log.hpp>
 
 namespace pci
@@ -95,6 +96,7 @@ namespace pci
                 if (ret.base == 0 && ret.len == 0)
                     ret.type = PCI_BARTYPE_INVALID;
             }
+
             bars[num] = ret;
             if (bit64 == true)
                 bars[++num] = { 0, 0, PCI_BARTYPE_INVALID, false, false };
@@ -114,13 +116,17 @@ namespace pci
 
     bool device_t::msi_set(uint64_t cpuid, uint16_t vector, uint16_t index)
     {
-        uint16_t flags = ::acpi::fadthdr->BootArchitectureFlags;
-        if (this->msi == 0 || flags & (1 << 3))
+        if (this->msi.supported == false)
             return false;
 
-        msi::control control { .raw = this->read<uint16_t>(this->msi + 0x02) };
-        msi::address address { .raw = this->read<uint16_t>(this->msi + 0x04) };
-        msi::data data { .raw = this->read<uint16_t>(this->msi + (control.c64 ? 0xC0 : 0x08)) };
+        if (index == uint16_t(-1))
+            index = 0; // TODO: Multiple
+
+        msi::control control { .raw = this->read<uint16_t>(this->msi.offset + 0x02) };
+        assert((1 << control.mmc) < 32);
+
+        msi::data data { }; // { .raw = this->read<uint16_t>(this->msi.offset + (control.c64 ? 0xC0 : 0x08)) };
+        msi::address address { }; // { .raw = this->read<uint16_t>(this->msi.offset + 0x04) };
 
         data.vector = vector;
         data.delivery_mode = 0;
@@ -128,20 +134,82 @@ namespace pci
         address.base_address = 0xFEE;
         address.destination_id = cpuid;
 
-        this->write<uint16_t>(this->msi + 0x04, address.raw);
-        this->write<uint16_t>(this->msi + (control.c64 ? 0x0C : 0x08), data.raw);
+        this->write<uint16_t>(this->msi.offset + 0x04, address.raw);
+        this->write<uint16_t>(this->msi.offset + (control.c64 ? 0x0C : 0x08), data.raw);
 
         control.msie = 1;
         control.mme = 0b000;
 
-        this->write<uint16_t>(this->msi + 0x02, control.raw);
+        this->write<uint16_t>(this->msi.offset + 0x02, control.raw);
 
         return true;
     }
 
-    bool msix_set(uint64_t cpuid, uint16_t vector, uint16_t index)
+    bool device_t::msix_set(uint64_t cpuid, uint16_t vector, uint16_t index)
     {
-        log::errorln("PCI: TODO: MSI-X is not supported!");
+        if (this->msix.supported == false)
+            return false;
+
+        if (index == uint16_t(-1))
+        {
+            for (size_t i = 0; i < this->msix.irqs.length(); i++)
+            {
+                if (this->msix.irqs[i] == bitmap_t::available)
+                {
+                    this->msix.irqs[i] = bitmap_t::used;
+                    index = i;
+                    goto exit;
+                }
+            }
+            return false;
+        }
+        exit:
+        this->msix.irqs[index] = true;
+
+        msix::control control { .raw = this->read<uint16_t>(this->msix.offset + 0x02) };
+        control.mask = 1;
+        control.enable = 1;
+        this->write<uint16_t>(this->msix.offset + 0x02, control.raw);
+
+        auto table_bar = this->bars[this->msix.table.bar];
+        auto base = table_bar.base + this->msix.table.offset;
+        assert(table_bar.type == PCI_BARTYPE_MMIO);
+
+        volatile auto *table = reinterpret_cast<volatile msix::entry*>(tohh(base));
+
+        msi::data data { };
+        msi::address address { };
+
+        data.vector = vector;
+        data.delivery_mode = 0;
+
+        address.base_address = 0xFEE;
+        address.destination_id = cpuid;
+
+        msix::vectorctrl vectorctrl { };
+        vectorctrl.mask = 0;
+
+        table[index].addrlow = address.raw;
+        table[index].addrhigh = 0; // TODO
+        table[index].data = data.raw;
+        table[index].control = vectorctrl.raw;
+
+        control.raw = this->read<uint16_t>(this->msix.offset + 0x02);
+        control.mask = 0;
+        this->write<uint16_t>(this->msix.offset + 0x02, control.raw);
+
+        return true;
+    }
+
+    bool device_t::enable_irqs(uint64_t cpuid, size_t vector)
+    {
+        if (this->msix_set(cpuid, vector, -1))
+            return true;
+
+        if (this->msi_set(cpuid, vector, -1))
+            return true;
+
+        // TODO: GSI
         return false;
     }
 
@@ -149,8 +217,10 @@ namespace pci
     {
         uint16_t command = this->read<uint16_t>(PCI_COMMAND);
 
-        if (enable) command |= cmd;
-        else command &= ~cmd;
+        if (enable == true)
+            command |= cmd;
+        else
+            command &= ~cmd;
 
         this->write<uint16_t>(PCI_COMMAND, command);
     }
@@ -180,8 +250,8 @@ namespace pci
                         break;
                     }
                     default:
-                        // if (func(id, offset) != true)
-                        //     log::infoln("  - Unknown: 0x{:X}", id);
+                        if (func(id, offset) != true)
+                            log::infoln("  - Unknown: 0x{:X}", id);
                         break;
                 }
 
@@ -211,16 +281,49 @@ namespace pci
 
             capabilities(device, [&](uint8_t id, uint8_t offset) -> bool
             {
+                uint16_t flags = ::acpi::fadthdr->BootArchitectureFlags;
+                if (flags & (1 << 3))
+                    return false;
                 switch (id)
                 {
                     case 0x5:
+                        if (flags & (1 << 3))
+                        {
+                            // log::warnln("  - MSI (Supported but not available)");
+                            device->msi.supported = false;
+                            break;
+                        }
                         // log::infoln("  - MSI");
-                        device->msi = offset;
+                        device->msi.supported = true;
+                        device->msi.offset = offset;
                         break;
                     case 0x11:
+                    {
+                        if (flags & (1 << 3))
+                        {
+                            // log::warnln("  - MSI-X (Supported but not available)");
+                            device->msix.supported = false;
+                            break;
+                        }
                         // log::infoln("  - MSI-X");
-                        device->msix = offset;
+                        device->msix.supported = true;
+                        device->msix.offset = offset;
+
+                        msix::control control { .raw = device->read<uint16_t>(offset + 0x02) };
+                        msix::address table { .raw = device->read<uint32_t>(offset + 0x04) };
+                        msix::address pending { .raw = device->read<uint32_t>(offset + 0x08) };
+
+                        size_t count = control.irqs;
+                        device->msix.messages = count;
+                        device->msix.irqs.allocate(count);
+
+                        device->msix.table.bar = table.bir;
+                        device->msix.table.offset = table.offset << 3;
+
+                        device->msix.pending.bar = pending.bir;
+                        device->msix.pending.offset = pending.offset << 3;
                         break;
+                    }
                     default:
                         return false;
                 }
@@ -281,13 +384,13 @@ namespace pci
         if (pci::arch_init)
             pci::arch_init();
 
-        if (configspaces.size() == 0)
+        if (configspaces.empty())
         {
             log::errorln("PCI: No config spaces found!");
             return;
         }
 
-        if (root_buses.size() == 0)
+        if (root_buses.empty())
         {
             log::errorln("PCI: No root buses found!");
             return;

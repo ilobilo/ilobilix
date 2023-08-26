@@ -2,49 +2,42 @@
 
 #pragma once
 
+#include <mutex>
 #include <deque>
 #include <span>
 
 namespace proc { struct thread; }
-
-// namespace simple
-// {
-//     struct event
-//     {
-//         private:
-//         irq_lock lock;
-//         std::deque<proc::thread*> waiters;
-
-//         public:
-//         void trigger();
-//         void await();
-//     };
-
-//     template<typename Type> requires (!std::is_void_v<Type>)
-//     struct promise
-//     {
-//         private:
-//         std::aligned_storage_t<sizeof(Type), alignof(Type)> object;
-//         event event;
-
-//         public:
-//         template<typename ...Args>
-//         void trigger(Args &&...args)
-//         {
-//             new (&this->object) Type(std::forward<Args>(args)...);
-//             this->event.trigger();
-//         }
-
-//         Type await()
-//         {
-//             this->event.await();
-//             return *reinterpret_cast<Type*>(&this->object);
-//         }
-//     };
-// } // namespace simple
-
 namespace event
 {
+    namespace simple
+    {
+        struct event_t
+        {
+            std::atomic_size_t triggered = 0;
+            // std::atomic_bool triggered = false;
+            std::mutex lock;
+
+            void await();
+            bool await_timeout(size_t ms);
+            void trigger(bool drop = false);
+
+            event_t() = default;
+        };
+
+        struct alt_event_t
+        {
+            std::atomic_size_t triggered = 0;
+            std::atomic_size_t awaiters = 0;
+            std::mutex lock;
+
+            void await();
+            bool await_timeout(size_t ms);
+            void trigger(bool drop = false);
+
+            alt_event_t() = default;
+        };
+    } // namespace simple
+
     struct listener
     {
         proc::thread *thread;

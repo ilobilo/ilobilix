@@ -3,33 +3,117 @@
 #include <drivers/proc.hpp>
 #include <lib/event.hpp>
 #include <lib/lock.hpp>
-
-// namespace simple
-// {
-//     void event::trigger()
-//     {
-//         std::unique_lock guard(this->lock);
-
-//         while (this->waiters.empty() == false)
-//         {
-//             auto thread = this->waiters.pop_front_element();
-//             proc::unblock(thread);
-//         }
-//     }
-
-//     void event::await()
-//     {
-//         std::unique_lock guard(this->lock);
-
-//         auto thread = this_thread();
-//         this->waiters.push_back(thread);
-
-//         proc::block(thread);
-//     }
-// } // namespace simple
+#include <lib/log.hpp>
 
 namespace event
 {
+    namespace simple
+    {
+        void event_t::await()
+        {
+            std::unique_lock guard(this->lock);
+
+            while (this->triggered.load(std::memory_order_acquire) == 0)
+                arch::pause();
+
+            this->triggered.fetch_sub(1, std::memory_order_seq_cst);
+
+            // while (this->triggered.load(std::memory_order_acquire) == false)
+            //     arch::pause();
+
+            // this->triggered.store(false, std::memory_order_seq_cst);
+        }
+
+        bool event_t::await_timeout(size_t ms)
+        {
+            std::unique_lock guard(this->lock);
+
+            auto start = time::time_ms();
+            auto end = start + ms;
+
+            while (start < end)
+            {
+                if (this->triggered.load(std::memory_order_acquire) > 0)
+                    break;
+
+                // if (this->triggered.load(std::memory_order_acquire) == false)
+                //     break;
+
+                arch::pause();
+                start++;
+            }
+            if (start >= end)
+                return false;
+
+            this->triggered.fetch_sub(1, std::memory_order_seq_cst);
+            // this->triggered.store(false, std::memory_order_seq_cst);
+
+            return true;
+        }
+
+        void event_t::trigger(bool drop)
+        {
+            if (this->lock.is_locked() == false && drop == true)
+                return;
+
+            this->triggered.fetch_add(1, std::memory_order_release);
+            // this->triggered.store(true, std::memory_order_release);
+        }
+
+        void alt_event_t::await()
+        {
+            this->lock.lock();
+                this->awaiters++;
+            this->lock.unlock();
+
+            while (this->triggered.load(std::memory_order_acquire) == 0)
+                arch::pause();
+
+            std::unique_lock guard(this->lock);
+            if (--this->awaiters == 0)
+                this->triggered.fetch_sub(1, std::memory_order_seq_cst);
+        }
+
+        bool alt_event_t::await_timeout(size_t ms)
+        {
+            this->lock.lock();
+                this->awaiters++;
+            this->lock.unlock();
+
+            auto start = time::time_ms();
+            auto end = start + ms;
+
+            while (start < end)
+            {
+                if (this->triggered.load(std::memory_order_acquire) > 0)
+                    break;
+
+                arch::pause();
+                start++;
+            }
+
+            std::unique_lock guard(this->lock);
+            this->awaiters--;
+
+            if (start >= end)
+                return false;
+
+            if (this->awaiters == 0)
+                this->triggered.fetch_sub(1, std::memory_order_seq_cst);
+
+            return true;
+        }
+
+        void alt_event_t::trigger(bool drop)
+        {
+            std::unique_lock guard(this->lock);
+            if (this->awaiters == 0 && drop == true)
+                return;
+
+            this->triggered.fetch_add(1, std::memory_order_release);
+        }
+    } // namespace simple
+
     struct events_guard
     {
         std::span<event_t*> _events;

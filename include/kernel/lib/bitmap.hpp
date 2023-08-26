@@ -2,16 +2,62 @@
 
 #pragma once
 
+#include <lib/math.hpp>
 #include <cstddef>
-#include <cstdint>
+#include <cassert>
+#include <new>
 
+extern "C" void *memset(void *dest, int ch, size_t len);
 struct bitmap_t
 {
+    private:
     uint8_t *buffer = nullptr;
     size_t size = 0;
 
+    bool initialised = false;
+    bool allocated = false;
+
+    public:
+    static constexpr bool available = false;
+    static constexpr bool used = true;
+
+    constexpr bitmap_t(uint8_t *buffer, size_t size) : buffer(buffer), size(size), initialised(true) { };
+    constexpr bitmap_t(size_t size)
+    {
+        this->allocate(size);
+    };
     constexpr bitmap_t() = default;
-    constexpr bitmap_t(uint8_t *buffer, size_t size) : buffer(buffer), size(size) { };
+
+    constexpr ~bitmap_t()
+    {
+        if (this->allocated == true)
+            delete[] this->buffer;
+    }
+
+    void allocate(size_t size)
+    {
+        assert(this->initialised == false);
+
+        auto count = div_roundup(size, 8);
+        this->buffer = new uint8_t[count]();
+        this->size = size;
+
+        this->initialised = true;
+        this->allocated = true;
+    }
+
+    void initialise(uint8_t *buffer, size_t size, bool clear = true)
+    {
+        assert(this->initialised == false);
+
+        if (clear == true)
+            this->buffer = new (buffer) uint8_t[div_roundup(size, 8)]();
+        else
+            this->buffer = buffer;
+        this->size = size;
+
+        this->initialised = true;
+    }
 
     struct bit
     {
@@ -33,16 +79,19 @@ struct bitmap_t
 
     constexpr bit operator[](size_t index)
     {
+        assert(this->initialised == true);
         return bit(*this, index);
     }
 
     constexpr bool get(size_t index)
     {
+        assert(this->initialised == true);
         return this->buffer[index / 8] & (1 << (index % 8));
     }
 
     constexpr bool set(size_t index, bool value)
     {
+        assert(initialised == true);
         bool ret = this->get(index);
 
         if (value == true)
@@ -52,5 +101,14 @@ struct bitmap_t
 
         return ret;
     }
-};
 
+    constexpr size_t length() const
+    {
+        return this->initialised ? size : 0;
+    }
+
+    constexpr uint8_t *data() const
+    {
+        return this->buffer;
+    }
+};

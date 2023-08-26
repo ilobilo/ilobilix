@@ -10,6 +10,6 @@ namespace frm
     extern limine_framebuffer *main_frm;
     extern size_t frm_count;
 
+    void early_init();
     void init();
-    void late_init();
 } // namespace frm

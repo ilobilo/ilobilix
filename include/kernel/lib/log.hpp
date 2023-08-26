@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <format>
+#include <fmt/core.h>
 #include <mutex>
 
 namespace log
@@ -20,6 +20,7 @@ namespace log
 
     namespace detail
     {
+        // no memory allocation needed
         inline auto vprint(std::string_view fmt, fmt::format_args args) -> size_t
         {
             struct
@@ -40,7 +41,10 @@ namespace log
         template<typename ...Args> requires (sizeof...(Args) > 0)
         inline auto print(std::string_view fmt, Args &&...args) -> size_t
         {
-            return vprint(fmt, fmt::make_format_args(args...));
+            if constexpr (sizeof...(Args) == 1 && std::same_as<std::remove_cvref_t<std::tuple_element_t<0, std::tuple<Args...>>>, fmt::format_args>)
+                return vprint(fmt, args...);
+            else
+                return vprint(fmt, fmt::make_format_args(args...));
         }
 
         template<typename ...Args>
@@ -67,22 +71,22 @@ namespace log
         return ret + 1;
     }
 
-    #define PRINT_FUNC(name)                                                                   \
-        template<typename ...Args>                                                             \
-        inline auto name(std::string_view fmt = "", Args &&...args) -> size_t                  \
-        {                                                                                      \
-            std::unique_lock guard(lock);                                                      \
-            prints(name ## _prefix);                                                           \
-            return detail::print(fmt, args...);                                                \
-        }                                                                                      \
-        template<typename ...Args>                                                             \
-        inline auto name ## ln(std::string_view fmt = "", Args &&...args) -> size_t            \
-        {                                                                                      \
-            std::unique_lock guard(lock);                                                      \
-            prints(name ## _prefix);                                                           \
-            auto ret = detail::print(fmt, args...);                                            \
-            printc('\n');                                                                      \
-            return ret + 1;                                                                    \
+    #define PRINT_FUNC(name)                                                        \
+        template<typename ...Args>                                                  \
+        inline auto name(std::string_view fmt, Args &&...args) -> size_t            \
+        {                                                                           \
+            std::unique_lock guard(lock);                                           \
+            prints(name ## _prefix);                                                \
+            return detail::print(fmt, args...);                                     \
+        }                                                                           \
+        template<typename ...Args>                                                  \
+        inline auto name ## ln(std::string_view fmt = "", Args &&...args) -> size_t \
+        {                                                                           \
+            std::unique_lock guard(lock);                                           \
+            prints(name ## _prefix);                                                \
+            auto ret = detail::print(fmt, args...);                                 \
+            printc('\n');                                                           \
+            return ret + 1;                                                         \
         }
 
     PRINT_FUNC(info)

@@ -1,5 +1,6 @@
 modules = [
-    'test_noarch'
+    'test_noarch',
+    'nvme'
 ]
 
 foreach name : modules

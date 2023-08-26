@@ -25,6 +25,6 @@ namespace arch
     [[noreturn]] void shutdown();
     [[noreturn]] void reboot();
 
+    void early_init();
     void init();
-    void late_init();
 } // namespace arch

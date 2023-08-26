@@ -54,13 +54,13 @@ namespace pmm
             size_t p = 0;
             while (lastindex < limit)
             {
-                if (bitmap[lastindex++] == false)
+                if (bitmap[lastindex++] == bitmap_t::available)
                 {
                     if (++p == count)
                     {
                         size_t page = lastindex - count;
                         for (size_t i = page; i < lastindex; i++)
-                            bitmap[i] = true;
+                            bitmap[i] = bitmap_t::used;
                         return reinterpret_cast<void*>(page * page_size);
                     }
                 }
@@ -92,10 +92,8 @@ namespace pmm
         std::unique_lock guard(lock);
         size_t page = reinterpret_cast<size_t>(ptr) / page_size;
         for (size_t i = page; i < page + count; i++)
-            bitmap[i] = false;
+            bitmap[i] = bitmap_t::available;
 
-        // TODO: Does this help?
-        lastindex = std::min(lastindex, page);
         usedmem -= count * page_size;
     }
 
@@ -128,23 +126,26 @@ namespace pmm
             mem_usable_top = std::max(mem_usable_top, top);
         }
 
-        size_t bitmapSize = align_up((mem_usable_top / page_size) / 8, page_size);
+        // size_t bitmapSize = align_up((mem_usable_top / page_size) / 8, page_size);
+
+        size_t bitmap_entries = mem_usable_top / page_size;
+        size_t bitmap_size = align_up(bitmap_entries / 8, page_size);
+        bitmap_entries = bitmap_size * 8;
 
         for (size_t i = 0; i < memmap_count; i++)
         {
             if (memmaps[i]->type != LIMINE_MEMMAP_USABLE)
                 continue;
 
-            if (memmaps[i]->length >= bitmapSize)
+            if (memmaps[i]->length >= bitmap_size)
             {
-                bitmap.buffer = reinterpret_cast<uint8_t*>(tohh(memmaps[i]->base));
-                bitmap.size = bitmapSize;
-                memset(bitmap.buffer, 0xFF, bitmap.size);
+                bitmap.initialise(reinterpret_cast<uint8_t*>(tohh(memmaps[i]->base)), bitmap_entries, false);
+                memset(bitmap.data(), 0xFF, bitmap_entries);
 
-                memmaps[i]->length -= bitmapSize;
-                memmaps[i]->base += bitmapSize;
+                memmaps[i]->length -= bitmap_size;
+                memmaps[i]->base += bitmap_size;
 
-                usedmem += bitmapSize;
+                usedmem += bitmap_size;
                 break;
             }
         }
@@ -155,7 +156,7 @@ namespace pmm
                 continue;
 
             for (uintptr_t t = 0; t < memmaps[i]->length; t += page_size)
-                bitmap[(memmaps[i]->base + t) / page_size] = false;
+                bitmap[(memmaps[i]->base + t) / page_size] = bitmap_t::available;
         }
 
         // safe address + hhdm where we can map stuff

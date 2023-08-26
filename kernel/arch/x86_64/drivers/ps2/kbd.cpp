@@ -184,11 +184,13 @@ namespace ps2::kbd
         shouldnt_be_called, shouldnt_be_called, shouldnt_be_called
     };
 
-    static event_t ev;
+    static event::simple::event_t ev;
     void kbd_worker()
     {
         while (true)
         {
+            ev.await();
+
             auto scancode = read();
             if (scancode == 0xE0)
                 continue;

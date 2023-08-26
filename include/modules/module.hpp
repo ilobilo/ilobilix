@@ -4,7 +4,7 @@
 
 #include <cstddef>
 
-struct [[gnu::packed]] driver_t
+struct [[gnu::packed, gnu::aligned(8)]] driver_t
 {
     const char *name;
     bool initialised;

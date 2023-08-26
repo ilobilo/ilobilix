@@ -29,27 +29,34 @@ iso_files = [
 qemu_args = [
     '-cpu', 'max', '-smp', '4', '-m', '512M',
     '-rtc', 'base=localtime', '-serial', 'stdio',
-    '-boot', 'order=d,menu=on,splash-time=100'
+    '-boot', 'order=d,menu=on,splash-time=100',
+    '-drive', 'file=' + meson.source_root() / 'misc/nvme.img' + ',format=raw,if=none,id=nvm',
+    '-device', 'nvme,serial=nvme,drive=nvm'
 ]
 
-# { arch : [ ovmf, bios, qemu_args ] }
+# { arch : [ ovmf_name, bios, xorriso_args, qemu_args ] }
 supported_archs = {
     'x86_64' : [
         'X64', true,
         [
+            '-b', 'limine-bios-cd.bin',
+            '-no-emul-boot', '-boot-load-size', '4', '-boot-info-table',
+            '--efi-boot', 'limine-uefi-cd.bin',
+            '-efi-boot-part', '--efi-boot-image', '--protective-msdos-label'
+        ],
+        [
             '-M', 'q35', '-audiodev', 'id=audio,driver=alsa',
             '-machine', 'pcspk-audiodev=audio',
-            # '-device', 'piix3-ide,id=ide',
-            # '-drive', 'id=disk,file=$(DISK1),format=raw,if=none',
-            # '-device', 'ide-hd,drive=disk,bus=ide.0',
-            # '-drive', 'format=raw,file=$(DISK0)',
-            '-net', 'nic,model=rtl8139',
-            '-net', 'user,hostfwd=tcp::4321-:4321'
         ]
     ],
     'aarch64' : [
-        'AA64', false, # ['-M', 'virt', '-device', 'ramfb']
-        ['-cpu', 'cortex-a72', '-M', 'virt', '-device', 'ramfb']
+        'AA64', false,
+        [
+            '--efi-boot', 'limine-uefi-cd.bin',
+            '-efi-boot-part', '--efi-boot-image', '--protective-msdos-label'
+        ],
+        ['-M', 'virt', '-device', 'ramfb']
+        # ['-cpu', 'cortex-a72', '-M', 'virt', '-device', 'ramfb']
     ]
 }
 
@@ -59,7 +66,8 @@ endif
 
 ovmf_id = supported_archs[arch][0]
 supports_bios = supported_archs[arch][1]
-qemu_args += supported_archs[arch][2]
+xorriso_args = supported_archs[arch][2]
+qemu_args += supported_archs[arch][3]
 qemu = 'qemu-system-' + arch
 
 if get_option('vnc')
@@ -123,8 +131,8 @@ add_global_arguments([
     '-Wno-non-virtual-dtor',
     '-Wno-frame-address',
     '-DMAGIC_ENUM_NO_STREAMS=1',
-    # '-D__cplusplus=202101L',
-    # '-D__cpp_concepts=202002L',
+    '-D__cplusplus=202101L', # TODO: tmp
+    '-D__cpp_concepts=202002L',
     # '-D__cpp_lib_format=202207L',
     # '-fmodules',
     # '-fmodule-map-file=' + meson.source_root() / 'include/module.modulemap'
@@ -139,7 +147,7 @@ phmap_opts.add_cmake_defines({
     'PHMAP_INSTALL' : false
 })
 
-limine = subproject('limine')
+limine = subproject('limine', default_options : 'arch=' + arch)
 deps = [
     cmake.subproject('parallel_hashmap', options : phmap_opts).dependency('phmap'),
     cmake.subproject('frozen').dependency('frozen'),
@@ -153,8 +161,8 @@ deps = [
     dependency('limine_terminal'),
     dependency('smart_ptr'),
     dependency('string'),
-    dependency('limine'),
     dependency('printf'),
+    dependency('limine'),
     dependency('cwalk'),
     dependency('veque'),
     dependency('lai'),
@@ -194,21 +202,18 @@ initrd = custom_target('initrd',
     depends : ext_mods
 )
 
-iso_files += limine.get_variable('binaries')
+iso_files += limine.get_variable('limine_binaries')
 iso = custom_target('iso',
     input : [kernel_elf, initrd],
     output : 'image.iso',
     command : [
+        'rm', '-rf', iso_dir, '&&',
         'mkdir', '-p', iso_dir, '&&',
         'cp', '@INPUT0@', iso_dir / 'kernel.elf', '&&',
         'cp', '@INPUT1@', iso_dir / 'initrd.img.gz', '&&',
         'cp', iso_files, iso_dir, '&&',
-        'xorriso', '-as', 'mkisofs', '-b', 'limine-cd.bin',
-        '-no-emul-boot', '-boot-load-size', '4', '-boot-info-table',
-        '--efi-boot', 'limine-cd-efi.bin', '-efi-boot-part',
-        '--efi-boot-image', '--protective-msdos-label',
-        iso_dir, '-o', '@OUTPUT@', '&&',
-        limine.get_variable('deploy'), '@OUTPUT@', '&&',
+        'xorriso', '-as', 'mkisofs', xorriso_args, iso_dir, '-o', '@OUTPUT@', '&&',
+        supports_bios ? [ limine.get_variable('limine_exec'), 'bios-install', '@OUTPUT@', '&&' ] : [],
         'rm', '-rf', iso_dir
     ],
     build_by_default : true,
@@ -222,7 +227,7 @@ if supports_bios
         input : iso,
         output : 'run_bios',
         command : [qemu, qemu_args, '-cdrom', '@INPUT@'],
-        build_by_default : not get_option('norun'),
+        build_by_default : true,
         console : true,
         install : false,
         depends : iso
@@ -232,12 +237,19 @@ endif
 ovmf_binaries = subproject('ovmf_binaries')
 ovmf = ovmf_binaries.get_variable(ovmf_id)
 
-run_efi = custom_target('run_efi',
+run_uefi = custom_target('run_uefi',
     input : iso,
-    output : 'run_efi',
+    output : 'run_uefi',
     command : [qemu, qemu_args, '-cdrom', '@INPUT@', '-bios', ovmf],
-    build_by_default : not supports_bios and not get_option('norun'),
+    build_by_default : not supports_bios,
     console : true,
+    install : false,
+    depends : iso
+)
+
+norun = custom_target('norun',
+    output : 'norun',
+    command : 'true',
     install : false,
     depends : iso
 )

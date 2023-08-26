@@ -2,9 +2,10 @@
 
 #pragma once
 
+#include <lib/bitmap.hpp>
+
 #include <unordered_map>
 #include <lai/core.h>
-#include <concepts>
 #include <cstdint>
 #include <vector>
 
@@ -102,7 +103,7 @@ namespace pci
                 uint16_t pvm : 1;
                 uint16_t reserved : 6;
             };
-            uint16_t raw;
+            uint16_t raw = 0;
         };
 
         union [[gnu::packed]] address
@@ -116,7 +117,7 @@ namespace pci
                 uint32_t destination_id : 8;
                 uint32_t base_address : 12;
             };
-            uint32_t raw;
+            uint32_t raw = 0;
         };
 
         union [[gnu::packed]] data
@@ -130,9 +131,52 @@ namespace pci
                 uint32_t trigger_mode : 1;
                 uint32_t reserved_0 : 16;
             };
-            uint32_t raw;
+            uint32_t raw = 0;
         };
     } // namespace msi
+
+    namespace msix
+    {
+        union [[gnu::packed]] control
+        {
+            struct
+            {
+                uint16_t irqs : 11;
+                uint16_t reserved : 3;
+                uint16_t mask : 1;
+                uint16_t enable : 1;;
+            };
+            uint16_t raw = 0;
+        };
+
+        union [[gnu::packed]] address
+        {
+            struct
+            {
+                uint32_t bir : 3;
+                uint32_t offset : 29;
+            };
+            uint32_t raw = 0;
+        };
+
+        union [[gnu::packed]] vectorctrl
+        {
+            struct
+            {
+                uint32_t mask : 1;
+                uint32_t reserved : 31;
+            };
+            uint32_t raw = 0;
+        };
+
+        struct [[gnu::packed]] entry
+        {
+            uint32_t addrlow;
+            uint32_t addrhigh;
+            uint32_t data;
+            uint32_t control;
+        };
+    } // namespace msix
 
     struct bridge_t;
     struct device_t;
@@ -219,13 +263,28 @@ namespace pci
 
         bar_t bars[6];
 
-        uint8_t msi = 0;
-        uint8_t msix = 0;
+        struct {
+            bool supported = false;
+            uint8_t offset = 0;
+        } msi;
+
+        struct {
+            bool supported = false;
+            uint8_t offset = 0;
+
+            uint16_t messages;
+            bitmap_t irqs;
+            struct {
+                uint8_t bar;
+                uint32_t offset;
+            } table, pending;
+        } msix;
 
         uint32_t gsi = 0;
 
         bool msi_set(uint64_t cpuid, uint16_t vector, uint16_t index);
         bool msix_set(uint64_t cpuid, uint16_t vector, uint16_t index);
+        bool enable_irqs(uint64_t cpuid, size_t vector);
 
         device_t(uint16_t vendorid, uint16_t deviceid, uint8_t progif, uint8_t subclass, uint8_t Class, uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, bus_t *parent);
 
