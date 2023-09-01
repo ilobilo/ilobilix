@@ -2,33 +2,34 @@
 
 #pragma once
 
+#include <optional>
 #include <utility>
 #include <cstddef>
 #include <cstdint>
 
 namespace ioapic
 {
-    enum class deliveryMode : uint8_t
+    enum class delivery : uint8_t
     {
-        FIXED = 0b000,
-        LOW_PRIORITY = 0b001,
-        SMI = 0b010,
-        NMI = 0b100,
-        INIT = 0b101,
-        EXT_INT = 0b111
+        fixed = 0b000,
+        low_priority = 0b001,
+        smi = 0b010,
+        nmi = 0b100,
+        init = 0b101,
+        ext_int = 0b111
     };
 
-    enum class destMode : uint8_t
+    enum class destmode : uint8_t
     {
-        PHYSICAL = 0,
-        LOGICAL = 1
+        physical = 0,
+        logical = 1
     };
 
     enum flags
     {
-        MASKED = (1 << 0),
-        ACTIVE_HIGH_LOW = (1 << 1),
-        EDGE_LEVEL = (1 << 3),
+        masked = (1 << 0),
+        active_low = (1 << 1),
+        level_sensative = (1 << 3),
     };
 
     class ioapic
@@ -52,7 +53,7 @@ namespace ioapic
         public:
         ioapic(uintptr_t phys_mmio_base, uint32_t gsi_base);
 
-        void set(uint8_t i, uint8_t vector, deliveryMode delivery, destMode dest, uint16_t flags, uint8_t id);
+        void set(uint8_t i, uint8_t vector, delivery delivery, destmode dest, uint16_t flags, uint8_t id);
         void mask(uint8_t i);
         void unmask(uint8_t i);
 
@@ -64,7 +65,7 @@ namespace ioapic
 
     extern bool initialised;
 
-    void set(uint32_t gsi, uint8_t vector, deliveryMode delivery, destMode dest, uint16_t flags, uint8_t id);
+    void set(uint32_t gsi, uint8_t vector, delivery delivery, destmode dest, uint16_t flags, uint8_t id);
     void mask(uint32_t gsi);
     void unmask(uint32_t gsi);
 
@@ -72,6 +73,7 @@ namespace ioapic
     void unmask_irq(uint8_t irq);
 
     ioapic *ioapic_for_gsi(uint32_t gsi);
+    std::optional<std::pair<uint8_t, uint16_t>> irq_for_gsi(uint32_t gsi);
 
     void init();
 } // namespace ioapic

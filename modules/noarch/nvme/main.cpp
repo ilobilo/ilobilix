@@ -4,7 +4,6 @@
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
 
-#include <lib/interrupts.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <module.hpp>
@@ -84,7 +83,7 @@ namespace nvme
         return const_cast<spec::CompletionEntry &>(cmd);
     }
 
-    auto QueuePair::submit_command_nolock(spec::Command cmd)
+    bool QueuePair::submit_command_nolock(spec::Command cmd)
     {
         // size_t next_cid = 0;
         // for (size_t i = 0; i < this->cid_bitmap.length(); i++)
@@ -102,21 +101,22 @@ namespace nvme
         cmd.common.commandId = next_cid;
 
         this->submission.submit_command(cmd);
-        this->await();
+        if (this->await() == false)
+            return false;
         auto ret = this->completion.next_cmd_result();
         // this->cid_bitmap[next_cid] = bitmap_t::available;
-        return ret;
+        return ret.has_value();
     }
 
-    auto QueuePair::submit_command(spec::Command cmd)
+    bool QueuePair::submit_command(spec::Command cmd)
     {
         std::unique_lock guard(this->lock);
         return this->submit_command_nolock(cmd);
     }
 
-    void QueuePair::await()
+    bool QueuePair::await()
     {
-        this->simple_event.await();
+        return this->simple_event.await_timeout(3000);
         // this->event.await();
     }
 
@@ -175,7 +175,7 @@ namespace nvme
             cmd.readWrite.dataPtr.prp2 = reinterpret_cast<uintptr_t>(prp_list.get());
         }
 
-        return queue->submit_command_nolock(cmd).has_value();
+        return queue->submit_command_nolock(cmd);
     }
 
     std::optional<std::reference_wrapper<std::unique_ptr<QueuePair>>> Controller::allocate_ioqueue()
@@ -188,10 +188,10 @@ namespace nvme
         return std::nullopt;
     }
 
-    using expected_void = std::expected<void, std::string>;
+    using expected_void = std::expected<void, const char *>;
     expected_void Controller::init()
     {
-        dev->command(pci::CMD_BUS_MAST | pci::CMD_MEM_SPACE, true);
+        this->dev->command(pci::CMD_BUS_MAST | pci::CMD_MEM_SPACE, true);
 
         auto bar0 = dev->getbars()[0];
         if (bar0.type != pci::PCI_BARTYPE_MMIO)
@@ -212,13 +212,14 @@ namespace nvme
             return std::unexpected("Could not disable controller");
 
         auto queue_size = this->regs->caps.mqes;
-        this->admin_queue = std::make_unique<QueuePair>(this->queue_ids++, this->regs, queue_size, 0);
         {
             auto [handler, vector] = interrupts::allocate_handler();
-            handler.set([&](auto) { this->admin_queue->trigger(); });
+            this->admin_queue = std::make_unique<QueuePair>(this->queue_ids++, this->regs, queue_size, 0, handler);
 
-            if (dev->msix_set(this_cpu()->arch_id, vector, -1) == false)
+            if (dev->msix_set(smp::bsp_id, vector, -1) == false)
                 return std::unexpected("Could not install Admin Queue IRQ handler");
+
+            handler.set([&](auto) { this->admin_queue->trigger(); });
         }
 
         this->regs->aqa.asqs = queue_size - 1;
@@ -251,8 +252,8 @@ namespace nvme
                 }
             };
 
-            if (auto ret = this->admin_queue->submit_command(cmd); ret.has_value() == false)
-                return std::unexpected(fmt::format("Could not identify controller. Error: 0b{:b}", ret.error()));
+            if (this->admin_queue->submit_command(cmd) == false)
+                return std::unexpected("Could not identify controller");
 
             this->identity = *tohh(identify.get());
             log::infoln("NVME: Identified controller: (Vendor ID: {}, Subsystem Vendor ID: {})", this->identity.vid, this->identity.ssvid);
@@ -272,22 +273,18 @@ namespace nvme
                 }
             };
 
-            if (auto ret = this->admin_queue->submit_command(cmd); ret.has_value() == false)
-                return std::unexpected(fmt::format("could not get NSID list. Error: 0b{:b}", ret.error()));
+            if (this->admin_queue->submit_command(cmd) == false)
+                return std::unexpected("could not get NSID list");
         }
 
         uint16_t irq = 1;
         for (size_t i = 0; i < num_io_queues; i++)
         {
-            auto io_queue = std::make_unique<QueuePair>(this->queue_ids++, this->regs, queue_size, irq++);
-
             auto [handler, vector] = interrupts::allocate_handler();
-            handler.set([ptr = io_queue.get()](auto) { ptr->trigger(); });
+            auto io_queue = std::make_unique<QueuePair>(this->queue_ids++, this->regs, queue_size, irq++, handler);
 
-            if (dev->msix_set(this_cpu()->arch_id, vector, -1) == false)
+            if (dev->msix_set(smp::bsp_id, vector, -1) == false)
             {
-                handler.clear();
-
                 if (i == 0)
                     return std::unexpected("Could not install IO wueue IRQ handler");
 
@@ -306,8 +303,8 @@ namespace nvme
                     .irqVector = io_queue->irq
                 }
             };
-            if (auto ret = this->admin_queue->submit_command(io_cq_cmd); ret.has_value() == false)
-                return std::unexpected(fmt::format("Unable to create completion queue. Error: 0b{:b}", ret.error()));
+            if (this->admin_queue->submit_command(io_cq_cmd) == false)
+                return std::unexpected("Unable to create completion queue");
 
             spec::Command io_sq_cmd
             {
@@ -320,8 +317,10 @@ namespace nvme
                     .cqid = io_queue->id
                 }
             };
-            if (auto ret = this->admin_queue->submit_command(io_sq_cmd); ret.has_value() == false)
-                return std::unexpected(fmt::format("Unable to create submission queue. Error: 0b{:b}", ret.error()));
+            if (this->admin_queue->submit_command(io_sq_cmd) == false)
+                return std::unexpected("Unable to create submission queue");
+
+            handler.set([ptr = io_queue.get()](auto) { ptr->trigger(); });
 
             log::infoln("NVME: Created IO Queue with ID: {}", io_queue->id);
             this->io_queues.emplace_back(std::move(io_queue));
@@ -351,9 +350,9 @@ namespace nvme
                         .cns = spec::IdentifyCNS::identifyNamespace
                     }
                 };
-                if (auto ret = this->admin_queue->submit_command(cmd); ret.has_value() == false)
+                if (this->admin_queue->submit_command(cmd) == false)
                 {
-                    log::errorln("NVME: Unable to identify namespace 0x{:X}. Error: 0b{:b}", nsid, ret.error());
+                    log::errorln("NVME: Unable to identify namespace 0x{:X}", nsid);
                     continue;
                 }
 
@@ -369,13 +368,22 @@ namespace nvme
                 size_t max_lbas = 1 << (maxtransshift - lbashift);
                 size_t max_prps = (max_lbas * (1 << lbashift)) / pmm::page_size;
 
-                log::infoln("NVME: Identified namespace 0x{:X} with (blocks: {}, block_size: {})", nsid, blocks, block_size);
+                log::infoln("NVME: Identified namespace 0x{:X} with (blocks: {}, block_size: {}, size: {}mb)", nsid, blocks, block_size, blocks * block_size / 1024 / 1024);
                 this->namespaes.push_back(std::make_unique<Namespace>(this, nsid, blocks, block_size, max_prps));
             }
         }
         pmm::free(nsid_list, nsid_list_pages);
 
         return this->namespaes.empty() ? std::unexpected("No usable namespaces") : expected_void();
+    }
+
+    Controller::~Controller()
+    {
+        if (this->admin_queue)
+            this->admin_queue->handler.reset();
+
+        for (auto &io_queue : this->io_queues)
+            io_queue->handler.reset();
     }
 } // namespace nvme
 
@@ -389,19 +397,16 @@ __init__ bool init()
         if (dev->Class != nvme::Class || dev->subclass != nvme::subclass || dev->progif != nvme::progif)
             continue;
 
-        // As you can see, I'm using std::expected for the first time
+        log::infoln("NVME: Found controller");
+
         auto ctrl = std::make_unique<nvme::Controller>(dev);
-        std::ignore = ctrl->init()
-            .and_then([&] {
-                at_least_one = true;
-                nvme::ctrls.push_back(std::move(ctrl));
-                return nvme::expected_void();
-            })
-            .or_else([&](auto err) -> nvme::expected_void {
-                log::errorln("NVME: {}!", err);
-                return std::unexpected(err);
-            }
-        );
+        auto ret = ctrl->init();
+        if (ret.has_value())
+        {
+            at_least_one = true;
+            nvme::ctrls.push_back(std::move(ctrl));
+        }
+        else log::errorln("NVME: {}!", ret.error());
     }
 
     return at_least_one;

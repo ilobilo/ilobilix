@@ -48,7 +48,7 @@ namespace std
     }
 
     template<typename Type, typename ...Args>
-    detail::invalid_make_unique_t<Type> make_unique(Args &&...) = delete;
+    constexpr inline detail::invalid_make_unique_t<Type> make_unique(Args &&...) = delete;
 
     template<typename Allocator>
     struct deallocator
@@ -56,8 +56,10 @@ namespace std
         using value_type = typename Allocator::value_type;
         Allocator alloc;
         size_t size;
-        explicit deallocator(const Allocator &alloc, size_t size) : alloc(alloc), size(size) { }
-        void operator()(value_type* ptr)
+
+        constexpr deallocator() noexcept = default;
+        constexpr explicit deallocator(const Allocator &alloc, size_t size) : alloc(alloc), size(size) { }
+        constexpr void operator()(value_type* ptr)
         {
             using Traits = allocator_traits<Allocator>;
             for (ptrdiff_t i = this->size - 1; i >= 0; --i)
@@ -70,7 +72,7 @@ namespace std
     using Rebind = typename allocator_traits<Allocator>::template rebind_alloc<U>;
 
     template<typename Type, typename Allocator, typename ...Args> requires (!is_array_v<Type>)
-    inline unique_ptr<Type, deallocator<Rebind<Allocator, Type>>> allocate_unique(const Allocator &allocator, Args &&...args)
+    constexpr inline unique_ptr<Type, deallocator<Rebind<Allocator, Type>>> allocate_unique(const Allocator &allocator, Args &&...args)
     {
         using Alloc = Rebind<Allocator, Type>;
         using Traits = allocator_traits<Alloc>;
@@ -81,7 +83,7 @@ namespace std
         return unique_ptr<Type, deallocator<Alloc>>(ptr, dealloc);
     }
     template<typename Type, typename Allocator> requires (is_array_v<Type> && extent_v<Type> == 0)
-    inline unique_ptr<Type, deallocator<Rebind<Allocator, remove_extent_t<Type>>>> allocate_unique(const Allocator &allocator, size_t size)
+    constexpr inline unique_ptr<Type, deallocator<Rebind<Allocator, remove_extent_t<Type>>>> allocate_unique(const Allocator &allocator, size_t size)
     {
         using Elem = remove_extent_t<Type>;
         using Alloc = Rebind<Allocator, Elem>;

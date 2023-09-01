@@ -11,10 +11,10 @@
 
 namespace timers::hpet
 {
-    enum modes
+    enum class modes
     {
-        PERIODIC,
-        ONESHOT
+        periodic,
+        oneshot
     };
 
     struct [[gnu::packed]] HPET
@@ -76,7 +76,7 @@ namespace timers::hpet
 
             std::unique_lock guard(this->lock);
 
-            if (mode == PERIODIC && this->_periodic == false)
+            if (mode == modes::periodic && this->_periodic == false)
                 return false;
 
             if (static_cast<bool>(this->_func) != false)
@@ -145,7 +145,7 @@ namespace timers::hpet
 
         for (auto &comp : comparators)
         {
-            if (mode == PERIODIC && comp->supports_periodic() == false)
+            if (mode == modes::periodic && comp->supports_periodic() == false)
                 continue;
             if (comp->start_timer(ns, mode, func, args...))
                 return comp;

@@ -4,9 +4,9 @@
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/cpu/pic.hpp>
 #include <drivers/acpi.hpp>
+#include <init/kernel.hpp>
 #include <lib/panic.hpp>
 #include <lib/mmio.hpp>
-#include <lib/misc.hpp>
 #include <lib/log.hpp>
 #include <mm/vmm.hpp>
 
@@ -50,18 +50,18 @@ namespace ioapic
             this->mask(i);
     }
 
-    void ioapic::set(uint8_t i, uint8_t vector, deliveryMode delivery, destMode dest, uint16_t flags, uint8_t id)
+    void ioapic::set(uint8_t i, uint8_t vector, delivery delivery, destmode dest, uint16_t flags, uint8_t id)
     {
         uint64_t value = 0;
         value |= vector;
         value |= std::to_underlying(delivery) << 8;
         value |= std::to_underlying(dest) << 11;
 
-        if (flags & ACTIVE_HIGH_LOW)
+        if (flags & active_low)
             value |= (1 << 13);
-        if (flags & EDGE_LEVEL)
+        if (flags & level_sensative)
             value |= (1 << 15);
-        if (flags & MASKED)
+        if (flags & masked)
             value |= (1 << 16);
 
         value |= static_cast<uint64_t>(id) << 56;
@@ -91,6 +91,16 @@ namespace ioapic
         return nullptr;
     }
 
+    std::optional<std::pair<uint8_t, uint16_t>> irq_for_gsi(uint32_t gsi)
+    {
+        for (const auto &entry : acpi::isos)
+        {
+            if (entry.gsi == gsi)
+                return std::make_pair(entry.irq_source, entry.flags);
+        }
+        return std::nullopt;
+    }
+
     static ioapic &internal_ioapic_for_gsi(uint32_t gsi)
     {
         auto ret = ioapic_for_gsi(gsi);
@@ -100,7 +110,7 @@ namespace ioapic
         return *ret;
     }
 
-    void set(uint32_t gsi, uint8_t vector, deliveryMode delivery, destMode dest, uint16_t flags, uint8_t id)
+    void set(uint32_t gsi, uint8_t vector, delivery delivery, destmode dest, uint16_t flags, uint8_t id)
     {
         auto &entry = internal_ioapic_for_gsi(gsi);
         entry.set(gsi - entry.gsi_range().first, vector, delivery, dest, flags, id);
@@ -148,9 +158,11 @@ namespace ioapic
     {
         log::infoln("IOAPIC: Initialising...");
 
-        if (acpi::madthdr == nullptr)
+        if (acpi::madthdr == nullptr || acpi::ioapics.empty())
         {
-            log::errorln("MADT table not found!");
+            // TODO: We currently don't support legacy PIC
+            // log::errorln("MADT table not found!");
+            PANIC("MADT table not found!");
             return;
         }
 
@@ -165,13 +177,13 @@ namespace ioapic
             {
                 if (iso.irq_source == i)
                 {
-                    set(iso.gsi, iso.irq_source + 0x20, deliveryMode::FIXED, destMode::PHYSICAL, iso.flags | MASKED, smp_request.response->bsp_lapic_id);
+                    set(iso.gsi, iso.irq_source + 0x20, delivery::fixed, destmode::physical, iso.flags | masked, smp_request.response->bsp_lapic_id);
                     idt::handlers[iso.irq_source + 0x20].reserve();
                     return;
                 }
             }
 
-            set(i, i + 0x20, deliveryMode::FIXED, destMode::PHYSICAL, MASKED, smp_request.response->bsp_lapic_id);
+            set(i, i + 0x20, delivery::fixed, destmode::physical, masked, smp_request.response->bsp_lapic_id);
             idt::handlers[i + 0x20].reserve();
         };
 
@@ -179,7 +191,8 @@ namespace ioapic
         {
             for (size_t i = 0; i < 16; i++)
             {
-                if (i == 2) continue;
+                if (i == 2)
+                    continue;
                 redirect_isa_irq(i);
             }
         }

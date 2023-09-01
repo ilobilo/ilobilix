@@ -2,11 +2,10 @@
 
 #pragma once
 
-#include <init/kernel.hpp>
+// #include <init/kernel.hpp>
 // #include <lib/math.hpp>
 #include <type_traits>
 #include <algorithm>
-#include <cstdint>
 #include <cctype>
 #include <cerrno>
 #include <limits>
@@ -41,24 +40,6 @@ constexpr inline bool remove_from_if(auto &container, auto pred)
     return container.erase(std::remove_if(container.begin(), container.end(), pred), container.end()) != container.end();
 }
 
-template<typename Type>
-constexpr inline bool ishh(Type a)
-{
-    return uintptr_t(a) >= hhdm_offset;
-}
-
-template<typename Type>
-constexpr inline Type tohh(Type a)
-{
-    return ishh(a) ? a : Type(uintptr_t(a) + hhdm_offset);
-}
-
-template<typename Type>
-constexpr inline Type fromhh(Type a)
-{
-    return !ishh(a) ? a : Type(uintptr_t(a) - hhdm_offset);
-}
-
 // inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
 // {
 //     return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
@@ -79,7 +60,8 @@ constexpr inline Ret str2int(const char *nptr, char **endptr, int _base)
         return 0;
     }
 
-    while (isspace(*str)) str++;
+    while (isspace(*str))
+        str++;
 
     bool negative = false;
     if (*str == '-')
@@ -131,7 +113,8 @@ constexpr inline Ret str2int(const char *nptr, char **endptr, int _base)
             digit = c - 'A' + 0x10;
         else if (islower(c))
             digit = c - 'a' + 0x10;
-        else break;
+        else
+            break;
 
         if (digit >= static_cast<URet>(base))
             break;

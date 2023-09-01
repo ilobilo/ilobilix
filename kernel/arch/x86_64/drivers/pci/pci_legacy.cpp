@@ -62,9 +62,9 @@ namespace pci::legacy
                 if (io->read<uint16_t>(0, 0, 0, i, PCI_VENDOR_ID) == 0xFFFF)
                     continue;
 
-                addrootbus(new bus_t(nullptr, getconfigio(0, i), 0, i));
+                addrootbus(new bus_t(nullptr, nullptr, getconfigio(0, i), 0, i));
             }
         }
-        else addrootbus(new bus_t(nullptr, io, 0, 0));
+        else addrootbus(new bus_t(nullptr, nullptr, io, 0, 0));
     }
 } // namespace pci::legacy

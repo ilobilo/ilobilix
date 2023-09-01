@@ -6,11 +6,11 @@
 
 namespace lapic
 {
-    enum class timerModes : uint8_t
+    enum class timermodes : uint8_t
     {
-        ONESHOT = 0,
-        PERIODIC = 1,
-        TSC_DEADLINE = 2
+        oneshot = 0,
+        periodic = 1,
+        tsc_deadline = 2
     };
 
     class lapic
@@ -40,6 +40,6 @@ namespace lapic
         void ipi(uint32_t flags, uint32_t id);
         void eoi();
 
-        void timer(uint8_t vector, uint64_t ms, timerModes mode);
+        void timer(uint8_t vector, uint64_t ms, timermodes mode);
     };
 } // namespace lapic

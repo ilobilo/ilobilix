@@ -2,6 +2,7 @@
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <init/kernel.hpp>
 #include <lib/misc.hpp>
 #include <cpu/gdt.hpp>
 #include <cpu/idt.hpp>
@@ -105,7 +106,7 @@ namespace proc
         // if (ms == 0)
         //     this_cpu()->lapic.ipi(sched_vector, this_cpu()->lapic.id);
         // else
-            this_cpu()->lapic.timer(sched_vector, ms, lapic::timerModes::ONESHOT);
+            this_cpu()->lapic.timer(sched_vector, ms, lapic::timermodes::oneshot);
     }
 
     void arch_init(void (*func)(cpu::registers_t *regs))

@@ -6,7 +6,7 @@ sysroot
 serial.txt
 log.txt
 
-build*
+/build*
 sources
 
 subprojects/*

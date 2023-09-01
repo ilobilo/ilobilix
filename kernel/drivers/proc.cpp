@@ -2,6 +2,7 @@
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <init/kernel.hpp>
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <mm/pmm.hpp>
@@ -282,7 +283,10 @@ namespace proc
         while (new_thread != nullptr && new_thread->status != status::ready)
         {
             if (new_thread->status == status::killed)
+            {
                 delete new_thread;
+                continue;
+            }
 
             if (new_thread->events.empty() == false && new_thread->timeout > 0)
             {
@@ -292,9 +296,9 @@ namespace proc
                     event::trigger(new_thread->events[0]);
                     continue;
                 }
-                else enqueue_notready(new_thread);
             }
 
+            enqueue_notready(new_thread);
             new_thread = next_thread();
         }
 
@@ -349,7 +353,7 @@ namespace proc
         proc->name += std::to_string(this_cpu()->id);
         proc->pagemap = vmm::kernel_pagemap;
 
-        auto idle_thread = new thread(proc, (void (*)())([]() { arch::halt(); }), 0);
+        auto idle_thread = new thread(proc, arch::halt, true);
         idle_thread->status = status::ready;
         this_cpu()->idle = idle_thread;
 

@@ -1,6 +1,7 @@
 // Copyright (C) 2022-2023  ilobilo
 
 #include <arch/aarch64/cpu/cpu.hpp>
+#include <init/kernel.hpp>
 #include <lib/panic.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>

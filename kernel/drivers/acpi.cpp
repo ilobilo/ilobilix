@@ -180,8 +180,8 @@ namespace acpi
 
         uint8_t sci_int = fadthdr->SCI_Interrupt;
 
-        if(madthdr->legacy_pic() == false && ioapic::initialised)
-            ioapic::set(sci_int, sci_int + 0x20, ioapic::deliveryMode::FIXED, ioapic::destMode::PHYSICAL, ioapic::ACTIVE_HIGH_LOW | ioapic::EDGE_LEVEL, smp_request.response->bsp_lapic_id);
+        if(madthdr->legacy_pic() == false && ioapic::initialised == true)
+            ioapic::set(sci_int, sci_int + 0x20, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic::active_low | ioapic::level_sensative, smp_request.response->bsp_lapic_id);
 
         idt::handlers[sci_int + 0x20].set([](auto)
         {

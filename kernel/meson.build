@@ -18,6 +18,11 @@ src = files(
     'lib/time.cpp',
     'lib/trace.cpp',
 
+    'lib/net/arp.cpp',
+    'lib/net/net.cpp',
+
+    'lib/net/ipv4/icmp.cpp',
+
     'drivers/fs/dev/streams.cpp',
     'drivers/fs/dev/tty/tty.cpp',
     'drivers/fs/dev/tty/pty.cpp',

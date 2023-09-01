@@ -3,9 +3,19 @@
 #include <drivers/pci/pci.hpp>
 #include <drivers/acpi.hpp>
 #include <arch/arch.hpp>
+
+#include <lib/interrupts.hpp>
 #include <lib/panic.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
+
+#include <lai/helpers/pci.h>
+
+#if defined(__x86_64__)
+#  include <arch/x86_64/cpu/ioapic.hpp>
+#  include <arch/x86_64/cpu/idt.hpp>
+#  include <drivers/smp.hpp>
+#endif
 
 namespace pci
 {
@@ -109,7 +119,7 @@ namespace pci
     }
 
     device_t::device_t(uint16_t vendorid, uint16_t deviceid, uint8_t progif, uint8_t subclass, uint8_t Class, uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, bus_t *parent)
-    : entity(seg, bus, dev, func, parent), vendorid(vendorid), deviceid(deviceid), progif(progif), subclass(subclass), Class(Class)
+    : entity(seg, bus, dev, func, parent), vendorid(vendorid), deviceid(deviceid), progif(progif), subclass(subclass), Class(Class), route(nullptr), irq_registered(false), irq_index(0)
     {
         readbars(this, 6);
     }
@@ -125,8 +135,8 @@ namespace pci
         msi::control control { .raw = this->read<uint16_t>(this->msi.offset + 0x02) };
         assert((1 << control.mmc) < 32);
 
-        msi::data data { }; // { .raw = this->read<uint16_t>(this->msi.offset + (control.c64 ? 0xC0 : 0x08)) };
-        msi::address address { }; // { .raw = this->read<uint16_t>(this->msi.offset + 0x04) };
+        msi::data data { };
+        msi::address address { };
 
         data.vector = vector;
         data.delivery_mode = 0;
@@ -151,19 +161,10 @@ namespace pci
             return false;
 
         if (index == uint16_t(-1))
-        {
-            for (size_t i = 0; i < this->msix.irqs.length(); i++)
-            {
-                if (this->msix.irqs[i] == bitmap_t::available)
-                {
-                    this->msix.irqs[i] = bitmap_t::used;
-                    index = i;
-                    goto exit;
-                }
-            }
+            index = this->msix.allocate_index();
+        if (index == uint16_t(-1))
             return false;
-        }
-        exit:
+
         this->msix.irqs[index] = true;
 
         msix::control control { .raw = this->read<uint16_t>(this->msix.offset + 0x02) };
@@ -201,16 +202,128 @@ namespace pci
         return true;
     }
 
-    bool device_t::enable_irqs(uint64_t cpuid, size_t vector)
+//     bool device_t::enable_irqs(uint64_t cpuid, size_t vector)
+//     {
+//         if (this->msix_set(cpuid, vector, -1))
+//             return true;
+
+//         if (this->msi_set(cpuid, vector, -1))
+//             return true;
+
+// #if defined(__x86_64__)
+//         if (ioapic::initialised == false)
+//         {
+//             // this->write<uint8_t>(PCI_INTERRUPT_LINE, vector);
+//             // idt::unmask(vector - 0x20);
+//             // return true;
+//             return false;
+//         }
+//         if (this->route == nullptr)
+//             return false;
+
+//         auto ioapic_flags = 0;
+//         if (!(this->route->flags & ACPI_SMALL_IRQ_EDGE_TRIGGERED))
+//             ioapic_flags |= ioapic::flags::level_sensative;
+//         if (this->route->flags & ACPI_SMALL_IRQ_ACTIVE_LOW)
+//             ioapic_flags |= ioapic::flags::active_low;
+
+//         log::errorln("{}", this->route->gsi);
+//         ioapic::set(this->route->gsi, vector, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic_flags, smp::bsp_id);
+//         return true;
+// #endif
+//         return false;
+//     }
+
+    struct entry
     {
+        std::vector<std::pair<device_t *, std::function<void ()>>> functions;
+        size_t vector;
+
+        void handler()
+        {
+            if (this->functions.size() == 1)
+            {
+                this->functions[0].second();
+                return;
+            }
+            else if (this->functions.size() > 1)
+            {
+                for (auto &[dev, func] : this->functions)
+                {
+                    auto status = dev->read<uint16_t>(PCI_STATUS);
+                    auto cmd = dev->read<uint16_t>(PCI_COMMAND);
+                    if ((status & (1 << 3)) && !(cmd & CMD_INT_DIS))
+                        func();
+                }
+                return;
+            }
+        }
+    };
+    static std::unordered_map<uint32_t, entry> gsis;
+    bool device_t::register_irq(uint64_t cpuid, std::function<void ()> function)
+    {
+        auto [handler, vector] = interrupts::allocate_handler();
+
         if (this->msix_set(cpuid, vector, -1))
-            return true;
+        {
+            handler.set([&function] (auto) { function(); });
+            return this->irq_registered = true;
+        }
 
         if (this->msi_set(cpuid, vector, -1))
-            return true;
+        {
+            handler.set([&function] (auto) { function(); });
+            return this->irq_registered = true;
+        }
 
-        // TODO: GSI
-        return false;
+#if defined(__x86_64__)
+        if (ioapic::initialised == false)
+            goto exit;
+
+        if (this->route == nullptr)
+            goto exit;
+
+        if (gsis.contains(this->route->gsi) == false)
+        {
+            auto &ref = gsis[this->route->gsi];
+            ref.vector = vector;
+            handler.set([&] (auto) { ref.handler(); });
+
+            uint16_t ioapic_flags = 0;
+            if (!(this->route->flags & ACPI_SMALL_IRQ_EDGE_TRIGGERED))
+                ioapic_flags |= ioapic::flags::level_sensative;
+            if (this->route->flags & ACPI_SMALL_IRQ_ACTIVE_LOW)
+                ioapic_flags |= ioapic::flags::active_low;
+
+            ioapic::set(this->route->gsi, vector, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic_flags, smp::bsp_id);
+        }
+        else handler.reset();
+
+        this->irq_index = gsis[this->route->gsi].functions.size();
+        gsis[this->route->gsi].functions.emplace_back(this, function);
+        return this->irq_registered = true;
+
+        exit:
+#endif
+        handler.reset();
+        return this->irq_registered = false;
+    }
+
+    bool device_t::unregister_irq()
+    {
+        if (this->irq_registered == false)
+            return false;
+
+        auto &ref = gsis[this->route->gsi];
+        if (ref.functions.size() == 1)
+        {
+            interrupts::get_handler(ref.vector).reset();
+            ref.functions.clear();
+            gsis.erase(this->route->gsi);
+        }
+        else ref.functions.erase(std::next(ref.functions.begin(), this->irq_index));
+
+        return true;
     }
 
     void entity::command(uint16_t cmd, bool enable)
@@ -231,8 +344,8 @@ namespace pci
         if (status & (1 << 4))
         {
             uint8_t offset = device->read<uint16_t>(PCI_CAPABPTR) & 0xFC;
-            // if (offset != 0)
-            //     log::infoln(" Capabilities:");
+            if (offset != 0)
+                log::infoln(" Capabilities:");
 
             while (offset)
             {
@@ -243,7 +356,7 @@ namespace pci
                 {
                     case 0x10:
                     {
-                        // log::infoln("  - PCIe");
+                        log::infoln("  - PCIe");
                         auto tp = (device->read<uint16_t>(offset + 2) >> 4) & 0x0F;
                         device->is_pcie = true;
                         device->is_secondary = (tp == 4 || tp == 6 || tp == 8);
@@ -289,11 +402,11 @@ namespace pci
                     case 0x5:
                         if (flags & (1 << 3))
                         {
-                            // log::warnln("  - MSI (Supported but not available)");
+                            log::warnln("  - MSI (Supported but not available)");
                             device->msi.supported = false;
                             break;
                         }
-                        // log::infoln("  - MSI");
+                        log::infoln("  - MSI");
                         device->msi.supported = true;
                         device->msi.offset = offset;
                         break;
@@ -301,11 +414,11 @@ namespace pci
                     {
                         if (flags & (1 << 3))
                         {
-                            // log::warnln("  - MSI-X (Supported but not available)");
+                            log::warnln("  - MSI-X (Supported but not available)");
                             device->msix.supported = false;
                             break;
                         }
-                        // log::infoln("  - MSI-X");
+                        log::infoln("  - MSI-X");
                         device->msix.supported = true;
                         device->msix.offset = offset;
 
@@ -330,6 +443,10 @@ namespace pci
                 return true;
             });
 
+            auto pin = device->read<uint8_t>(PCI_INTERRUPT_PIN);
+            if (pin != 0 && bus->router != nullptr)
+                device->route = bus->router->resolve(dev, pin);
+
             devices.push_back(device);
             bus->child_devices.push_back(device);
         }
@@ -346,7 +463,10 @@ namespace pci
                 bridge->secondaryid = secondary_id;
                 bridge->subordinateid = bridge->read<uint8_t>(PCI_SUBORDINATE_BUS);
 
-                auto secondary_bus = new bus_t(bridge, bus->io, bus->seg, secondary_id);
+                auto secondary_bus = new bus_t(bridge, nullptr, bus->io, bus->seg, secondary_id);
+                auto router = bus->router->downstream(secondary_bus);
+                secondary_bus->router = router;
+
                 bridge->parent = secondary_bus;
                 enumbus(secondary_bus);
             }
@@ -398,6 +518,8 @@ namespace pci
 
         for (const auto bus : root_buses)
             enumbus(bus);
+
+        // TODO: Configure bridges from managarm
     }
 } // namespace pci
 

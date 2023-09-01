@@ -3,7 +3,6 @@
 #include <drivers/proc.hpp>
 #include <lib/event.hpp>
 #include <lib/lock.hpp>
-#include <lib/log.hpp>
 
 namespace event
 {
@@ -39,7 +38,7 @@ namespace event
                 // if (this->triggered.load(std::memory_order_acquire) == false)
                 //     break;
 
-                arch::pause();
+                time::msleep(1);
                 start++;
             }
             if (start >= end)
@@ -88,7 +87,7 @@ namespace event
                 if (this->triggered.load(std::memory_order_acquire) > 0)
                     break;
 
-                arch::pause();
+                time::msleep(1);
                 start++;
             }
 

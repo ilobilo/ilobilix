@@ -19,26 +19,26 @@ namespace smp
 
     static constexpr auto get_arch_id(limine_smp_info *cpu)
     {
-        #if defined(__x86_64__)
+#if defined(__x86_64__)
         return cpu->lapic_id;
-        #elif defined(__aarch64__)
+#elif defined(__aarch64__)
         return cpu->mpidr;
-        #else
-        #error Unknown architecture
-        #endif
+#else
+#  error Unknown architecture
+#endif
     }
 
     void bsp_init()
     {
         cpus = new cpu_t[smp_request.response->cpu_count]();
 
-        #if defined(__x86_64__)
+#if defined(__x86_64__)
         bsp_id = smp_request.response->bsp_lapic_id;
-        #elif defined (__aarch64__)
+#elif defined (__aarch64__)
         bsp_id = smp_request.response->bsp_mpidr;
-        #else
-        #error Unknown architecture
-        #endif
+#else
+#  error Unknown architecture
+#endif
 
         for (size_t i = 0; i < smp_request.response->cpu_count; i++)
         {

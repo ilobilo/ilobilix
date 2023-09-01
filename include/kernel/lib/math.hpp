@@ -4,6 +4,25 @@
 
 #include <cstdint>
 
+extern uintptr_t hhdm_offset;
+
+constexpr inline bool ishh(auto a)
+{
+    return uintptr_t(a) >= hhdm_offset;
+}
+
+template<typename Type>
+constexpr inline Type tohh(Type a)
+{
+    return ishh(a) ? a : Type(uintptr_t(a) + hhdm_offset);
+}
+
+template<typename Type>
+constexpr inline Type fromhh(Type a)
+{
+    return !ishh(a) ? a : Type(uintptr_t(a) - hhdm_offset);
+}
+
 constexpr inline auto align_down(auto n, auto a)
 {
     return (n & ~(a - 1));

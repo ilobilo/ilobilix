@@ -317,7 +317,6 @@ namespace tty
         }
     }
 
-    // TODO: is there a better way?
     struct self_cdev_t : vfs::cdev_t
     {
         bool open(vfs::resource *res, vfs::fdhandle *fd, proc::process *proc)

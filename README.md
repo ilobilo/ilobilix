@@ -78,6 +78,7 @@ https://discord.gg/fM5GK3RpS7
 * osdev wiki: https://wiki.osdev.org
 * osdev discord server: https://discord.gg/RnCtsqD
 * managarm: https://github.com/managarm/managarm
+* tart: https://github.com/qookei/tart
 * toaruOS: https://github.com/klange/toaruos
 * LemonOS: https://github.com/LemonOSProject/LemonOS
 * Sigma: https://github.com/sigma-os/Sigma
@@ -159,6 +160,15 @@ https://discord.gg/fM5GK3RpS7
 - [x] Userspace
 - [ ] Signals
 - [x] mlibc
+- [x] RTL8139
+- [ ] RTL8169
+- [ ] E1000
+- [x] Ethernet
+- [x] ARP
+- [x] IPv4
+- [x] ICMPv4
+- [ ] TCP
+- [ ] UDP
 
 ## Packages
 

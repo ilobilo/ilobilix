@@ -48,7 +48,7 @@ namespace idt
 
     extern IDTPtr invalid;
 
-    std::pair<interrupts::handler&, uint8_t> allocate_handler(uint8_t hint = IRQ(0));
+    std::pair<interrupts::handler&, uint8_t> allocate_handler(uint8_t hint = IRQ(16));
 
     void mask(uint8_t irq);
     void unmask(uint8_t irq);

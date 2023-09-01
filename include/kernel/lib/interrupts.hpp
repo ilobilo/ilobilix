@@ -20,7 +20,7 @@ namespace interrupts
         template<typename Func, typename ...Args>
         bool set(Func &&func, Args &&...args)
         {
-            if (this->get())
+            if (this->used())
                 return false;
 
             this->handler = [func = std::forward<Func>(func), ...args = std::forward<Args>(args)](cpu::registers_t *regs) mutable {
@@ -42,21 +42,22 @@ namespace interrupts
             return this->reserved = true;
         }
 
-        bool clear()
+        bool reset()
         {
             bool ret = static_cast<bool>(this->handler);
             this->handler.clear();
+            this->reserved = false;
             return ret;
         }
 
-        bool get()
+        bool used()
         {
             return bool(this->handler);
         }
 
         bool operator()(cpu::registers_t *regs)
         {
-            if (this->get() == false)
+            if (this->used() == false)
                 return false;
 
             this->handler(regs);
@@ -65,4 +66,5 @@ namespace interrupts
     };
 
     std::pair<handler&, size_t> allocate_handler();
+    handler &get_handler(size_t vector);
 } // namespace interrupts

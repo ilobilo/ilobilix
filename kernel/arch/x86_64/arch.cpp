@@ -153,4 +153,9 @@ namespace interrupts
     {
         return idt::allocate_handler();
     }
+
+    handler &get_handler(size_t vector)
+    {
+        return idt::handlers[vector];
+    }
 } // namespace interrupts
