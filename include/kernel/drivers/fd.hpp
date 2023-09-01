@@ -3,6 +3,7 @@
 #pragma once
 
 #include <drivers/vfs.hpp>
+#include <deque>
 
 namespace proc { struct process; }
 namespace vfs
@@ -13,7 +14,7 @@ namespace vfs
         node_t *node;
         resource *res;
 
-        std::vector<dirent*> dirents;
+        std::deque<dirent*> dirents;
         bool dirents_invalid;
 
         std::atomic<size_t> refcount;

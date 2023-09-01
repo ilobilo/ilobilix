@@ -96,7 +96,7 @@ namespace lapic
         this->write(0xB0, 0x00);
     }
 
-    void lapic::timer(uint8_t vector, uint64_t ms, timerModes mode)
+    void lapic::timer(uint8_t vector, uint64_t ms, timermodes mode)
     {
         if (this->ticks_per_ms == 0)
             this->timer_calibrate();

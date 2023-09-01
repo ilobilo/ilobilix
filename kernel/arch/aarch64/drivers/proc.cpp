@@ -2,6 +2,7 @@
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+#include <init/kernel.hpp>
 #include <lib/misc.hpp>
 #include <mm/pmm.hpp>
 

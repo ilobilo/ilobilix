@@ -3,6 +3,7 @@
 #include <drivers/fs/dev/tty/tty.hpp>
 #include <drivers/fs/devtmpfs.hpp>
 #include <drivers/term.hpp>
+#include <init/kernel.hpp>
 #include <lib/panic.hpp>
 #include <lib/alloc.hpp>
 #include <lib/log.hpp>
@@ -16,13 +17,13 @@ namespace term
 
     void print(const char *str, terminal_t *term)
     {
-        if (term != nullptr)
+        if (term != nullptr) [[likely]]
             term_write(term->ctx, str, strlen(str));
     }
 
     void printc(char c, terminal_t *term)
     {
-        if (term != nullptr)
+        if (term != nullptr) [[likely]]
             term_write(term->ctx, &c, 1);
     }
 

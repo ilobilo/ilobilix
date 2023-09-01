@@ -3,6 +3,7 @@
 #pragma once
 
 #include <drivers/pci/pci.hpp>
+#include <lib/interrupts.hpp>
 #include <lib/event.hpp>
 #include <mm/pmm.hpp>
 
@@ -139,18 +140,20 @@ namespace nvme
         uint16_t id;
         uint16_t irq;
 
+        interrupts::handler &handler;
+
         size_t size;
         SubmissionQueue submission;
         CompletionQueue completion;
 
-        QueuePair(uint16_t qid, Registers *regs, size_t size, uint16_t irq) : /* cid_bitmap(size), */ cid(0),
-            id(qid), irq(irq), size(size),
+        QueuePair(uint16_t qid, Registers *regs, size_t size, uint16_t irq, interrupts::handler &handler) : /* cid_bitmap(size), */ cid(0),
+            id(qid), irq(irq), handler(handler), size(size),
             submission(regs, id, size), completion(regs, id, size) { }
 
-        auto submit_command_nolock(spec::Command cmd);
-        auto submit_command(spec::Command cmd);
+        bool submit_command_nolock(spec::Command cmd);
+        bool submit_command(spec::Command cmd);
 
-        void await();
+        bool await();
         void trigger();
     };
 
@@ -179,21 +182,20 @@ namespace nvme
 
     struct Controller
     {
-        bool initialised = false;
-
         pci::device_t *dev;
         Registers *regs;
 
         spec::IdentifyController identity;
         std::vector<std::unique_ptr<Namespace>> namespaes;
 
-        uint64_t queue_ids = 0;
+        uint64_t queue_ids;
         std::unique_ptr<QueuePair> admin_queue;
         std::vector<std::unique_ptr<QueuePair>> io_queues;
 
-        Controller(pci::device_t *dev) : dev(dev) { }
+        Controller(pci::device_t *dev) : dev(dev), identity(), namespaes(), queue_ids(0), io_queues() { }
+        ~Controller();
 
         std::optional<std::reference_wrapper<std::unique_ptr<QueuePair>>> allocate_ioqueue();
-        std::expected<void, std::string> init();
+        std::expected<void, const char *> init();
     };
 } // namespace nvme

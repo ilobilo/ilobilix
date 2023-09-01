@@ -90,10 +90,10 @@ namespace proc
         thread *self;
         uintptr_t stack;
 
-        #if defined(__x86_64__)
+#if defined(__x86_64__)
         uintptr_t kstack;
         uintptr_t pfstack;
-        #endif
+#endif
         // DO NOT MOVE: END
 
         tid_t tid;

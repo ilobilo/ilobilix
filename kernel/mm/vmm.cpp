@@ -1,7 +1,8 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <init/kernel.hpp>
 #include <arch/arch.hpp>
-#include <lib/misc.hpp>
+#include <lib/math.hpp>
 #include <lib/log.hpp>
 #include <lai/host.h>
 #include <mm/vmm.hpp>

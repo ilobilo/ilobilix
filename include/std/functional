@@ -3,6 +3,7 @@
 #pragma once
 
 #include_next <functional>
+#include <utility>
 #include <cstddef>
 #include <cassert>
 
@@ -19,7 +20,7 @@ namespace std
         {
             public:
             virtual ~callable() = default;
-            virtual Ret invoke(Args...) = 0;
+            virtual Ret invoke(Args &&...) = 0;
         };
 
         template<typename Func>
@@ -29,9 +30,9 @@ namespace std
             callableFunc(const Func &t) : t_(t) { }
             ~callableFunc() override = default;
 
-            Ret invoke(Args ...args) override
+            Ret invoke(Args &&...args) override
             {
-                return t_(args...);
+                return t_(std::forward<Args>(args)...);
             }
 
             private:
@@ -52,7 +53,7 @@ namespace std
         }
 
         public:
-        function() { };
+        function() : _heap(nullptr), _st_type(st_type::none) { };
 
         template<typename Func>
         function(Func t)
@@ -76,19 +77,21 @@ namespace std
 
         void clear()
         {
-            this->_st_type = st_type::none;
-            if (this->_heap == nullptr)
-                return;
+            if (this->_st_type == st_type::heap && this->_heap != nullptr)
+                delete this->_heap;
 
-            delete this->_heap;
             this->_heap = nullptr;
+            this->_st_type = st_type::none;
         }
 
         template<typename Func>
         function &operator=(Func t)
         {
             if (this->_heap != nullptr)
+            {
                 delete this->_heap;
+                this->_heap = nullptr;
+            }
 
             if (sizeof(Func) <= (sizeof(void*) * 3))
             {
@@ -107,7 +110,7 @@ namespace std
         Ret operator()(Args ...args)
         {
             assert(this->_st_type != st_type::none);
-            return this->get_callable()->invoke(args...);
+            return this->get_callable()->invoke(std::forward<Args>(args)...);
         }
 
         explicit operator bool() const

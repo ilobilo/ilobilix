@@ -38,35 +38,42 @@ typedef __UINT_LEAST64_TYPE__ uint_least64_t;
 typedef __UINTMAX_TYPE__ uintmax_t;
 typedef __UINTPTR_TYPE__ uintptr_t;
 
-#ifdef __clang__
-#define __LIBC_C_EXPAND_JOIN(x, suffix) x ## suffix
-#define __LIBC_C_JOIN(x, suffix) __LIBC_C_EXPAND_JOIN(x, suffix)
-
-#define INT8_C(x)  __LIBC_C_JOIN(x, __INT8_C_SUFFIX__)
-#define INT16_C(x) __LIBC_C_JOIN(x, __INT16_C_SUFFIX__)
-#define INT32_C(x) __LIBC_C_JOIN(x, __INT32_C_SUFFIX__)
-#define INT64_C(x) __LIBC_C_JOIN(x, __INT64_C_SUFFIX__)
-
-#define UINT8_C(x)  __LIBC_C_JOIN(x, __UINT8_C_SUFFIX__)
-#define UINT16_C(x) __LIBC_C_JOIN(x, __UINT16_C_SUFFIX__)
-#define UINT32_C(x) __LIBC_C_JOIN(x, __UINT32_C_SUFFIX__)
-#define UINT64_C(x) __LIBC_C_JOIN(x, __UINT64_C_SUFFIX__)
-
-#define INTMAX_C(x) __LIBC_C_JOIN(x, __INTMAX_C_SUFFIX__)
-#define UINTMAX_C(x) __LIBC_C_JOIN(x, __UINTMAX_C_SUFFIX__)
+#ifdef __SIZEOF_INT128__
+typedef __uint128_t uint128_t;
+typedef __int128_t int128_t;
 #else
-#define INT8_C(x)  __INT8_C(x)
-#define INT16_C(x) __INT16_C(x)
-#define INT32_C(x) __INT32_C(x)
-#define INT64_C(x) __INT64_C(x)
+#  error 128 bit integers not available
+#endif
 
-#define UINT8_C(x)  __UINT8_C(x)
-#define UINT16_C(x) __UINT16_C(x)
-#define UINT32_C(x) __UINT32_C(x)
-#define UINT64_C(x) __UINT64_C(x)
+#ifdef __clang__
+#  define __LIBC_C_EXPAND_JOIN(x, suffix) x ## suffix
+#  define __LIBC_C_JOIN(x, suffix) __LIBC_C_EXPAND_JOIN(x, suffix)
 
-#define INTMAX_C(x) __INTMAX_C(x)
-#define UINTMAX_C(x) __UINTMAX_C(x)
+#  define INT8_C(x)  __LIBC_C_JOIN(x, __INT8_C_SUFFIX__)
+#  define INT16_C(x) __LIBC_C_JOIN(x, __INT16_C_SUFFIX__)
+#  define INT32_C(x) __LIBC_C_JOIN(x, __INT32_C_SUFFIX__)
+#  define INT64_C(x) __LIBC_C_JOIN(x, __INT64_C_SUFFIX__)
+
+#  define UINT8_C(x)  __LIBC_C_JOIN(x, __UINT8_C_SUFFIX__)
+#  define UINT16_C(x) __LIBC_C_JOIN(x, __UINT16_C_SUFFIX__)
+#  define UINT32_C(x) __LIBC_C_JOIN(x, __UINT32_C_SUFFIX__)
+#  define UINT64_C(x) __LIBC_C_JOIN(x, __UINT64_C_SUFFIX__)
+
+#  define INTMAX_C(x) __LIBC_C_JOIN(x, __INTMAX_C_SUFFIX__)
+#  define UINTMAX_C(x) __LIBC_C_JOIN(x, __UINTMAX_C_SUFFIX__)
+#else
+#  define INT8_C(x)  __INT8_C(x)
+#  define INT16_C(x) __INT16_C(x)
+#  define INT32_C(x) __INT32_C(x)
+#  define INT64_C(x) __INT64_C(x)
+
+#  define UINT8_C(x)  __UINT8_C(x)
+#  define UINT16_C(x) __UINT16_C(x)
+#  define UINT32_C(x) __UINT32_C(x)
+#  define UINT64_C(x) __UINT64_C(x)
+
+#  define INTMAX_C(x) __INTMAX_C(x)
+#  define UINTMAX_C(x) __UINTMAX_C(x)
 #endif
 
 #define UINT8_MAX __UINT8_MAX__

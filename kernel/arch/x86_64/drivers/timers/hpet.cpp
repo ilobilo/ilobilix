@@ -27,7 +27,7 @@ namespace timers::hpet
         this->_device->regs->ist = (1 << this->_num);
 
         auto delta = (ns * 1'000'000) / this->_device->clk;
-        if (this->_mode == PERIODIC)
+        if (this->_mode == modes::periodic)
         {
             comp.cmd |= (1 << 2) | (1 << 3) | (1 << 6);
             comp.val = this->_device->regs->main_counter + delta;
@@ -122,7 +122,7 @@ namespace timers::hpet
 
                     timer._func();
 
-                    if (timer._mode != PERIODIC)
+                    if (timer._mode != modes::periodic)
                     {
                         this->regs->comparators[timer._num].cmd &= ~(1 << 2);
                         timer._func.clear();
@@ -146,7 +146,7 @@ namespace timers::hpet
                 this->regs->comparators[i].cmd |= (1 << 14);
                 timer._int_mode = timer.INT_FSB;
             }
-            else if (ioapic::initialised == true && std::popcount(gsi_mask) <= 24) // TODO: Fix this on VBOX
+            else if (ioapic::initialised == true && std::popcount(gsi_mask) <= 24) // TODO: Fix this on VBox
             {
                 if (gsi == 0xFFFFFFFF)
                 {
@@ -177,7 +177,7 @@ namespace timers::hpet
 
                                 timer._func();
 
-                                if (timer._mode != PERIODIC)
+                                if (timer._mode != modes::periodic)
                                 {
                                     this->regs->comparators[timer._num].cmd &= ~(1 << 2);
                                     timer._func.clear();
@@ -188,7 +188,7 @@ namespace timers::hpet
                         }
                     });
 
-                    ioapic::set(gsi, gsi_vector, ioapic::deliveryMode::FIXED, ioapic::destMode::PHYSICAL, ioapic::flags::EDGE_LEVEL, this_cpu()->arch_id);
+                    ioapic::set(gsi, gsi_vector, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic::flags::level_sensative, this_cpu()->arch_id);
                 }
 
                 this->regs->comparators[i].cmd |= ((gsi & 0x1F) << 9) | (1 << 1);
@@ -214,7 +214,7 @@ namespace timers::hpet
         uint64_t target = this->regs->main_counter + ((ns * 1'000'000) / this->clk);
 
         while (this->regs->main_counter < target)
-            asm volatile ("pause");
+            arch::pause();
     }
 
     void device::msleep(uint64_t ms)
@@ -222,7 +222,7 @@ namespace timers::hpet
         uint64_t target = this->regs->main_counter + ((ms * 1'000'000'000'000) / this->clk);
 
         while (this->regs->main_counter < target)
-            asm volatile ("pause");
+            arch::pause();
     }
 
     uint64_t device::time_ns()
@@ -280,7 +280,7 @@ namespace timers::hpet
         arch::int_toggle(false);
 
         static constexpr size_t ns = 1'000'000;
-        if (start_timer(ns, PERIODIC, [] { time::timer_handler(ns); }))
+        if (start_timer(ns, modes::periodic, [] { time::timer_handler(ns); }))
             idt::mask(pit::vector - 0x20);
 
         arch::int_toggle(true);

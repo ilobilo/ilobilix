@@ -180,6 +180,63 @@ namespace pci
 
     struct bridge_t;
     struct device_t;
+    struct bus_t;
+
+    struct irq_router
+    {
+        enum class model
+        {
+            none,
+            root,
+            expansion
+        };
+
+        struct entry
+        {
+            uint64_t gsi;
+            int32_t dev;
+            int32_t func;
+
+            uint8_t pin;
+            uint8_t flags;
+        };
+
+        irq_router *parent;
+        bus_t *mybus;
+
+        irq_router(irq_router *parent, bus_t *bus) : parent(parent), mybus(bus) { }
+        virtual ~irq_router() { }
+
+        entry *resolve(int32_t dev, uint8_t pin, int32_t func = -1)
+        {
+            if (this->mod == model::root)
+            {
+                auto entry = std::find_if(this->table.begin(), this->table.end(),
+                    [&](const auto &ref) {
+                        bool ret = (ref.dev == dev && ref.pin == pin);
+                        if (func != -1)
+                            ret = ret && (ref.func == -1 || ref.func == func);
+                        return ret;
+                    });
+
+                if (entry == this->table.end())
+                    return nullptr;
+
+                return entry;
+            }
+            else if (this->mod == model::expansion)
+                return this->bridgeirqs[(static_cast<size_t>(pin) - 1 + dev) % 4];
+
+            return nullptr;
+        }
+
+        virtual irq_router *downstream(bus_t *bus) = 0;
+
+        protected:
+        std::vector<entry> table;
+        entry *bridgeirqs[4] { };
+        model mod;
+    };
 
     struct bus_t
     {
@@ -187,11 +244,14 @@ namespace pci
         std::vector<bridge_t*> child_bridges;
 
         bridge_t *bridge;
+        irq_router *router;
+
         configio *io;
         uint16_t seg;
         uint8_t bus;
 
-        bus_t(bridge_t *bridge, configio *io, uint16_t seg, uint8_t bus) : bridge(bridge), io(io), seg(seg), bus(bus) { }
+        bus_t(bridge_t *bridge, irq_router *router, configio *io, uint16_t seg, uint8_t bus) :
+            bridge(bridge), router(router), io(io), seg(seg), bus(bus) { }
 
         template<valuetype Type>
         Type read(uint8_t dev, uint8_t func, size_t offset)
@@ -218,7 +278,8 @@ namespace pci
         bool is_pcie;
         bool is_secondary;
 
-        entity(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, bus_t *parent) : seg(seg), bus(bus), dev(dev), func(func), parent(parent) { }
+        entity(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, bus_t *parent) :
+            seg(seg), bus(bus), dev(dev), func(func), parent(parent), is_pcie(false), is_secondary(false) { }
 
         template<valuetype Type>
         Type read(size_t offset)
@@ -238,7 +299,6 @@ namespace pci
 
     struct bridge_t : entity
     {
-        bus_t *parent;
         uint8_t secondaryid;
         uint8_t subordinateid;
 
@@ -278,13 +338,31 @@ namespace pci
                 uint8_t bar;
                 uint32_t offset;
             } table, pending;
+
+            inline uint16_t allocate_index()
+            {
+                assert(this->irqs.initialised());
+                for (uint16_t i = 0; i < this->irqs.length(); i++)
+                {
+                    if (this->irqs[i] == bitmap_t::available)
+                    {
+                        this->irqs[i] = bitmap_t::used;
+                        return i;
+                    }
+                }
+                return uint16_t(-1);
+            }
         } msix;
 
-        uint32_t gsi = 0;
+        irq_router::entry *route;
+        bool irq_registered;
+        size_t irq_index;
 
         bool msi_set(uint64_t cpuid, uint16_t vector, uint16_t index);
         bool msix_set(uint64_t cpuid, uint16_t vector, uint16_t index);
-        bool enable_irqs(uint64_t cpuid, size_t vector);
+
+        bool register_irq(uint64_t cpuid, std::function<void ()> function);
+        bool unregister_irq();
 
         device_t(uint16_t vendorid, uint16_t deviceid, uint8_t progif, uint8_t subclass, uint8_t Class, uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, bus_t *parent);
 

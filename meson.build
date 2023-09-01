@@ -33,7 +33,8 @@ qemu_args = [
     '-rtc', 'base=localtime', '-serial', 'stdio',
     '-boot', 'order=d,menu=on,splash-time=100',
     '-drive', 'file=' + meson.source_root() / 'misc/nvme.img' + ',format=raw,if=none,id=nvm',
-    '-device', 'nvme,serial=nvme,drive=nvm'
+    '-device', 'nvme,serial=nvme,drive=nvm',
+    '-nic', 'user,model=rtl8139'
 ]
 
 # { arch : [ ovmf_name, bios, xorriso_args, qemu_args ] }

@@ -30,13 +30,13 @@ namespace idt
 
         if (acpi::madthdr->legacy_pic() == true)
         {
-            if ((hint >= IRQ(0) && hint <= IRQ(15)) && handlers[hint].get() == false)
+            if ((hint >= IRQ(0) && hint <= IRQ(15)) && handlers[hint].used() == false)
                 return { handlers[hint], hint };
         }
 
         for (size_t i = hint; i < 256; i++)
         {
-            if (handlers[i].get() == false && handlers[i].is_reserved() == false)
+            if (handlers[i].used() == false && handlers[i].is_reserved() == false)
             {
                 handlers[i].reserve();
                 return { handlers[i], i };
@@ -50,14 +50,16 @@ namespace idt
     {
         if (ioapic::initialised == true && acpi::madthdr->legacy_pic())
             ioapic::mask_irq(irq);
-        else pic::mask(irq);
+        else
+            pic::mask(irq);
     }
 
     void unmask(uint8_t irq)
     {
         if (ioapic::initialised == true && acpi::madthdr->legacy_pic())
             ioapic::unmask_irq(irq);
-        else pic::unmask(irq);
+        else
+            pic::unmask(irq);
     }
 
     void IDTEntry::set(void *isr, uint8_t typeattr, uint8_t ist)

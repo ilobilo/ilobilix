@@ -92,4 +92,9 @@ namespace interrupts
     {
         PANIC("Not implemented!");
     }
+
+    handler &get_handler(size_t vector)
+    {
+        PANIC("Not implemented!");
+    }
 } // namespace interrupts

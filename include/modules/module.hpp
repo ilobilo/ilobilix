@@ -8,6 +8,7 @@ struct [[gnu::packed, gnu::aligned(8)]] driver_t
 {
     const char *name;
     bool initialised;
+    bool failed;
     bool (*init)();
     bool (*fini)();
     size_t depcount;

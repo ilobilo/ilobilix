@@ -7,7 +7,7 @@
 #include <cerrno>
 
 #if defined(__x86_64__)
-#include <arch/x86_64/cpu/lapic.hpp>
+#  include <arch/x86_64/cpu/lapic.hpp>
 #endif
 
 namespace proc { struct thread; }
@@ -22,8 +22,7 @@ namespace smp
 
         uint64_t arch_id = 0;
 
-        #if defined(__x86_64__)
-
+#if defined(__x86_64__)
         lapic::lapic lapic;
 
         uint64_t lapic_ticks_per_ms = 0;
@@ -32,8 +31,7 @@ namespace smp
         static uint64_t fpu_storage_size;
         void (*fpu_save)(uint8_t*);
         void (*fpu_restore)(uint8_t*);
-
-        #endif
+#endif
 
         proc::thread *idle;
 

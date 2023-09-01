@@ -445,7 +445,7 @@ namespace elf
 
         bool run(driver_t *driver, bool deps)
         {
-            if (driver->initialised == true)
+            if (driver->initialised == true || driver->failed == true)
                 return true;
 
             std::string_view name(driver->name);
@@ -471,6 +471,11 @@ namespace elf
                         return false;
                     }
                     run(depdriver, deps);
+                    if (depdriver->initialised == false)
+                    {
+                        log::errorln("ELF: Could not initialise dependency '{}' of driver '{}'!", dep, name);
+                        return false;
+                    }
                 }
             }
 
@@ -482,7 +487,7 @@ namespace elf
             }
             else log::errorln("ELF: Driver '{}' does not have init() function!", name);
 
-            return driver->initialised = ret;
+            return driver->failed = !(driver->initialised = ret);
         }
 
         void run_all(bool deps)

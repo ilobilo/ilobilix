@@ -13,6 +13,9 @@
 
 [[noreturn]] void vpanic(const char *file, int line, const char *func, std::string_view format, fmt::format_args args)
 {
+    arch::int_toggle(false);
+    arch::halt_others();
+
     log::println();
     log::errorln(format, args);
     log::errorln("File: {}", file);
@@ -27,6 +30,9 @@
 
 [[noreturn]] void panic(const char *message)
 {
+    arch::int_toggle(false);
+    arch::halt_others();
+
     log::println();
     log::errorln("{}", message);
 

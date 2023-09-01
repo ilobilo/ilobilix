@@ -2,6 +2,7 @@
 
 #include <syscall/proc.hpp>
 #include <drivers/proc.hpp>
+#include <init/kernel.hpp>
 #include <mm/pmm.hpp>
 
 namespace proc
@@ -318,7 +319,7 @@ namespace proc
         if (is_sgid == true)
             old_proc->egid = node->res->stat.st_gid;
 
-        enqueue(new thread(old_proc, entry, std::span<std::string_view>(argvs.begin(), argvs.size()), std::span<std::string_view>(envps.begin(), envps.size()), auxv));
+        enqueue(new thread(old_proc, entry, argvs, envps, auxv));
 
         vmm::kernel_pagemap->load();
         delete old_pagemap;
