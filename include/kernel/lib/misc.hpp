@@ -30,12 +30,12 @@
 //     return detail::to_helper<Container> { };
 // }
 
-constexpr inline bool remove_from(auto &container, auto &&val)
+inline constexpr bool remove_from(auto &container, auto &&val)
 {
     return container.erase(std::remove(container.begin(), container.end(), val), container.end()) != container.end();
 }
 
-constexpr inline bool remove_from_if(auto &container, auto pred)
+inline constexpr bool remove_from_if(auto &container, auto pred)
 {
     return container.erase(std::remove_if(container.begin(), container.end(), pred), container.end()) != container.end();
 }
@@ -46,7 +46,7 @@ constexpr inline bool remove_from_if(auto &container, auto pred)
 // }
 
 template<typename Ret>
-constexpr inline Ret str2int(const char *nptr, char **endptr, int _base)
+inline constexpr Ret str2int(const char *nptr, char **endptr, int _base)
 {
     using URet = std::make_unsigned_t<Ret>;
 

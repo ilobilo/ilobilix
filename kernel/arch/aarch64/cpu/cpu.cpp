@@ -28,7 +28,7 @@ namespace cpu
         return base;
     }
 
-    constexpr static inline uint64_t tlbi(uint16_t asid, uintptr_t address)
+    static inline constexpr uint64_t tlbi(uint16_t asid, uintptr_t address)
     {
         return (uint64_t(asid) << 48) | (address >> 12);
     }

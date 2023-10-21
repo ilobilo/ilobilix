@@ -14,11 +14,11 @@
 
 namespace nvme
 {
-    constexpr inline uint8_t Class = 0x01;
-    constexpr inline uint8_t subclass = 0x08;
-    constexpr inline uint8_t progif = 0x02;
+    inline constexpr uint8_t Class = 0x01;
+    inline constexpr uint8_t subclass = 0x08;
+    inline constexpr uint8_t progif = 0x02;
 
-    constexpr inline size_t num_io_queues = 4;
+    inline constexpr size_t num_io_queues = 4;
 
     struct Registers
     {

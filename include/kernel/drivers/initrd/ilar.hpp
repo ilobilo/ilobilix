@@ -6,8 +6,8 @@
 
 namespace ilar
 {
-    static constexpr uint64_t PATH_LENGTH = 128;
-    static constexpr char ILAR_SIGNATURE[] = "ILAR";
+    inline constexpr uint64_t PATH_LENGTH = 128;
+    inline constexpr char ILAR_SIGNATURE[] = "ILAR";
 
     enum filetypes
     {

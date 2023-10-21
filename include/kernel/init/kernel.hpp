@@ -4,8 +4,8 @@
 
 #include <limine.h>
 
-static constexpr uintptr_t kernel_stack_size = 0x10000; // 64 kib
-static constexpr uintptr_t user_stack_size = 0x200000; // 2 mib
+inline constexpr uintptr_t kernel_stack_size = 0x10000; // 64 kib
+inline constexpr uintptr_t user_stack_size = 0x200000; // 2 mib
 
 extern const char *cmdline;
 extern uintptr_t hhdm_offset;

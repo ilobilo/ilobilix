@@ -157,17 +157,17 @@ constexpr uint64_t FNV1a(const void *key, uint64_t len, uint64_t seed = 0xCBF29C
     return h;
 }
 
-constexpr inline size_t _hash(const void *ptr, uint64_t len, uint64_t seed = 0xC70F6907UL)
+inline constexpr size_t _hash(const void *ptr, uint64_t len, uint64_t seed = 0xC70F6907UL)
 {
     return MurmurHash2_64A(ptr, len, seed);
 }
 
-constexpr inline size_t _hash(const auto &val)
+inline constexpr size_t _hash(const auto &val)
 {
     return _hash(&val, sizeof(val));
 }
 
-constexpr inline size_t _hash_combine(const auto &val, uint64_t old)
+inline constexpr size_t _hash_combine(const auto &val, uint64_t old)
 {
     return _hash(&val, sizeof(val), old);
 }

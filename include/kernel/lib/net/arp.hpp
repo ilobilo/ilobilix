@@ -114,7 +114,9 @@ namespace net::arp
     struct processor
     {
         private:
-        std::vector<std::unique_ptr<route>> routes;
+        std::vector<std::unique_ptr<route>> routes {
+            std::make_unique<route>(ipv4::broadcast, mac::broadcast, true)
+        };
         sender *_sender;
 
         void submit_query(ipv4::address dip);

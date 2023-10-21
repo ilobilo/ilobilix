@@ -23,17 +23,17 @@ namespace mbr
         uint32_t lba_start;
         uint32_t lba_count;
 
-        constexpr inline bool is_bootable()
+        inline constexpr bool is_bootable()
         {
             return this->flags == 0x80;
         }
 
-        constexpr inline bool is_pmbr()
+        inline constexpr bool is_pmbr()
         {
             return this->flags == 0xEE;
         }
 
-        constexpr inline bool is_unused()
+        inline constexpr bool is_unused()
         {
             return this->sid == 0;
         }
@@ -45,12 +45,12 @@ namespace mbr
         partition partitions[4];
         uint8_t signature[2];
 
-        constexpr inline bool is_read_only()
+        inline constexpr bool is_read_only()
         {
             return this->bootstrap[444] == 0x5A && this->bootstrap[445] == 0x5A;
         }
 
-        constexpr inline bool is_valid()
+        inline constexpr bool is_valid()
         {
             return this->signature[0] == 0x55 && this->signature[1] == 0xAA;
         }
@@ -69,22 +69,22 @@ namespace gpt
         uint64_t attributes;
         char16_t name[36];
 
-        constexpr inline bool is_unused()
+        inline constexpr bool is_unused()
         {
             return this->partguid == 0;
         }
 
-        constexpr inline bool is_system()
+        inline constexpr bool is_system()
         {
             return this->attributes & 1;
         }
 
-        constexpr inline bool is_bootpart()
+        inline constexpr bool is_bootpart()
         {
             return this->attributes & 2;
         }
 
-        constexpr inline std::u16string_view get_name()
+        inline constexpr std::u16string_view get_name()
         {
             return this->name;
         }
@@ -109,7 +109,7 @@ namespace gpt
         uint32_t partentrysize;
         uint32_t partchecksum;
 
-        constexpr inline bool is_valid()
+        inline constexpr bool is_valid()
         {
             return std::u8string_view(this->signature) == signature;
         }

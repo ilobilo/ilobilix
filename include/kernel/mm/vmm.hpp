@@ -41,14 +41,14 @@ namespace vmm
         framebuffer = write_combining
     };
 
-    constexpr inline caching default_caching = write_back;
-    constexpr inline size_t default_flags = rwx;
+    inline constexpr caching default_caching = write_back;
+    inline constexpr size_t default_flags = rwx;
 
-    constexpr inline size_t kib4 = 0x1000;
-    constexpr inline size_t mib2 = 0x200000;
-    constexpr inline size_t gib1 = 0x40000000;
+    inline constexpr size_t kib4 = 0x1000;
+    inline constexpr size_t mib2 = 0x200000;
+    inline constexpr size_t gib1 = 0x40000000;
 
-    constexpr inline auto invalid_addr = uintptr_t(-1);
+    inline constexpr auto invalid_addr = uintptr_t(-1);
 
     extern uintptr_t pa_mask;
 
@@ -94,36 +94,36 @@ namespace vmm
         struct global;
         struct local;
 
-        constexpr inline auto map_failed = fold(reinterpret_cast<void*>(-1));
+        inline constexpr auto map_failed = fold(reinterpret_cast<void*>(-1));
 
-        constexpr inline auto map_shared = 0x01;
-        constexpr inline auto map_private = 0x02;
-        constexpr inline auto map_shared_validate = 0x03;
-        constexpr inline auto map_type = 0x0F;
-        constexpr inline auto map_fixed = 0x10;
-        constexpr inline auto map_anon = 0x20;
-        constexpr inline auto map_anonymous = map_anon;
-        constexpr inline auto map_noreserve = 0x4000;
-        constexpr inline auto map_growsdown = 0x0100;
-        constexpr inline auto map_denywrite = 0x0800;
-        constexpr inline auto map_executable = 0x1000;
-        constexpr inline auto map_locked = 0x2000;
-        constexpr inline auto map_populate = 0x8000;
-        constexpr inline auto map_nonblock = 0x10000;
-        constexpr inline auto map_stack = 0x20000;
-        constexpr inline auto map_hugetlb = 0x40000;
-        constexpr inline auto map_sync = 0x80000;
-        constexpr inline auto map_fixed_noreplace = 0x100000;
-        constexpr inline auto map_file = 0;
+        inline constexpr auto map_shared = 0x01;
+        inline constexpr auto map_private = 0x02;
+        inline constexpr auto map_shared_validate = 0x03;
+        inline constexpr auto map_type = 0x0F;
+        inline constexpr auto map_fixed = 0x10;
+        inline constexpr auto map_anon = 0x20;
+        inline constexpr auto map_anonymous = map_anon;
+        inline constexpr auto map_noreserve = 0x4000;
+        inline constexpr auto map_growsdown = 0x0100;
+        inline constexpr auto map_denywrite = 0x0800;
+        inline constexpr auto map_executable = 0x1000;
+        inline constexpr auto map_locked = 0x2000;
+        inline constexpr auto map_populate = 0x8000;
+        inline constexpr auto map_nonblock = 0x10000;
+        inline constexpr auto map_stack = 0x20000;
+        inline constexpr auto map_hugetlb = 0x40000;
+        inline constexpr auto map_sync = 0x80000;
+        inline constexpr auto map_fixed_noreplace = 0x100000;
+        inline constexpr auto map_file = 0;
 
-        constexpr inline auto prot_none = 0;
-        constexpr inline auto prot_read = 1;
-        constexpr inline auto prot_write = 2;
-        constexpr inline auto prot_exec = 4;
-        constexpr inline auto prot_growsdown = 0x01000000;
-        constexpr inline auto prot_growsup = 0x02000000;
+        inline constexpr auto prot_none = 0;
+        inline constexpr auto prot_read = 1;
+        inline constexpr auto prot_write = 2;
+        inline constexpr auto prot_exec = 4;
+        inline constexpr auto prot_growsdown = 0x01000000;
+        inline constexpr auto prot_growsup = 0x02000000;
 
-        constexpr inline uintptr_t def_bump_base = 0x80000000000;
+        inline constexpr uintptr_t def_bump_base = 0x80000000000;
     } // namespace mmap
 
     struct ptable;

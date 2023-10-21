@@ -6,6 +6,26 @@
 
 namespace ustar
 {
+    inline constexpr auto magic = "ustar";
+    inline constexpr auto magic_len = 6;
+    inline constexpr auto version = "00";
+    inline constexpr auto version_len = 2;
+
+    enum types : char
+    {
+        regular = '0',
+        aregular = '\0',
+        hardlink = '1',
+        symlink = '2',
+        chardev = '3',
+        blockdev = '4',
+        directory = '5',
+        fifo = '6',
+        control = '7',
+        xhd = 'x',
+        xgl = 'g'
+    };
+
     struct [[gnu::packed]] header
     {
         char name[100];
@@ -25,24 +45,6 @@ namespace ustar
         char devminor[8];
         char prefix[155];
     };
-
-    #define TMAGIC "ustar"
-    #define TMAGLEN 6
-    #define TVERSION "00"
-    #define TVERSLEN 2
-
-    #define REGTYPE '0'
-    #define AREGTYPE '\0'
-    #define LNKTYPE '1'
-    #define SYMTYPE '2'
-    #define CHRTYPE '3'
-    #define BLKTYPE '4'
-    #define DIRTYPE '5'
-    #define FIFOTYPE '6'
-    #define CONTTYPE '7'
-
-    #define XHDTYPE 'x'
-    #define XGLTYPE 'g'
 
     bool validate(uintptr_t address);
     void init(uintptr_t address);

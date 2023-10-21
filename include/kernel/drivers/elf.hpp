@@ -28,7 +28,7 @@ namespace elf
             constexpr bool operator==(const symentry_t &) const = default;
             constexpr bool operator<(const symentry_t &rhs) const { return this->addr < rhs.addr; }
         };
-        static constexpr symentry_t empty_sym = { "<unknown>", UINTPTR_MAX, 0, STT_NOTYPE };
+        inline constexpr symentry_t empty_sym = { "<unknown>", UINTPTR_MAX, 0, STT_NOTYPE };
 
         extern std::vector<symentry_t> symbol_table;
 

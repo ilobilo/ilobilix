@@ -7,12 +7,12 @@
 
 namespace gdt
 {
-    static constexpr uint8_t GDT_NULL = 0x00;
-    static constexpr uint8_t GDT_CODE = 0x08;
-    static constexpr uint8_t GDT_DATA = 0x10;
-    static constexpr uint8_t GDT_USER_DATA = 0x18;
-    static constexpr uint8_t GDT_USER_CODE = 0x20;
-    static constexpr uint8_t GDT_TSS = 0x28;
+    inline constexpr uint8_t GDT_NULL = 0x00;
+    inline constexpr uint8_t GDT_CODE = 0x08;
+    inline constexpr uint8_t GDT_DATA = 0x10;
+    inline constexpr uint8_t GDT_USER_DATA = 0x18;
+    inline constexpr uint8_t GDT_USER_CODE = 0x20;
+    inline constexpr uint8_t GDT_TSS = 0x28;
 
     struct [[gnu::packed]] GDTR
     {

@@ -7,9 +7,9 @@
 
 namespace log
 {
-    constexpr inline auto info_prefix = "[\033[32mINFO\033[0m] ";
-    constexpr inline auto warn_prefix = "[\033[33mWARN\033[0m] ";
-    constexpr inline auto error_prefix = "[\033[31mERROR\033[0m] ";
+    inline constexpr auto info_prefix = "[\033[32mINFO\033[0m] ";
+    inline constexpr auto warn_prefix = "[\033[33mWARN\033[0m] ";
+    inline constexpr auto error_prefix = "[\033[31mERROR\033[0m] ";
 
     inline bool to_term = true;
     inline std::mutex lock;

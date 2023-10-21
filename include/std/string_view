@@ -491,10 +491,10 @@ namespace std
 
 #if SV_RANGES
     template<typename Char, typename Traits>
-    constexpr inline bool ranges::enable_borrowed_range<basic_string_view<Char, Traits>> = true;
+    inline constexpr bool ranges::enable_borrowed_range<basic_string_view<Char, Traits>> = true;
 
     template<typename Char, typename Traits>
-    constexpr inline bool ranges::enable_view<basic_string_view<Char, Traits>> = true;
+    inline constexpr bool ranges::enable_view<basic_string_view<Char, Traits>> = true;
 
     template<typename R>
     basic_string_view(R &&) -> basic_string_view<ranges::range_value_t<R>>;
