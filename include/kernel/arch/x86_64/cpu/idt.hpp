@@ -8,9 +8,9 @@
 
 namespace idt
 {
-    static constexpr uint8_t INT_SYSCALL = 0x80;
+    inline constexpr uint8_t INT_SYSCALL = 0x80;
 
-    constexpr inline uint8_t IRQ(uint8_t num)
+    inline constexpr uint8_t IRQ(uint8_t num)
     {
         return num + 0x20;
     }

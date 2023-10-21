@@ -40,12 +40,12 @@ namespace rtl8139::spec
         bmcr = 0x62,    // uint16_t
     };
 
-    constexpr inline auto get_tsd(size_t i)
+    inline constexpr auto get_tsd(size_t i)
     {
         return registers(size_t(registers::tsd0) + i * 4);
     }
 
-    constexpr inline auto get_tsad(size_t i)
+    inline constexpr auto get_tsad(size_t i)
     {
         return registers(size_t(registers::tsad0) + i * 4);
     }

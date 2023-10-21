@@ -228,8 +228,6 @@ namespace vmm
     {
         this->toplvl = reinterpret_cast<ptable*>(tohh(rdreg(cr3)));
     }
-
-    static size_t counter = 0;
     pagemap::pagemap() : toplvl(new ptable)
     {
         this->llpage_size = gib1;
@@ -241,17 +239,12 @@ namespace vmm
             for (size_t i = 256; i < 512; i++)
                 get_next_lvl(this->toplvl, i, true);
 
-            if (counter < smp_request.response->cpu_count)
-            {
-                cpu::enablePAT();
-                counter++;
-            }
+            cpu::enablePAT();
+            return;
         }
-        else
-        {
-            for (size_t i = 256; i < 512; i++)
-                this->toplvl->entries[i] = kernel_pagemap->toplvl->entries[i];
-        }
+
+        for (size_t i = 256; i < 512; i++)
+            this->toplvl->entries[i] = kernel_pagemap->toplvl->entries[i];
     }
 
     bool is_canonical(uintptr_t addr)

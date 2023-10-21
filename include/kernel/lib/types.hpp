@@ -79,7 +79,7 @@ enum types
     s_ifchr = 0020000,
     s_ififo = 0010000,
 };
-constexpr inline types mode2type(mode_t mode)
+inline constexpr types mode2type(mode_t mode)
 {
     return types(mode & s_ifmt ?: s_ifreg);
 }
@@ -168,15 +168,15 @@ enum wflags
     wcoreflag = 0x80
 };
 
-constexpr inline auto wexitstatus(auto x) { return (x & 0xff00) >> 8; }
-constexpr inline auto wtermsig(auto x) { return x & 0x7F; }
-constexpr inline auto wstopsig(auto x) { return wexitstatus(x); }
-constexpr inline auto wifexited(auto x) { return wtermsig(x) == 0; }
-constexpr inline auto wifsignaled(auto x) { return (static_cast<int8_t>((x & 0x7F) + 1) >> 1) > 0; }
-constexpr inline auto wifstopped(auto x) { return (x & 0xFF) == 0x7F; }
-constexpr inline auto wifcontinued(auto x) { return x == 0xFFFF; }
-constexpr inline auto wcoredump(auto x) { return (x) & wcoreflag; }
-constexpr inline auto w_exitcode(auto ret, auto sig) { return (ret << 8) | sig; }
+inline constexpr auto wexitstatus(auto x) { return (x & 0xff00) >> 8; }
+inline constexpr auto wtermsig(auto x) { return x & 0x7F; }
+inline constexpr auto wstopsig(auto x) { return wexitstatus(x); }
+inline constexpr auto wifexited(auto x) { return wtermsig(x) == 0; }
+inline constexpr auto wifsignaled(auto x) { return (static_cast<int8_t>((x & 0x7F) + 1) >> 1) > 0; }
+inline constexpr auto wifstopped(auto x) { return (x & 0xFF) == 0x7F; }
+inline constexpr auto wifcontinued(auto x) { return x == 0xFFFF; }
+inline constexpr auto wcoredump(auto x) { return (x) & wcoreflag; }
+inline constexpr auto w_exitcode(auto ret, auto sig) { return (ret << 8) | sig; }
 
 enum clone_flags
 {
@@ -508,12 +508,12 @@ struct timeval
     suseconds_t tv_usec;
 };
 
-constexpr inline unsigned char if2dt(mode_t mode)
+inline constexpr unsigned char if2dt(mode_t mode)
 {
     return (mode & s_ifmt) >> 12;
 }
 
-constexpr inline mode_t dt2if(unsigned char dt)
+inline constexpr mode_t dt2if(unsigned char dt)
 {
     return dt << 12;
 }
@@ -576,19 +576,19 @@ struct stat_t
     }
 };
 
-constexpr inline unsigned int major(dev_t dev)
+inline constexpr unsigned int major(dev_t dev)
 {
     unsigned int ret = ((dev & dev_t(0x00000000000FFF00U)) >> 8);
     return ret |= ((dev & dev_t(0xFFFFF00000000000U)) >> 32);
 }
 
-constexpr inline unsigned int minor(dev_t dev)
+inline constexpr unsigned int minor(dev_t dev)
 {
     unsigned int ret = (dev & dev_t(0x00000000000000FFU));
     return ret |= ((dev & dev_t(0x00000FFFFFF00000U)) >> 12);
 }
 
-constexpr inline dev_t makedev(unsigned int maj, unsigned int min)
+inline constexpr dev_t makedev(unsigned int maj, unsigned int min)
 {
     dev_t ret  = dev_t(maj & 0x00000FFFU) << 8;
     ret |= dev_t(maj & 0xFFFFF000U) << 32;

@@ -16,14 +16,14 @@
 
 namespace rtl8139
 {
-    constexpr inline uint16_t vendorid = 0x10EC;
-    constexpr inline uint16_t deviceid = 0x8139;
+    inline constexpr uint16_t vendorid = 0x10EC;
+    inline constexpr uint16_t deviceid = 0x8139;
 
-    constexpr inline size_t max_packet_size = 0x600;
-    constexpr inline size_t min_packet_size = 0x16;
+    inline constexpr size_t max_packet_size = 0x600;
+    inline constexpr size_t min_packet_size = 0x16;
 
-    constexpr inline size_t rx_buffer_size = 8192;
-    constexpr inline size_t tx_buffer_size = max_packet_size;
+    inline constexpr size_t rx_buffer_size = 8192;
+    inline constexpr size_t tx_buffer_size = max_packet_size;
 
     static constexpr spec::intstat ack
     {

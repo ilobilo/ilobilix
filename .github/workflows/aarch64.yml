@@ -29,5 +29,5 @@ jobs:
 
       - name: Kernel
         run: |
-          meson setup builddir --cross-file cross-files/meson-kernel-clang-aarch64.cross-file -Dnorun=true
-          ninja -C builddir
+          meson setup builddir --cross-file cross-files/meson-kernel-clang-aarch64.cross-file
+          ninja -C builddir norun

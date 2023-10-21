@@ -4,7 +4,6 @@ project('ilobilix', ['c', 'cpp'],
     version : 'v0.1',
     license: 'GPL-3.0',
     default_options : [
-        # 'cpp_std=gnu++20',
         'c_std=gnu17',
         'warning_level=2',
         'werror=true'
@@ -126,7 +125,7 @@ add_global_arguments([
 ], language : ['c', 'cpp'])
 
 add_global_arguments([
-    '-std=gnu++2b',
+    '-std=gnu++23',
     '-fno-rtti',
     '-fno-exceptions',
     '-fsized-deallocation',
@@ -134,11 +133,7 @@ add_global_arguments([
     '-Wno-non-virtual-dtor',
     '-Wno-frame-address',
     '-DMAGIC_ENUM_NO_STREAMS=1',
-    '-D__cplusplus=202101L', # TODO: tmp
-    '-D__cpp_concepts=202002L',
-    # '-D__cpp_lib_format=202207L',
-    # '-fmodules',
-    # '-fmodule-map-file=' + meson.source_root() / 'include/module.modulemap'
+    '-D__cpp_concepts=202207L'
 ], language : 'cpp')
 
 cmake = import('cmake')

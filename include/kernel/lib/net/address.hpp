@@ -62,7 +62,7 @@ namespace net
                 return !this->operator==({ 0, 0, 0, 0 });
             }
         };
-        static constexpr address broadcast { 255, 255, 255, 255 };
+        inline constexpr address broadcast { 255, 255, 255, 255 };
     } // namespace ipv4
 
     namespace mac
@@ -122,6 +122,6 @@ namespace net
                 return !this->operator==({ 0, 0, 0, 0, 0, 0 });
             }
         };
-        static constexpr address broadcast { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+        inline constexpr address broadcast { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
     } // namespace mac
 } // namespace net

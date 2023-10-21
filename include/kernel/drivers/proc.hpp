@@ -13,8 +13,8 @@
 
 namespace proc
 {
-    static constexpr uintptr_t def_usr_stack_top = 0x70000000000;
-    static constexpr size_t fixed_timeslice = 6;
+    inline constexpr uintptr_t def_usr_stack_top = 0x70000000000;
+    inline constexpr size_t fixed_timeslice = 6;
 
     enum class status
     {

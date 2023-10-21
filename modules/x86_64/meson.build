@@ -1,7 +1,8 @@
 # Copyright (C) 2022-2023  ilobilo
 
 modules = [
-    'rtl8139'
+    'rtl8139',
+    'vmware'
 ]
 
 args += [

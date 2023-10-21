@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-static constexpr uint64_t ATEXIT_MAX_FUNCS = 128;
+inline constexpr uint64_t ATEXIT_MAX_FUNCS = 128;
 
 extern "C"
 {

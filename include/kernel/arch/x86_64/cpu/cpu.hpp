@@ -7,19 +7,19 @@
 
 namespace cpu
 {
-    static constexpr uint64_t CPUID_SMEP = (1 << 7);
-    static constexpr uint64_t CPUID_SMAP = (1 << 20);
-    static constexpr uint64_t CPUID_UMIP = (1 << 2);
+    inline constexpr uint64_t CPUID_SMEP = (1 << 7);
+    inline constexpr uint64_t CPUID_SMAP = (1 << 20);
+    inline constexpr uint64_t CPUID_UMIP = (1 << 2);
 
-    static constexpr uint64_t Uncachable = 0x00;
-    static constexpr uint64_t WriteCombining = 0x01;
-    static constexpr uint64_t WriteThrough = 0x04;
-    static constexpr uint64_t WriteProtected = 0x05;
-    static constexpr uint64_t WriteBack = 0x06;
-    static constexpr uint64_t Uncached = 0x07;
+    inline constexpr uint64_t Uncachable = 0x00;
+    inline constexpr uint64_t WriteCombining = 0x01;
+    inline constexpr uint64_t WriteThrough = 0x04;
+    inline constexpr uint64_t WriteProtected = 0x05;
+    inline constexpr uint64_t WriteBack = 0x06;
+    inline constexpr uint64_t Uncached = 0x07;
 
-    static constexpr uint64_t reset_state_pat = 0x00'07'04'06'00'07'04'06; // UC UC- WT WB UC UC- WT WB
-    static constexpr uint64_t custom_pat = Uncachable | (WriteCombining << 8) | (WriteThrough << 32) | (WriteProtected << 40) | (WriteBack << 48) | (Uncached << 56);
+    inline constexpr uint64_t reset_state_pat = 0x00'07'04'06'00'07'04'06; // UC UC- WT WB UC UC- WT WB
+    inline constexpr uint64_t custom_pat = Uncachable | (WriteCombining << 8) | (WriteThrough << 32) | (WriteProtected << 40) | (WriteBack << 48) | (Uncached << 56);
 
     struct [[gnu::packed]] registers_t
     {

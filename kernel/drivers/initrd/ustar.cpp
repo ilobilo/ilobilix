@@ -10,11 +10,11 @@ namespace ustar
 {
     bool validate(uintptr_t address)
     {
-        return strncmp(reinterpret_cast<header*>(address)->magic, TMAGIC, 6) == 0;
+        return strncmp(reinterpret_cast<header*>(address)->magic, magic, magic_len) == 0;
     }
 
     template<typename Type>
-    inline Type oct2int(const char *str, size_t len)
+    static inline Type oct2int(const char *str, size_t len)
     {
         Type value = 0;
         while (*str && len > 0)
@@ -28,7 +28,7 @@ namespace ustar
     void init(uintptr_t address)
     {
         auto current = reinterpret_cast<header*>(address);
-        while (!strncmp(current->magic, TMAGIC, 6))
+        while (!strncmp(current->magic, magic, magic_len))
         {
             std::string_view name(current->name);
             std::string_view target(current->linkname);
@@ -47,38 +47,38 @@ namespace ustar
 
             switch (current->typeflag)
             {
-                case REGTYPE:
-                case AREGTYPE:
+                case types::regular:
+                case types::aregular:
                     node = vfs::create(nullptr, name, mode | s_ifreg);
                     if (node == nullptr)
                         log::errorln("USTAR: Could not create regular file '{}'", name);
                     else if (node->res->write(reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(current) + 512), 0, size) != ssize_t(size))
                         log::errorln("USTAR: Could not write to regular file '{}'", name);
                     break;
-                case LNKTYPE:
+                case types::hardlink:
                     node = vfs::link(nullptr, name, nullptr, target);
                     if (node == nullptr)
                         log::errorln("USTAR: Could not create hardlink '{}' -> '{}'", name, target);
                     break;
-                case SYMTYPE:
+                case types::symlink:
                     node = vfs::symlink(nullptr, name, target);
                     if (node == nullptr)
                         log::errorln("USTAR: Could not create symlink '{}' -> '{}'", name, target);
                     break;
-                case CHRTYPE:
+                case types::chardev:
                     devtmpfs::mknod(nullptr, name, makedev(devmajor, devminor), mode | s_ifchr);
                     if (node != nullptr)
-                        log::errorln("USTAR: Could not create character file '{}' ({}:{})", name, devmajor, devminor);
+                        log::errorln("USTAR: Could not create character device '{}' ({}:{})", name, devmajor, devminor);
                     break;
-                case BLKTYPE:
-                    log::errorln("USTAR: TODO: BLKDEV");
+                case types::blockdev:
+                    log::errorln("USTAR: TODO: Block device");
                     break;
-                case DIRTYPE:
+                case types::directory:
                     node = vfs::create(nullptr, name, mode | s_ifdir);
                     if (node == nullptr)
-                        log::errorln("USTAR: Could not creare directory '{}'", name);
+                        log::errorln("USTAR: Could not create directory '{}'", name);
                     break;
-                case FIFOTYPE:
+                case types::fifo:
                     log::errorln("USTAR: TODO: FIFO");
                     break;
             }

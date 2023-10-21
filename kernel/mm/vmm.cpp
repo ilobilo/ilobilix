@@ -20,7 +20,6 @@ namespace vmm
             vmm::arch_init();
 
         kernel_pagemap = new pagemap();
-
         {
             auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
             for (size_t i = 0; i < gib1 * 4; i += psize)
@@ -74,7 +73,7 @@ namespace vmm
         {
             uint64_t paddr = kernel_address_request.response->physical_base + i;
             uint64_t vaddr = kernel_address_request.response->virtual_base + i;
-            assert(kernel_pagemap->map(vaddr, paddr, rwx));
+            assert(kernel_pagemap->map(vaddr, paddr, rwx, write_back));
         }
 
         kernel_pagemap->load();
