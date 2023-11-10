@@ -1,5 +1,7 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <lib/containers.hpp>
+
 #include <drivers/proc.hpp>
 #include <drivers/vfs.hpp>
 #include <mm/pmm.hpp>
@@ -293,7 +295,7 @@ namespace vmm
                 this->unmap_nolock(j);
 
             if (len == local->length)
-                remove_from(this->ranges, local);
+                erase_from(this->ranges, local);
 
             this->lock.unlock();
 

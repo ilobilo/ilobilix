@@ -2,48 +2,12 @@
 
 #pragma once
 
-// #include <init/kernel.hpp>
-// #include <lib/math.hpp>
 #include <type_traits>
-#include <algorithm>
+#include <memory>
+#include <limits>
+
 #include <cctype>
 #include <cerrno>
-#include <limits>
-// #include <ranges>
-
-// namespace detail
-// {
-//     template <typename C>
-//     struct to_helper { };
-
-//     template <typename Container, std::ranges::range Range>
-//     requires std::convertible_to<std::ranges::range_value_t<Range>, typename Container::value_type>
-//     Container operator|(Range &&r, to_helper<Container>)
-//     {
-//         return Container { r.begin(), r.end() };
-//     }
-// } // namespace detail
-
-// template <std::ranges::range Container> requires (!std::ranges::view<Container>)
-// auto to()
-// {
-//     return detail::to_helper<Container> { };
-// }
-
-inline constexpr bool remove_from(auto &container, auto &&val)
-{
-    return container.erase(std::remove(container.begin(), container.end(), val), container.end()) != container.end();
-}
-
-inline constexpr bool remove_from_if(auto &container, auto pred)
-{
-    return container.erase(std::remove_if(container.begin(), container.end(), pred), container.end()) != container.end();
-}
-
-// inline uint64_t seconds_since_boot(uint64_t seconds, uint64_t minutes, uint64_t hours, uint64_t days, uint64_t months, uint64_t years, uint64_t centuries)
-// {
-//     return epoch(seconds, minutes, hours, days, months, years, centuries) - boot_time_request.response->boot_time;
-// }
 
 template<typename Ret>
 inline constexpr Ret str2int(const char *nptr, char **endptr, int _base)
@@ -189,60 +153,7 @@ struct chain_wrapper
     operator Type() { return this->get(); }
 };
 
-// An experiment
 
-// #include <mutex>
-
-// template<typename Type>
-// class mutex_wrapper
-// {
-//     private:
-//     std::mutex lock;
-//     Type storage;
-
-//     public:
-//     class locked_type
-//     {
-//         private:
-//         std::unique_lock<std::mutex> locker;
-//         Type &storage;
-
-//         public:
-//         constexpr locked_type(mutex_wrapper &parent) : locker(parent.lock), storage(parent.storage) { }
-//         constexpr locked_type(mutex_wrapper &parent, std::adopt_lock_t al) : locker(parent.lock, al), storage(parent.storage) { }
-
-//         constexpr locked_type(locked_type &&other) = default;
-//         constexpr locked_type(const locked_type &other) = delete;
-
-//         constexpr Type *operator->() noexcept { return std::addressof(this->storage); }
-//         constexpr Type &operator*() noexcept { return this->storage; }
-//         constexpr operator Type &() noexcept { return this->storage; }
-//         constexpr Type &get() noexcept { return this->storage; }
-//     };
-
-//     template<typename ...Args>
-//     constexpr explicit mutex_wrapper(Args &&...args) : storage(std::forward<Args>(args)...) { }
-
-//     constexpr mutex_wrapper(const mutex_wrapper &other) noexcept = delete;
-//     constexpr mutex_wrapper(mutex_wrapper &&other) noexcept = delete;
-
-//     constexpr mutex_wrapper &operator=(const mutex_wrapper &other) noexcept = delete;
-//     constexpr mutex_wrapper &operator=(mutex_wrapper &&other) noexcept = delete;
-
-//     constexpr Type *operator->() noexcept { return std::addressof(this->storage); }
-//     constexpr Type &operator*() noexcept { return this->storage; }
-//     constexpr operator Type &() noexcept { return this->storage; }
-//     constexpr Type &get() noexcept { return this->storage; }
-
-//     [[nodiscard]] constexpr bool is_locked() { return this->lock.is_locked(); }
-//     [[nodiscard]] constexpr locked_type with_lock() noexcept { return locked_type(*this); }
-//     [[nodiscard]] constexpr std::optional<locked_type> try_with_lock() noexcept
-//     {
-//         if (this->lock.try_lock())
-//             return locked_type(*this, std::adopt_lock);
-//         return std::nullopt;
-//     }
-// };
-
-// template<typename Type>
-// mutex_wrapper(Type) -> mutex_wrapper<Type>;
+template<typename Type, typename Type1>
+inline Type1 get_member_type(Type1 Type:: *);
+#define MEMBER_TYPE(x) decltype(get_member_type(& x))

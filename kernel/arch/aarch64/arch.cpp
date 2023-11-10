@@ -71,8 +71,16 @@ namespace arch
     }
 
     // TODO
-    [[noreturn]] void shutdown();
-    [[noreturn]] void reboot();
+    [[noreturn]] void shutdown()
+    {
+        halt(false);
+    }
+
+    // TODO
+    [[noreturn]] void reboot()
+    {
+        halt(false);
+    }
 
     void early_init()
     {

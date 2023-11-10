@@ -1,14 +1,38 @@
 # Copyright (C) 2022-2023  ilobilo
 
 src = files(
+    'drivers/fs/dev/tty/tty.cpp',
+    'drivers/fs/dev/tty/pty.cpp',
+
+    'drivers/fs/dev/streams.cpp',
+
+    'drivers/fs/devtmpfs.cpp',
+    'drivers/fs/tmpfs.cpp',
+
+    'drivers/initrd/ilar.cpp',
+    'drivers/initrd/initrd.cpp',
+    'drivers/initrd/ustar.cpp',
+
+    'drivers/pci/pci_acpi.cpp',
+    'drivers/pci/pci_ecam.cpp',
+    'drivers/pci/pci.cpp',
+
+    'drivers/acpi.cpp',
+    'drivers/dtb.cpp',
+    'drivers/elf.cpp',
+    'drivers/fd.cpp',
+    'drivers/frm.cpp',
+    'drivers/proc.cpp',
+    'drivers/smp.cpp',
+    'drivers/term.cpp',
+    'drivers/vfs.cpp',
+
     'init/kernel.cpp',
     'init/main.cpp',
 
-    'libc/ctype.cpp',
-    'libc/stdio.cpp',
-    'libc/stdlib.cpp',
-    'libc/string.cpp',
-    'libc/wchar.cpp',
+    'lib/net/ipv4/icmp.cpp',
+    'lib/net/arp.cpp',
+    'lib/net/net.cpp',
 
     'lib/alloc.cpp',
     'lib/errno.cpp',
@@ -18,47 +42,22 @@ src = files(
     'lib/time.cpp',
     'lib/trace.cpp',
 
-    'lib/net/arp.cpp',
-    'lib/net/net.cpp',
+    'libc/ctype.cpp',
+    'libc/stdio.cpp',
+    'libc/stdlib.cpp',
+    'libc/string.cpp',
+    'libc/wchar.cpp',
 
-    'lib/net/ipv4/icmp.cpp',
+    'misc/cxxabi.cpp',
+    'misc/ubsan.cpp',
 
-    'drivers/fs/dev/streams.cpp',
-    'drivers/fs/dev/tty/tty.cpp',
-    'drivers/fs/dev/tty/pty.cpp',
-
-    'drivers/fs/devtmpfs.cpp',
-    'drivers/fs/tmpfs.cpp',
-
-    'drivers/initrd/ilar.cpp',
-    'drivers/initrd/ustar.cpp',
-    'drivers/initrd/initrd.cpp',
-
-    'drivers/pci/pci_acpi.cpp',
-    'drivers/pci/pci_ecam.cpp',
-    'drivers/pci/pci_ecam.cpp',
-    'drivers/pci/pci.cpp',
-
-    'drivers/acpi.cpp',
-    'drivers/dtb.cpp',
-    'drivers/elf.cpp',
-    'drivers/frm.cpp',
-    'drivers/proc.cpp',
-    'drivers/smp.cpp',
-    'drivers/term.cpp',
-    'drivers/vfs.cpp',
-    'drivers/fd.cpp',
-
+    'mm/mmap.cpp',
     'mm/pmm.cpp',
     'mm/vmm.cpp',
-    'mm/mmap.cpp',
 
     'syscall/mm.cpp',
     'syscall/proc.cpp',
-    'syscall/vfs.cpp',
-
-    'misc/cxxabi.cpp',
-    'misc/ubsan.cpp'
+    'syscall/vfs.cpp'
 )
 
 c_args = get_option('kernel_cflags').split()

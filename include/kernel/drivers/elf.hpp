@@ -30,10 +30,10 @@ namespace elf
         };
         inline constexpr symentry_t empty_sym = { "<unknown>", UINTPTR_MAX, 0, STT_NOTYPE };
 
-        extern std::vector<symentry_t> symbol_table;
+        extern std::vector<std::vector<symentry_t>> symbol_tables;;
 
         symentry_t lookup(std::string_view name);
-        std::pair<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type);
+        std::tuple<symentry_t, uintptr_t, bool> lookup(uintptr_t addr, uint8_t type);
 
         void init();
     } // namespace syms

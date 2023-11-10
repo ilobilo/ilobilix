@@ -6,6 +6,8 @@
 
 #include <arch/x86_64/syscall/syscall.hpp>
 
+#include <arch/x86_64/drivers/ps2/ps2.hpp>
+
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
@@ -14,7 +16,6 @@
 #include <arch/x86_64/lib/io.hpp>
 
 #include <drivers/pci/pci.hpp>
-#include <drivers/ps2/ps2.hpp>
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
 
@@ -118,6 +119,13 @@ namespace arch
             good = io::in<uint8_t>(0x64);
         io::out<uint8_t>(0x64, 0xFE);
         pause();
+
+        // Bochs and Qemu version < 2
+        io::out<uint16_t>(0xB004, 0x2000);
+        // Qemu version >= 2
+        io::out<uint16_t>(0x0604, 0x2000);
+        // VBox
+        io::out<uint16_t>(0x4004, 0x3400);
 
         // triple fault
         idt::invalid.load();

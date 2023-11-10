@@ -8,7 +8,7 @@
 
 namespace rtl8139::spec
 {
-    enum class registers
+    enum class registers : uint32_t
     {
         mac0 = 0x00,    // uint8_t
         mac4 = 0x04,    // uint8_t

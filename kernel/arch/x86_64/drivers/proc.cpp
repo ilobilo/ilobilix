@@ -1,11 +1,13 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <arch/x86_64/cpu/gdt.hpp>
+#include <arch/x86_64/cpu/idt.hpp>
+
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+
 #include <init/kernel.hpp>
 #include <lib/misc.hpp>
-#include <cpu/gdt.hpp>
-#include <cpu/idt.hpp>
 #include <mm/pmm.hpp>
 
 namespace proc

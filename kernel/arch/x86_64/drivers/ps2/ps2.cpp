@@ -1,7 +1,7 @@
 // Copyright (C) 2022-2023  ilobilo
 
-#include <drivers/ps2/ps2.hpp>
-#include <drivers/ps2/kbd.hpp>
+#include <arch/x86_64/drivers/ps2/ps2.hpp>
+#include <arch/x86_64/drivers/ps2/kbd.hpp>
 #include <arch/arch.hpp>
 #include <lib/io.hpp>
 

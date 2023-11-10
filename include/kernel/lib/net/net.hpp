@@ -14,14 +14,14 @@ namespace net
     struct sender
     {
         virtual ~sender() { }
-        virtual void send(mem::buffer &&) = 0;
-        virtual void receive(mem::buffer &&) = 0;
+        virtual void send(mem::u8buffer &&) = 0;
+        virtual void receive(mem::u8buffer &&) = 0;
         virtual mac::address mac() = 0;
         virtual ipv4::address ipv4() = 0;
     };
 
     template<typename Type>
-    concept is_processor = requires (Type a, mem::buffer &&b, typename Type::from_frame_type &&f, const typename Type::from_frame_type &f2, sender *s) {
+    concept is_processor = requires (Type a, mem::u8buffer &&b, typename Type::from_frame_type &&f, const typename Type::from_frame_type &f2, sender *s) {
         typename Type::from_frame_type;
         { a.attach_sender(s) } -> std::same_as<void>;
         { a.push_packet(std::move(b), std::move(f)) } -> std::same_as<void>;
@@ -39,13 +39,13 @@ namespace net
         void attach_receiver(sender *receiver) { this->receiver = receiver; }
 
         virtual net::mac::address mac_address() = 0;
-        virtual bool send(mem::buffer &&buffer) = 0;
+        virtual bool send(mem::u8buffer &&buffer) = 0;
 
         virtual ~nic() { }
     };
 
     template<typename ...Args>
-    mem::buffer build_packet(Args &&...args)
+    mem::u8buffer build_packet(Args &&...args)
     {
         auto parts = std::make_tuple(std::forward<Args>(args)...);
 
@@ -53,7 +53,7 @@ namespace net
             return (std::get<I>(parts).size() + ...);
         } (std::make_index_sequence<sizeof...(Args)> { });
 
-        mem::buffer buffer(total_size);
+        mem::u8buffer buffer(total_size);
         auto dest = static_cast<uint8_t *>(buffer.virt_data());
 
         [&parts, &dest]<size_t ...I>(std::index_sequence<I...>) {
@@ -76,10 +76,10 @@ namespace net
     }
 
     template<typename From>
-    void dispatch(mem::buffer &&, From &&, std::tuple<> &) { }
+    void dispatch(mem::u8buffer &&, From &&, std::tuple<> &) { }
 
     template<typename From, is_processor ...Types>
-    void dispatch(mem::buffer &&buf, From &&fr, std::tuple<Types...> &prs)
+    void dispatch(mem::u8buffer &&buf, From &&fr, std::tuple<Types...> &prs)
     {
         [&]<size_t ...I>(std::index_sequence<I...>) {
             ([&]<typename Type>(Type &proc) {

@@ -33,7 +33,8 @@ qemu_args = [
     '-boot', 'order=d,menu=on,splash-time=100',
     '-drive', 'file=' + meson.source_root() / 'misc/nvme.img' + ',format=raw,if=none,id=nvm',
     '-device', 'nvme,serial=nvme,drive=nvm',
-    '-nic', 'user,model=rtl8139'
+    '-nic', 'user,model=rtl8139',
+    '-nic', 'user,model=e1000'
 ]
 
 # { arch : [ ovmf_name, bios, xorriso_args, qemu_args ] }
@@ -58,7 +59,6 @@ supported_archs = {
             '-efi-boot-part', '--efi-boot-image', '--protective-msdos-label'
         ],
         ['-M', 'virt', '-device', 'ramfb']
-        # ['-cpu', 'cortex-a72', '-M', 'virt', '-device', 'ramfb']
     ]
 }
 
@@ -99,7 +99,7 @@ incs = [
     include_directories('include/std/stubs'),
     include_directories('include/libc'),
     include_directories('include/kernel'),
-    include_directories('include/kernel/arch' / arch),
+    # include_directories('include/kernel/arch' / arch),
     include_directories('include/modules')
 ]
 

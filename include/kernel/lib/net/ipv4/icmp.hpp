@@ -94,7 +94,6 @@ namespace net::ipv4::icmp
                     break;
                 default:
                     return 4;
-                    break;
             }
             std::unreachable();
         }
@@ -112,7 +111,7 @@ namespace net::ipv4::icmp
 
         void attach_sender(sender *s) { this->_sender = s; }
 
-        void push_packet(mem::buffer &&buffer, ipv4::frame &&frame);
+        void push_packet(mem::u8buffer &&buffer, ipv4::frame &&frame);
         bool matches(const ipv4::frame &frame);
     };
     static_assert(is_processor<processor>);

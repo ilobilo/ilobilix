@@ -32,15 +32,14 @@ namespace pci::acpi
             {
                 if (this->parent != nullptr)
                 {
-                    log::warnln("PCI: No '_PRT' for bus {}. assuming expansion bridge routing");
+                    log::warnln("PCI: No '_PRT' for bus. assuming expansion bridge routing");
                     for (size_t i = 0; i < 4; i++)
                         this->bridgeirqs[i] = this->parent->resolve(this->mybus->bridge->dev, i + 1);
+                    this->mod = irq_router::model::expansion;
                 }
-                else
-                {
-                    log::errorln("PCI: No '_PRT' for bus. giving up IRQ routing for this bus");
-                    return;
-                }
+                else log::errorln("PCI: No '_PRT' for bus. giving up IRQ routing for this bus");
+
+                return;
             }
 
             LAI_CLEANUP_VAR lai_variable_t prt = LAI_VAR_INITIALIZER;

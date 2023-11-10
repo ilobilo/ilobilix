@@ -1,5 +1,7 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <lib/containers.hpp>
+
 #include <syscall/proc.hpp>
 #include <drivers/proc.hpp>
 #include <init/kernel.hpp>
@@ -44,7 +46,7 @@ namespace proc
         return 0;
     }
 
-    pid_t clone(kernel_clone_args args)
+    static pid_t clone(kernel_clone_args args)
     {
         if (((args.flags & clone_sighand) == clone_sighand && (args.flags & clone_vm) != clone_vm) ||
             ((args.flags & clone_thread) == clone_thread && (args.flags & clone_sighand) != clone_sighand) ||
@@ -304,7 +306,7 @@ namespace proc
             envps.emplace_back(strdup(envp[envps.size()]));
         }
 
-        remove_from(old_proc->parent->children, old_proc);
+        erase_from(old_proc->parent->children, old_proc);
 
         for (const auto &thread : old_proc->threads)
             if (thread != old_thread)

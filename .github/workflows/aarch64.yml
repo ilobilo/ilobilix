@@ -24,7 +24,6 @@ jobs:
           pushd build-sysroot
           xbstrap init ..
           xbstrap install base
-          ln -sf build-sysroot/system-root ../sysroot
           popd
 
       - name: Kernel

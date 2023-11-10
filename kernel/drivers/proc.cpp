@@ -1,10 +1,14 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <lib/containers.hpp>
+#include <lib/panic.hpp>
+
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+
 #include <init/kernel.hpp>
 #include <arch/arch.hpp>
-#include <lib/panic.hpp>
+
 #include <mm/pmm.hpp>
 #include <deque>
 
@@ -148,7 +152,7 @@ namespace proc
         }
         proc->zombies.clear();
 
-        remove_from(proc->parent->children, proc);
+        erase_from(proc->parent->children, proc);
 
         // TODO: zombies
         // proc->parent->zombies.push_back(proc);
@@ -252,7 +256,7 @@ namespace proc
         // if (it != this->parent->threads.end())
         //     this->parent->threads.erase(it);
 
-        remove_from(this->parent->threads, this);
+        erase_from(this->parent->threads, this);
 
         if (this->parent->threads.empty())
         {

@@ -286,7 +286,7 @@ namespace nvme
             if (dev->msix_set(smp::bsp_id, vector, -1) == false)
             {
                 if (i == 0)
-                    return std::unexpected("Could not install IO wueue IRQ handler");
+                    return std::unexpected("Could not install any IRQ handlers for IO queues.");
 
                 log::warnln("NVME: Could not install IRQ handlers for some IO queues. {}/{}", i, num_io_queues);
                 break; // I guess we will have fewer io queues
@@ -368,7 +368,7 @@ namespace nvme
                 size_t max_lbas = 1 << (maxtransshift - lbashift);
                 size_t max_prps = (max_lbas * (1 << lbashift)) / pmm::page_size;
 
-                log::infoln("NVME: Identified namespace 0x{:X} with (blocks: {}, block_size: {}, size: {}mb)", nsid, blocks, block_size, blocks * block_size / 1024 / 1024);
+                log::infoln("NVME: Identified namespace 0x{:X} with size: {}mib", nsid, blocks * block_size / 1024 / 1024);
                 this->namespaes.push_back(std::make_unique<Namespace>(this, nsid, blocks, block_size, max_prps));
             }
         }

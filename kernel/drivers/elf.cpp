@@ -14,43 +14,97 @@ namespace elf
 {
     namespace syms
     {
-        std::vector<symentry_t> symbol_table;
+        std::vector<std::vector<symentry_t>> symbol_tables;
 
         symentry_t lookup(std::string_view name)
         {
-            auto i = std::find_if(symbol_table.begin(), symbol_table.end(), [&name](const symentry_t &entry) {
-                return entry.name == name;
-            });
-            return i == symbol_table.end() ? empty_sym : *i;
+            for (const auto &symbol_table : symbol_tables)
+            {
+                auto i = std::find_if(symbol_table.begin(), symbol_table.end(), [&name](const symentry_t &entry) {
+                    return entry.name == name;
+                });
+                if (i != symbol_table.end())
+                    return *i;
+            }
 
-            // for (const auto entry : symbol_table)
+            // for (const auto &symbol_table : symbol_tables)
             // {
-            //     if (entry.name == name)
-            //         return entry;
+            //     for (const auto entry : symbol_table)
+            //     {
+            //         if (entry.name == name)
+            //             return entry;
+            //     }
             // }
-            // return empty_sym;
+            return empty_sym;
         }
 
-        std::pair<symentry_t, uintptr_t> lookup(uintptr_t addr, uint8_t type)
+        std::tuple<symentry_t, uintptr_t, bool> lookup(uintptr_t addr, uint8_t type)
         {
-            // auto eqi = std::equal_range(symbol_table.begin(), symbol_table.end(), symentry_t { .addr = addr },
-            //     [](const symentry_t &lhs, const symentry_t &rhs) { return lhs.addr < rhs.addr; });
-
-            // auto i = std::lower_bound(eqi.first, eqi.second, empty_sym,
-            //     [type](const symentry_t &lhs, const symentry_t &rhs) { return lhs.type != type; });
-
-            // if (i != symbol_table.end() && i->addr >= addr && i->type == type)
-            //     return { *(i - 1), addr - (i - 1)->addr };
-
-            auto prev = symbol_table.front();
-            for (const auto &entry : symbol_table)
+            for (size_t i = 0; const auto &symbol_table : symbol_tables)
             {
-                if (entry.addr >= addr && prev.type == type)
-                    return { prev, entry.addr - prev.addr };
+                i++;
+                if (symbol_table.empty())
+                    continue;
 
-                prev = entry;
+                auto prev = symbol_table.front();
+                auto end = symbol_table.back();
+                if (addr < prev.addr || addr > (end.addr + end.size))
+                    continue;
+
+                for (const auto &entry : symbol_table)
+                {
+                    if (entry.addr >= addr && prev.addr <= addr && prev.type == type)
+                        return { prev, addr - prev.addr, i > 1 };
+                    prev = entry;
+                }
             }
-            return { empty_sym, 0 };
+            return { empty_sym, 0, false };
+        }
+
+        static std::vector<symentry_t> add_syms(uintptr_t address, const Elf64_Half e_shnum, Elf64_Shdr *sections)
+        {
+            const char *strtable = nullptr;
+            Elf64_Sym *symtab = nullptr;
+            size_t entries = 0;
+
+            for (size_t i = 0; i < e_shnum; i++)
+            {
+                switch (sections[i].sh_type)
+                {
+                    case SHT_SYMTAB:
+                        symtab = reinterpret_cast<Elf64_Sym*>(address + sections[i].sh_offset);
+                        entries = sections[i].sh_size / sections[i].sh_entsize;
+                        break;
+                    case SHT_STRTAB:
+                        strtable = reinterpret_cast<char*>(address + sections[i].sh_offset);
+                        break;
+                }
+            }
+
+            std::vector<symentry_t> symbol_table;
+            for (size_t i = 0; i < entries; i++)
+            {
+                auto name = std::string_view(&strtable[symtab[i].st_name]);
+                if (symtab[i].st_shndx == SHN_UNDEF || name.empty())
+                    continue;
+
+                // Remove aarch64 mapping symbols
+#if defined(__aarch64__)
+                if (name.starts_with("$x") || name.starts_with("$d"))
+                    continue;
+#endif
+
+                auto val = symtab[i].st_value;
+                symbol_table.push_back({
+                    name,
+                    val < address ? val + address : val,
+                    symtab[i].st_size,
+                    uint8_t(ELF64_ST_TYPE(symtab[i].st_info))
+                });
+            }
+
+            std::sort(symbol_table.begin(), symbol_table.end());
+            return std::move(symbol_table);
         }
 
         void init()
@@ -61,53 +115,7 @@ namespace elf
             auto header = reinterpret_cast<Elf64_Ehdr*>(kfile);
             auto sections = reinterpret_cast<Elf64_Shdr*>(kfile + header->e_shoff);
 
-            Elf64_Sym *symtab = nullptr;
-            char *strtab = nullptr;
-            size_t entries = 0;
-
-            for (size_t i = 0; i < header->e_shnum; i++)
-            {
-                switch (sections[i].sh_type)
-                {
-                    case SHT_SYMTAB:
-                        symtab = reinterpret_cast<Elf64_Sym*>(kfile + sections[i].sh_offset);
-                        entries = sections[i].sh_size / sections[i].sh_entsize;
-                        break;
-                    case SHT_STRTAB:
-                        strtab = reinterpret_cast<char*>(kfile + sections[i].sh_offset);
-                        break;
-                }
-            }
-
-            for (size_t i = 0; i < entries; i++)
-            {
-                auto name = std::string_view(&strtab[symtab[i].st_name]);
-
-                // Remove aarch64 mapping symbols
-                #if defined(__aarch64__)
-                if (name.starts_with("$x") || name.starts_with("$d"))
-                    continue;
-                #endif
-
-                symbol_table.push_back({
-                    name,
-                    symtab[i].st_value,
-                    symtab[i].st_size,
-                    uint8_t(ELF64_ST_TYPE(symtab[i].st_info))
-                });
-            }
-
-            std::sort(symbol_table.begin(), symbol_table.end());
-
-            // for (size_t i = 0; i < entries - 1; i++)
-            // {
-            //     size_t mi = i;
-            //     for (size_t t = i + 1; t < entries; t++)
-            //         if (symbol_table[t].addr < symbol_table[mi].addr)
-            //             mi = t;
-
-            //     std::swap(symbol_table[i], symbol_table[mi]);
-            // }
+            symbol_tables.push_back(add_syms(kfile, header->e_shnum, sections));
         }
     } // namespace syms
 
@@ -118,13 +126,13 @@ namespace elf
         static uintptr_t base_addr = 0;
         static std::mutex lock;
 
-        static std::vector<driver_t*> get_drivers(Elf64_Ehdr *header, Elf64_Shdr *sections, char *strtable)
+        static std::vector<driver_t*> get_drivers(const Elf64_Half e_shnum, Elf64_Shdr *sections, char *shstrtable)
         {
             std::vector<driver_t*> ret;
-            for (size_t i = 0; i < header->e_shnum; i++)
+            for (size_t i = 0; i < e_shnum; i++)
             {
                 auto section = &sections[i];
-                if (section->sh_size != 0 && section->sh_size >= sizeof(driver_t) && !strcmp(DRIVER_SECTION, strtable + section->sh_name))
+                if (section->sh_size != 0 && section->sh_size >= sizeof(driver_t) && !strcmp(DRIVER_SECTION, shstrtable + section->sh_name))
                 {
                     auto offset = section->sh_addr;
                     while (offset < section->sh_addr + section->sh_size)
@@ -185,18 +193,18 @@ namespace elf
         [[clang::no_sanitize("alignment")]]
         std::optional<std::vector<driver_t*>> load(uintptr_t address, size_t size)
         {
-            auto header = reinterpret_cast<Elf64_Ehdr*>(address);
-            if (memcmp(header->e_ident, ELFMAG, 4))
+            auto unmappedhdr = reinterpret_cast<Elf64_Ehdr*>(address);
+            if (memcmp(unmappedhdr->e_ident, ELFMAG, 4))
             {
                 log::errorln("ELF: Invalid magic!");
                 return std::nullopt;
             }
-            if (header->e_ident[EI_CLASS] != ELFCLASS64)
+            if (unmappedhdr->e_ident[EI_CLASS] != ELFCLASS64)
             {
                 log::errorln("ELF: Invalid class!");
                 return std::nullopt;
             }
-            if (header->e_type != ET_REL)
+            if (unmappedhdr->e_type != ET_REL)
             {
                 log::errorln("ELF: Not a relocatable object!");
                 return std::nullopt;
@@ -208,15 +216,15 @@ namespace elf
             size = align_up(size, pmm::page_size);
 
             auto loadaddr = map(size);
+            log::infoln("ELF: Mapping module at 0x{:X}", loadaddr);
+
             memcpy(reinterpret_cast<void*>(loadaddr), reinterpret_cast<void*>(address), realsize);
-            header = reinterpret_cast<Elf64_Ehdr*>(loadaddr);
+            const auto header = *reinterpret_cast<Elf64_Ehdr*>(loadaddr);
 
-            auto sections = reinterpret_cast<Elf64_Shdr*>(loadaddr + header->e_shoff);
-
-            for (size_t i = 0; i < header->e_shnum; i++)
+            auto sections = reinterpret_cast<Elf64_Shdr*>(loadaddr + header.e_shoff);
+            for (size_t i = 0; i < header.e_shnum; i++)
             {
                 auto section = &sections[i];
-
                 if (section->sh_type == SHT_NOBITS)
                 {
                     if (section->sh_size == 0)
@@ -247,7 +255,7 @@ namespace elf
             // };
             // #endif
 
-            for (size_t i = 0; i < header->e_shnum; i++)
+            for (size_t i = 0; i < header.e_shnum; i++)
             {
                 auto section = &sections[i];
                 if (section->sh_type == SHT_RELA)
@@ -282,7 +290,7 @@ namespace elf
 
                         switch (ELF64_R_TYPE(entry->r_info))
                         {
-                            #if defined(__x86_64__)
+#if defined(__x86_64__)
                             case R_X86_64_NONE:
                                 break;
                             case R_X86_64_64:
@@ -298,7 +306,7 @@ namespace elf
                             case R_X86_64_PLT32:
                                 *static_cast<uint32_t*>(loc) = val - locaddr;
                                 break;
-                            #elif defined(__aarch64__)
+#elif defined(__aarch64__)
                             case R_AARCH64_NONE:
                                 break;
                             case R_AARCH64_ABS64:
@@ -373,7 +381,7 @@ namespace elf
                             //     *static_cast<uint64_t*>(loc) = (insn & ~(mask << shift)) | ((imm & mask) << shift);
                             //     break;
                             // }
-                            #endif
+#endif
                             default:
                                 log::errorln("ELF: Unsupported relocation {} found!", ELF64_R_TYPE(entry->r_info));
                                 unmap(loadaddr, size);
@@ -390,11 +398,13 @@ namespace elf
                 .has_drivers = false
             };
 
-            auto strtable = reinterpret_cast<char*>(loadaddr + sections[header->e_shstrndx].sh_offset);
-            auto drvs = get_drivers(header, sections, strtable);
+            auto shstrtable = reinterpret_cast<char*>(loadaddr + sections[header.e_shstrndx].sh_offset);
+            auto drvs = get_drivers(header.e_shnum, sections, shstrtable);
             mod.has_drivers = drvs.empty() == false;
 
-            if (mod.has_drivers == false)
+            if (mod.has_drivers == true)
+                syms::symbol_tables.push_back(syms::add_syms(loadaddr, header.e_shnum, sections));
+            else
                 log::warnln("ELF: Could not find any drivers in the module!");
 
             modules.push_back(mod);
@@ -524,9 +534,9 @@ namespace elf
             auto kfile = reinterpret_cast<uintptr_t>(kernel_file_request.response->kernel_file->address);
             auto header = reinterpret_cast<Elf64_Ehdr*>(kfile);
             auto sections = reinterpret_cast<Elf64_Shdr*>(kfile + header->e_shoff);
-            auto strtable = reinterpret_cast<char*>(kfile + sections[header->e_shstrndx].sh_offset);
+            auto shstrtable = reinterpret_cast<char*>(kfile + sections[header->e_shstrndx].sh_offset);
 
-            auto drvs = get_drivers(header, sections, strtable);
+            auto drvs = get_drivers(header->e_shnum, sections, shstrtable);
             if (drvs.empty())
                 log::errorln("ELF: Could not find any builtin drivers!");
         }

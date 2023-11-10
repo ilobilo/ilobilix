@@ -82,7 +82,7 @@ namespace timers::hpet
 
         this->_legacy = (this->regs->cap >> 15) & 1;
 
-        log::infoln("HPET: Found device {}: Legacy replacement mode: {}", table->hpet_number, this->_legacy ? "true" : "false");
+        log::infoln("HPET: Found device {}: Legacy replacement mode: {}", table->hpet_number, this->_legacy);
         log::infoln(" Timers:");
 
         uint32_t gsi_mask = 0xFFFFFFFF;
@@ -93,7 +93,7 @@ namespace timers::hpet
             timer._periodic = (this->regs->comparators[i].cmd >> 4) & 1;
             timer._int_route = this->regs->comparators[i].cmd >> 32;
 
-            log::infoln("  - Comparator {}: FSB: {}, Periodic: {}", i, timer._fsb ? "true" : "false", timer._periodic ? "true" : "false");
+            log::infoln("  - Comparator {}: FSB: {}, Periodic: {}", i, timer._fsb, timer._periodic);
 
             gsi_mask &= timer._int_route;
         }

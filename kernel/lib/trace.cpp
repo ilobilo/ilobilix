@@ -19,12 +19,12 @@ namespace trace
 
         auto print_name = [&prefix](uintptr_t ip)
         {
-            auto [entry, offset] = elf::syms::lookup(ip, STT_FUNC);
+            auto [entry, offset, is_mod] = elf::syms::lookup(ip, STT_FUNC);
             if (entry == elf::syms::empty_sym)
                 return false;
 
             std::string_view name = abi::__cxa_demangle(entry.name.data(), nullptr, nullptr, nullptr) ?: entry.name;
-            log::println("{}  [0x{:016X}] <{}+0x{:X}>", prefix, entry.addr, name, offset);
+            log::println("{}  [0x{:016X}] ({}) <{}+0x{:X}>", prefix, entry.addr, is_mod ? "Module" : "Kernel", name, offset);
 
             return name != "int_handler" && name != "syscall_handler";
         };
@@ -33,10 +33,9 @@ namespace trace
         if (fip != 0)
             print_name(fip);
 
-        // while (true)
         for (size_t i = 0; i < 10; i++)
         {
-            if (frame == nullptr || ishh(frame->ip) == false)
+            if (frame == nullptr || frame->ip == 0)
                 break;
 
             if (print_name(frame->ip) == false)

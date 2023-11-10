@@ -1,8 +1,9 @@
 # Copyright (C) 2022-2023  ilobilo
 
 modules = [
-    'test_noarch',
-    'nvme'
+    'nvme',
+    'e1000',
+    'rtl8139'
 ]
 
 foreach name : modules

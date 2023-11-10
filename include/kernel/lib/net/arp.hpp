@@ -128,7 +128,7 @@ namespace net::arp
         processor() : routes(), _sender(nullptr) { }
 
         void attach_sender(sender *_sender) { this->_sender = _sender; }
-        void push_packet(mem::buffer &&buffer, ethernet::frame &&frame);
+        void push_packet(mem::u8buffer &&buffer, ethernet::frame &&frame);
         mac::address mac_of(ipv4::address ipv4);
         bool matches(const ethernet::frame &frame);
     };

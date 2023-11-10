@@ -1,10 +1,11 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <arch/x86_64/cpu/idt.hpp>
+
 #include <lib/syscall.hpp>
 #include <frozen/map.h>
-#include <cpu/idt.hpp>
 
-#include <syscall/arch.hpp>
+#include <arch/x86_64/syscall/arch.hpp>
 #include <syscall/proc.hpp>
 #include <syscall/vfs.hpp>
 #include <syscall/mm.hpp>

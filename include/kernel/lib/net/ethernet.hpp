@@ -62,7 +62,7 @@ namespace net::ethernet
         ipv4::address ip;
         nic *_nic;
 
-        std::deque<mem::buffer> packets;
+        std::deque<mem::u8buffer> packets;
         event::simple::event_t event;
 
         void attach_senders() requires (sizeof...(Types) == 0) { }
@@ -94,24 +94,24 @@ namespace net::ethernet
                 if (ptr->packets.empty())
                     ptr->event.await();
 
-                if (ptr->packets.empty())
-                    continue;
+                while (ptr->packets.empty() == false)
+                {
+                    auto packet = std::move(ptr->packets.pop_back_element());
+                    if (frame::is_valid(packet.virt_data()) == false)
+                        continue;
 
-                auto packet = std::move(ptr->packets.pop_back_element());
-                if (frame::is_valid(packet.virt_data()) == false)
-                    continue;
-
-                auto ether = frame::from_bytes(packet.virt_data(), packet.size());
-                dispatch(std::move(packet), std::move(ether), ptr->processors);
+                    auto ether = frame::from_bytes(packet.virt_data(), packet.size());
+                    dispatch(std::move(packet), std::move(ether), ptr->processors);
+                }
             }
         }
 
-        void send(mem::buffer &&buffer) override
+        void send(mem::u8buffer &&buffer) override
         {
             this->_nic->send(std::move(buffer));
         }
 
-        void receive(mem::buffer &&buffer) override
+        void receive(mem::u8buffer &&buffer) override
         {
             this->packets.emplace_front(std::move(buffer));
             this->event.trigger();
