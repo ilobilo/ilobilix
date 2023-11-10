@@ -1,14 +1,15 @@
 // Copyright (C) 2022-2023  ilobilo
 
+#include <arch/x86_64/drivers/ps2/scancodes.hpp>
+#include <arch/x86_64/drivers/ps2/ps2.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
-#include <drivers/ps2/ps2.hpp>
+
 #include <init/kernel.hpp>
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
 
 #include <drivers/fs/dev/tty/tty.hpp>
-#include <drivers/ps2/scancodes.hpp>
 #include <drivers/term.hpp>
 #include <drivers/proc.hpp>
 

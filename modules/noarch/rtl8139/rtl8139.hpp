@@ -2,12 +2,12 @@
 
 #pragma once
 
-#include <arch/x86_64/cpu/idt.hpp>
 #include <drivers/pci/pci.hpp>
 
 #include <lib/net/net.hpp>
 
 #include <lib/buffer.hpp>
+#include <lib/misc.hpp>
 #include <lib/mmio.hpp>
 #include <lib/io.hpp>
 #include <expected>
@@ -38,10 +38,6 @@ namespace rtl8139
         .syser = 1
     };
 
-    template<typename Type, typename Type1>
-    Type1 get_member_type(Type1 Type:: *);
-    #define MEMBER_TYPE(x) decltype(get_member_type(& x))
-
     struct Controller : net::nic
     {
         private:
@@ -49,8 +45,8 @@ namespace rtl8139
         uintptr_t base;
         bool is_mmio;
 
-        mem::buffer txs[4];
-        mem::buffer rx;
+        mem::u8buffer txs[4];
+        mem::u8buffer rx;
 
         size_t tx_next;
         size_t rx_offset;
@@ -61,17 +57,21 @@ namespace rtl8139
         template<spec::is_register_offset Type>
         Type read(spec::registers reg)
         {
-            if (this->is_mmio == true)
-                return mmio::in<Type>(this->base + std::to_underlying(reg));
-            return io::in<Type>(this->base + std::to_underlying(reg));
+#if CAN_LEGACY_IO
+            if (this->is_mmio == false)
+                return io::in<Type>(this->base + std::to_underlying(reg));
+#endif
+            return mmio::in<Type>(this->base + std::to_underlying(reg));
         }
 
         template<spec::is_register_offset Type>
         void write(spec::registers reg, Type value)
         {
-            if (this->is_mmio == true)
-                mmio::out<Type>(this->base + std::to_underlying(reg), value);
-            io::out<Type>(this->base + std::to_underlying(reg), value);
+#if CAN_LEGACY_IO
+            if (this->is_mmio == false)
+                io::out<Type>(this->base + std::to_underlying(reg), value);
+#endif
+            mmio::out<Type>(this->base + std::to_underlying(reg), value);
         }
 
         template<spec::is_register Type> requires (requires (Type a) { { Type::offset }; })
@@ -83,7 +83,7 @@ namespace rtl8139
         template<spec::is_register Type>
         Type read(spec::registers reg)
         {
-            return { .raw =  this->read<MEMBER_TYPE(Type::raw)>(reg) };
+            return { .raw = this->read<MEMBER_TYPE(Type::raw)>(reg) };
         }
 
         template<spec::is_register Type> requires (requires (Type a) { { Type::offset }; })
@@ -106,7 +106,7 @@ namespace rtl8139
         {
             return this->mac;
         }
-        bool send(mem::buffer &&buffer) override;
+        bool send(mem::u8buffer &&buffer) override;
 
         Controller(pci::device_t *dev) :
             dev(dev), base(0), is_mmio(false),
@@ -116,6 +116,4 @@ namespace rtl8139
 
         std::expected<void, std::string> init();
     };
-
-    #undef MEMBER_TYPE
 } // namespace rtl8139

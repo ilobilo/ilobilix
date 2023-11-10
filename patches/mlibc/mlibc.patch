@@ -1,7 +1,7 @@
-From 7ee1bea41fc713afae922ede8cb55f1e49ab5730 Mon Sep 17 00:00:00 2001
+From 04e4b60e09b57e713e4aedec6ceb8c76eb84bfb3 Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Mon, 12 Jun 2023 01:30:48 +0400
-Subject: Add ilobilix sysdeps
+Date: Fri, 10 Nov 2023 00:25:17 +0400
+Subject: [PATCH] Add ilobilix sysdeps
 
 ---
  meson.build                                   |   7 +
@@ -31,6 +31,7 @@ Subject: Add ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/limits.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/mode_t.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/mqueue.h    |   1 +
+ sysdeps/ilobilix/include/abi-bits/msg.h       |   1 +
  sysdeps/ilobilix/include/abi-bits/nlink_t.h   |   1 +
  sysdeps/ilobilix/include/abi-bits/packet.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/pid_t.h     |   1 +
@@ -62,7 +63,7 @@ Subject: Add ilobilix sysdeps
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
  sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
- 58 files changed, 1359 insertions(+)
+ 59 files changed, 1360 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
@@ -89,6 +90,7 @@ Subject: Add ilobilix sysdeps
  create mode 120000 sysdeps/ilobilix/include/abi-bits/limits.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/mode_t.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/mqueue.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/msg.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/nlink_t.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/packet.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/pid_t.h
@@ -122,10 +124,10 @@ Subject: Add ilobilix sysdeps
  create mode 100644 sysdeps/ilobilix/x86_64/thread_entry.S
 
 diff --git a/meson.build b/meson.build
-index b9ad391..3a87c0c 100644
+index 08c9de6..f9a7a9a 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -123,6 +123,13 @@ if host_machine.system() == 'linux'
+@@ -125,6 +125,13 @@ if host_machine.system() == 'linux'
  	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
  	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
  	subdir('sysdeps/linux')
@@ -1101,7 +1103,7 @@ index 0000000..0a4ef4b
 +} // namespace mlibc
 diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
 new file mode 100644
-index 0000000..1f30eaf
+index 0000000..5605e04
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/thread.cpp
 @@ -0,0 +1,60 @@
@@ -1316,6 +1318,14 @@ index 0000000..fa87b07
 +++ b/sysdeps/ilobilix/include/abi-bits/mqueue.h
 @@ -0,0 +1 @@
 +../../../../abis/linux/mqueue.h
+\ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/msg.h b/sysdeps/ilobilix/include/abi-bits/msg.h
+new file mode 120000
+index 0000000..f402b49
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/msg.h
+@@ -0,0 +1 @@
++../../../../abis/linux/msg.h
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/nlink_t.h b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
 new file mode 120000

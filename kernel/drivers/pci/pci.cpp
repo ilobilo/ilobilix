@@ -234,6 +234,7 @@ namespace pci
 //         return false;
 //     }
 
+#if defined(__x86_64__)
     struct entry
     {
         std::vector<std::pair<device_t *, std::function<void ()>>> functions;
@@ -260,6 +261,8 @@ namespace pci
         }
     };
     static std::unordered_map<uint32_t, entry> gsis;
+#endif
+
     bool device_t::register_irq(uint64_t cpuid, std::function<void ()> function)
     {
         auto [handler, vector] = interrupts::allocate_handler();
@@ -314,6 +317,9 @@ namespace pci
         if (this->irq_registered == false)
             return false;
 
+        // TODO: MSI/-X
+
+#if defined(__x86_64__)
         auto &ref = gsis[this->route->gsi];
         if (ref.functions.size() == 1)
         {
@@ -322,6 +328,7 @@ namespace pci
             gsis.erase(this->route->gsi);
         }
         else ref.functions.erase(std::next(ref.functions.begin(), this->irq_index));
+#endif
 
         return true;
     }

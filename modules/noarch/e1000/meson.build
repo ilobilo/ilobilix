@@ -1,4 +1,4 @@
 # Copyright (C) 2022-2023  ilobilo
 
-external = false
+external = true
 module = declare_dependency(sources : files('main.cpp'))

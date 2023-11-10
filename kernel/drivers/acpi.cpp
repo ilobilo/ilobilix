@@ -7,13 +7,18 @@
 
 #include <drivers/acpi.hpp>
 #include <init/kernel.hpp>
+
+#include <arch/arch.hpp>
+
 #include <lib/alloc.hpp>
 #include <lib/panic.hpp>
 #include <lib/time.hpp>
 #include <lib/log.hpp>
 #include <cpu/cpu.hpp>
+
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
+
 #include <lai/host.h>
 #include <lai/core.h>
 
@@ -187,14 +192,7 @@ namespace acpi
         {
             uint16_t event = lai_get_sci_event();
             if (event & ACPI_POWER_BUTTON)
-            {
-                acpi::poweroff();
-
-                time::msleep(50);
-                io::out<uint16_t>(0xB004, 0x2000);
-                io::out<uint16_t>(0x604, 0x2000);
-                io::out<uint16_t>(0x4004, 0x3400);
-            }
+                arch::shutdown();
         });
         idt::unmask(sci_int);
 #else

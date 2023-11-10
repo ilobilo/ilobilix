@@ -22,7 +22,7 @@ namespace net::arp
         this->_sender->send(std::move(buffer));
     }
 
-    void processor::push_packet(mem::buffer &&, ethernet::frame &&frame)
+    void processor::push_packet(mem::u8buffer &&, ethernet::frame &&frame)
     {
         auto arp = arp::frame::from_ethernet(frame);
         switch (arp.opcode)

@@ -35,21 +35,19 @@ Follow these steps to build and run the os:
 * ``pushd build-sysroot``
 * ``xbstrap init ..``
 * ``xbstrap install base``
-* Create symlink named ``sysroot`` in ilobilix source that links to ``build-sysroot/system-root``:\
+* If symlink named ``sysroot`` does not exist in ilobilix source that links to ``build-sysroot/system-root``, then create it with:\
 ``ln -s $BUILD_SYSROOT_DIR$/system-root $KERNEL_DIR$/sysroot``\
-If you created ``build-sysroot`` in ilobilix source root and are in that directory, you can do:\
+For example: \
 ``ln -s build-sysroot/system-root ../sysroot``
 * ``popd``
 
 1. Set up the build system:\
-``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64).cross-file -Doptions=values``
+``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64)(-ccache).cross-file -Doptions=values``
 
 1. Build and run the kernel:\
-``ninja -C builddir``
+``ninja -C builddir (optionally add norun/run_bios/run_uefi)``
 
 Notes:
-* You can also check github workflow file.
-* Optionally you can add run_bios, run_uefi or norun to ninja arguments.
 * On aarch64, only run_uefi is available.
 * If firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_uefi.
 
@@ -117,7 +115,7 @@ https://discord.gg/fM5GK3RpS7
 - [x] MSI-X
 - [x] Modules x86_64
 - [ ] Modules aarch64
-- [ ] DTB
+- [x] DTB
 - [x] PS/2
 - [x] PMM
 - [x] VMM (5 and 4 level)
@@ -162,7 +160,7 @@ https://discord.gg/fM5GK3RpS7
 - [x] mlibc
 - [x] RTL8139
 - [ ] RTL8169
-- [ ] E1000
+- [x] E1000 (100E 153A and 10EA)
 - [x] Ethernet
 - [x] ARP
 - [x] IPv4

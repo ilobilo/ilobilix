@@ -111,7 +111,7 @@ namespace net::ipv4
             } (std::make_index_sequence<sizeof...(Types)> { });
         }
 
-        void push_packet(mem::buffer &&buffer, ethernet::frame &&frm)
+        void push_packet(mem::u8buffer &&buffer, ethernet::frame &&frm)
         {
             auto ipv4 = frame::from_ethernet(frm);
             dispatch(std::move(buffer), std::move(ipv4), this->processors);

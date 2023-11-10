@@ -1,6 +1,5 @@
 // Copyright (C) 2022-2023  ilobilo
 
-#include <arch/x86_64/cpu/ioapic.hpp>
 #include <drivers/pci/pci.hpp>
 #include <drivers/smp.hpp>
 
@@ -75,7 +74,7 @@ namespace rtl8139
             return;
         }
 
-        mem::buffer buffer(packet_ptr + 4, length - 4);
+        mem::u8buffer buffer(packet_ptr + 4, length - 4);
 
         uint16_t nic_rx_offset = (uint16_t(this->rx_offset + length + 4 + 3) & ~3);
         this->write<uint16_t>(spec::registers::capr, nic_rx_offset - 0x10);
@@ -87,7 +86,7 @@ namespace rtl8139
             this->receiver->receive(std::move(buffer));
     }
 
-    bool Controller::send(mem::buffer &&buffer)
+    bool Controller::send(mem::u8buffer &&buffer)
     {
         if (buffer.size() > max_packet_size)
             return false;
@@ -128,9 +127,7 @@ namespace rtl8139
     expected_void Controller::init()
     {
         this->dev->command(pci::CMD_BUS_MAST, true);
-        this->dev->command(pci::CMD_INT_DIS, false);
 
-        this->is_mmio = false;
         for (auto &bar : this->dev->bars)
         {
             if (bar.type == pci::PCI_BARTYPE_MMIO)
@@ -139,17 +136,19 @@ namespace rtl8139
                 this->base = bar.base;
                 break;
             }
+#if CAN_LEGACY_IO
             else if (bar.type == pci::PCI_BARTYPE_IO)
                 this->base = bar.base;
+#endif
         }
 
         if (this->is_mmio == true)
             this->dev->command(pci::CMD_MEM_SPACE, true);
-        else
-            this->dev->command(pci::CMD_IO_SPACE, true);
-
-        if (this->dev->register_irq(smp::bsp_id, [&] { this->irq_handler(); }) == false)
-            return std::unexpected("Could not install interrupt handler");
+#if CAN_LEGACY_IO
+        else this->dev->command(pci::CMD_IO_SPACE, true);
+#else
+        else return std::unexpected("Legacy IO is not supported on this architecture");
+#endif
 
         for (auto &buffer : this->txs)
             buffer.allocate(tx_buffer_size);
@@ -159,6 +158,7 @@ namespace rtl8139
         cmd.rst = 1;
         this->write(cmd);
 
+        log::infoln("RTL8139: Resetting...");
         while (this->read<spec::command>().rst == 1)
             arch::pause();
 
@@ -228,9 +228,6 @@ namespace rtl8139
         this->mac[4] = mac4 & 0xFF;
         this->mac[5] = (mac4 >> 8) & 0xFF;
 
-        log::infoln("RTL8139: Initialisation complete. MAC address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-            this->mac[0], this->mac[1], this->mac[2], this->mac[3], this->mac[4], this->mac[5]);
-
         auto imr = this->read<spec::intmask>();
         imr.rok = 1;
         imr.rer = 1;
@@ -243,7 +240,15 @@ namespace rtl8139
         imr.syser = 1;
         this->write(imr);
 
+        if (this->dev->register_irq(smp::bsp_id, [&] { this->irq_handler(); }) == false)
+            return std::unexpected("Could not install interrupt handler");
+
         this->write(ack);
+        this->dev->command(pci::CMD_INT_DIS, false);
+
+        log::infoln("RTL8139: Initialisation complete. MAC address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+            this->mac[0], this->mac[1], this->mac[2], this->mac[3], this->mac[4], this->mac[5]);
+
         return expected_void();
     }
 

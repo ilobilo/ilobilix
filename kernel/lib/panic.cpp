@@ -8,13 +8,14 @@
 #include <cpu/cpu.hpp>
 #include <lib/log.hpp>
 #include <lai/host.h>
-#include <cstddef>
-#include <utility>
 
 [[noreturn]] void vpanic(const char *file, int line, const char *func, std::string_view format, fmt::format_args args)
 {
     arch::int_toggle(false);
     arch::halt_others();
+
+    if (log::lock.is_locked())
+        log::lock.unlock();
 
     log::println();
     log::errorln(format, args);
@@ -32,6 +33,9 @@
 {
     arch::int_toggle(false);
     arch::halt_others();
+
+    if (log::lock.is_locked())
+        log::lock.unlock();
 
     log::println();
     log::errorln("{}", message);

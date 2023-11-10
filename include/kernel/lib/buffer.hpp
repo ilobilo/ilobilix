@@ -8,12 +8,13 @@
 extern "C" void *memcpy(void *dest, const void *src, size_t len);
 namespace mem
 {
+    template<typename Type, typename Allocator = std::allocator<Type>, bool Arr = true>
     struct buffer
     {
         private:
-        std::allocator<uint8_t> _alloc;
-        uint8_t *_ptr;
-        size_t _size;
+        Allocator _alloc;
+        Type *_ptr;
+        size_t _count;
 
         public:
         friend void swap(buffer &lhs, buffer &rhs)
@@ -21,21 +22,21 @@ namespace mem
             using std::swap;
             swap(lhs._alloc, rhs._alloc);
             swap(lhs._ptr, rhs._ptr);
-            swap(lhs._size, rhs._size);
+            swap(lhs._count, rhs._count);
         }
 
-        buffer() : _alloc(), _ptr(nullptr), _size(0) { }
-        buffer(size_t size) : _alloc(), _ptr(nullptr), _size(size)
+        buffer() : _alloc(), _ptr(nullptr), _count(0) { }
+        buffer(size_t count) : _alloc(), _ptr(nullptr), _count(count)
         {
-            this->_ptr = this->_alloc.allocate(size);
+            this->_ptr = this->_alloc.allocate(count);
         }
-        buffer(uint8_t *ptr, size_t size) : _alloc(), _ptr(nullptr), _size(size)
+        buffer(Type *ptr, size_t count) : _alloc(), _ptr(nullptr), _count(count)
         {
-            this->_ptr = this->_alloc.allocate(size);
-            memcpy(this->_ptr, tohh(ptr), size);
+            this->_ptr = this->_alloc.allocate(count);
+            memcpy(this->_ptr, tohh(ptr), count * sizeof(Type));
         }
 
-        buffer(buffer &&other) noexcept : _alloc(), _ptr(), _size(0) { swap(*this, other); }
+        buffer(buffer &&other) noexcept : _alloc(), _ptr(nullptr), _count(0) { swap(*this, other); }
         buffer &operator=(buffer &&other) noexcept { swap(*this, other); return *this; }
 
         buffer(const buffer &other) = delete;
@@ -44,26 +45,69 @@ namespace mem
         ~buffer()
         {
             if (this->_ptr != nullptr)
-                this->_alloc.deallocate(this->_ptr, this->_size);
+                this->_alloc.deallocate(this->_ptr, this->_count);
         }
 
-        void allocate(size_t size)
+        void allocate(size_t count)
         {
-            if (this->_ptr != nullptr)
-                this->_alloc.deallocate(this->_ptr, this->_size);
+            assert(count > 0);
 
-            this->_ptr = this->_alloc.allocate(size);
-            this->_size = size;
+            if (this->_ptr != nullptr)
+                this->_alloc.deallocate(this->_ptr, this->_count);
+
+            this->_ptr = this->_alloc.allocate(count);
+            this->_count = count;
         }
 
-        uint8_t *virt_data() { return this->_ptr; }
-        uint8_t *phys_data() { return fromhh(this->_ptr); }
+        Type *virt_data() { return this->_ptr; }
+        Type *phys_data() { return fromhh(this->_ptr); }
 
-        const uint8_t *virt_data() const { return this->_ptr; }
-        const uint8_t *phys_data() const { return fromhh(this->_ptr); }
+        const Type *virt_data() const { return this->_ptr; }
+        const Type *phys_data() const { return fromhh(this->_ptr); }
 
-        size_t size() const { return this->_size; }
+        Type &at(size_t index) requires Arr
+        {
+            assert(this->_ptr != nullptr);
+            assert(index < this->_count);
+            return this->_ptr[index];
+        }
+
+        const Type &at(size_t index) const requires Arr
+        {
+            assert(this->_ptr != nullptr);
+            assert(index < this->_count);
+            return this->_ptr[index];
+        }
+
+        Type *begin() requires Arr
+        {
+            assert(this->_ptr != nullptr);
+            return &this->at(0);
+        }
+
+        const Type *begin() const requires Arr
+        {
+            assert(this->_ptr != nullptr);
+            return &this->at(0);
+        }
+
+        Type *end() requires Arr
+        {
+            assert(this->_ptr != nullptr);
+            return &this->at(this->_count - 1);
+        }
+
+        const Type *end() const requires Arr
+        {
+            assert(this->_ptr != nullptr);
+            return &this->at(this->_count - 1);
+        }
+
+        size_t size() const { return this->_count; }
+        size_t size_bytes() const { return this->_count * sizeof(Type); }
     };
+
+    using u8buffer = buffer<uint8_t, std::allocator<uint8_t>, false>;
 } // namespace buffer
 
 /*

@@ -15,6 +15,8 @@ uintptr_t hhdm_offset = 0;
 uint64_t paging_mode = 0;
 bool uefi = false;
 
+LIMINE_BASE_REVISION(1)
+
 // #if defined(__aarch64__)
 // volatile limine_dtb_request dtb_request
 // {
@@ -140,6 +142,7 @@ extern "C" void _start()
 
     uefi = efi_system_table_request.response != nullptr;
 
+    assert(LIMINE_BASE_REVISION_SUPPORTED, "Limine base revision not supported!");
     assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
     assert(paging_mode_request.response, "Could not get paging mode response!");

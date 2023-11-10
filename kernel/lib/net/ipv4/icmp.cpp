@@ -4,7 +4,7 @@
 
 namespace net::ipv4::icmp
 {
-    void processor::push_packet(mem::buffer &&buffer, ipv4::frame &&frame)
+    void processor::push_packet(mem::u8buffer &&buffer, ipv4::frame &&frame)
     {
         auto icmp = frame::from_ipv4(frame);
         if (icmp.type == types::echo_request)

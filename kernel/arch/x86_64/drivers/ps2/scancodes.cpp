@@ -1,6 +1,6 @@
 // Copyright (C) 2022-2023  ilobilo
 
-#include <drivers/ps2/scancodes.hpp>
+#include <arch/x86_64/drivers/ps2/scancodes.hpp>
 
 // definitely not from linux
 
