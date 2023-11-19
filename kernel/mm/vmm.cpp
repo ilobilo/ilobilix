@@ -7,10 +7,14 @@
 #include <lai/host.h>
 #include <mm/vmm.hpp>
 
+#include <magic_enum.hpp>
+
 namespace vmm
 {
     pagemap *kernel_pagemap = nullptr;
     bool print_errors = true;
+
+    static uintptr_t vspbaddrs[magic_enum::enum_count<vsptypes>()] { };
 
     void init()
     {
@@ -24,7 +28,7 @@ namespace vmm
             auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
             for (size_t i = 0; i < gib1 * 4; i += psize)
             {
-                assert(kernel_pagemap->map(i, i, rwx | flags));
+                // assert(kernel_pagemap->map(i, i, rwx | flags));
                 assert(kernel_pagemap->map(tohh(i), i, rw | flags));
             }
         }
@@ -76,7 +80,20 @@ namespace vmm
             assert(kernel_pagemap->map(vaddr, paddr, rwx, write_back));
         }
 
+        auto base = align_up(tohh(pmm::mem_top), gib1);
+        for (size_t i = 0; auto &entry : vspbaddrs)
+            entry = base + (gib1 * i);
+
         kernel_pagemap->load();
+    }
+
+    uintptr_t alloc_vspace(vsptypes type, size_t increment)
+    {
+        auto index = std::to_underlying(type);
+        auto ret = vspbaddrs[index];
+
+        vspbaddrs[index] += increment;
+        return ret;
     }
 } // namespace vmm
 

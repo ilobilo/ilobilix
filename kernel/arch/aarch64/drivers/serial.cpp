@@ -2,37 +2,55 @@
 
 #include <arch/arch.hpp>
 #include <lib/mmio.hpp>
+#include <mm/vmm.hpp>
 
 namespace serial
 {
-    static uintptr_t uart = 0x9000000;
+    static constexpr uintptr_t uart = 0x9000000;
+    static uintptr_t addr = -1;
 
     void printc(char c)
     {
-        while (mmio::in<uint16_t>(uart + 0x18) & (1 << 5))
+        if (addr == uintptr_t(-1)) [[unlikely]]
+            return;
+
+        while (mmio::in<uint16_t>(addr + 0x18) & (1 << 5))
             arch::pause();
 
-        mmio::out<uint8_t>(uart, c);
+        mmio::out<uint8_t>(addr, c);
     }
 
     char readc()
     {
-        while (mmio::in<uint16_t>(uart + 0x18) & (1 << 4))
+        if (addr == uintptr_t(-1)) [[unlikely]]
+            return 0;
+
+        while (mmio::in<uint16_t>(addr + 0x18) & (1 << 4))
             arch::pause();
 
-        return mmio::in<uint8_t>(uart);
+        return mmio::in<uint8_t>(addr);
     }
 
-    void early_init()
+    // Can't use UART if 0x9000000 is not mapped
+    void early_init() { }
+
+    void second_early_init()
     {
+        // TODO: WHY DOESN'T THIS WORK
+        // uintptr_t vaddr = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000);
+        uintptr_t vaddr = uart;
+
+        vmm::kernel_pagemap->map(vaddr, uart, vmm::rw, vmm::mmio);
+        addr = vaddr;
+
         // Disable the UART.
-        mmio::out<uint16_t>(uart + 0x30, 0);
+        mmio::out<uint16_t>(addr + 0x30, 0);
 
         // Set word length to 8 bits and enable FIFOs
-        mmio::out<uint16_t>(uart + 0x2C, (3 << 5) | (1 << 4));
+        mmio::out<uint16_t>(addr + 0x2C, (3 << 5) | (1 << 4));
 
         // Enable UART, TX and RX
-        mmio::out<uint16_t>(uart + 0x30, (1 << 0) | (1 << 8) | (1 << 9));
+        mmio::out<uint16_t>(addr + 0x30, (1 << 0) | (1 << 8) | (1 << 9));
     }
 
     void init()

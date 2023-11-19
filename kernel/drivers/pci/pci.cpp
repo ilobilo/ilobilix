@@ -107,6 +107,9 @@ namespace pci
                     ret.type = PCI_BARTYPE_INVALID;
             }
 
+            // TODO: Map?
+            ret.base = tohh(ret.base);
+
             bars[num] = ret;
             if (bit64 == true)
                 bars[++num] = { 0, 0, PCI_BARTYPE_INVALID, false, false };

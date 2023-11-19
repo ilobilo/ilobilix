@@ -170,7 +170,7 @@ namespace elf
         uintptr_t map(uintptr_t size)
         {
             if (base_addr == 0)
-                base_addr = align_up(tohh(pmm::mem_top), 0x40000000);
+                base_addr = vmm::alloc_vspace(vmm::vsptypes::modules);
 
             uintptr_t loadaddr = base_addr;
             base_addr += size;

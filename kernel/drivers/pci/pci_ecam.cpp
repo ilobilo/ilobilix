@@ -3,27 +3,31 @@
 #include <drivers/pci/pci_ecam.hpp>
 #include <lib/panic.hpp>
 #include <lib/mmio.hpp>
-
-// #include <mm/vmm.hpp>
+#include <mm/vmm.hpp>
 
 namespace pci::ecam
 {
+    static uintptr_t base_addr = -1;
     uintptr_t configio::getaddr(uint32_t bus, uint32_t dev, uint32_t func, size_t offset)
     {
         assert(bus >= this->bus_start && bus <= this->bus_end);
         uintptr_t phys_addr = (this->base + ((bus - this->bus_start) << 20) | (dev << 15) | (func << 12));
 
-        // Figure out why this doesn't work on vmware and real hw (causes gpf)
-        // if (this->mappings.contains(phys_addr))
-        //     return this->mappings[phys_addr] + offset;
+        if (this->mappings.contains(phys_addr))
+            return this->mappings[phys_addr] + offset;
 
-        // uintptr_t virt_addr = tohh(phys_addr);
-        // vmm::kernel_pagemap->map(virt_addr, phys_addr, vmm::rw, vmm::MMIO);
-        // this->mappings[phys_addr] = virt_addr;
+        if (base_addr == static_cast<uintptr_t>(-1))
+            base_addr = vmm::alloc_vspace(vmm::vsptypes::ecam);
 
-        // return virt_addr + offset;
+        static constexpr uintptr_t size = 1 << 20;
 
-        return phys_addr + offset;
+        auto virt_addr = base_addr;
+        base_addr += size;
+
+        vmm::kernel_pagemap->map_range(virt_addr, phys_addr, size, vmm::rw, vmm::mmio);
+        this->mappings[phys_addr] = virt_addr;
+
+        return virt_addr + offset;
     }
 
     uint32_t configio::read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width)

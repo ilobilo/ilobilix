@@ -110,9 +110,6 @@ void kernel_thread()
 
 void kmain()
 {
-    pmm::init();
-    vmm::init();
-
     cxxabi::init();
     elf::syms::init();
 

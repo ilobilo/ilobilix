@@ -133,6 +133,7 @@ add_global_arguments([
     '-Wno-non-virtual-dtor',
     '-Wno-frame-address',
     '-DMAGIC_ENUM_NO_STREAMS=1',
+    '-D__cplusplus=202302L',
     '-D__cpp_concepts=202207L'
 ], language : 'cpp')
 

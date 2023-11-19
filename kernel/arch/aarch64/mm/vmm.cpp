@@ -79,7 +79,7 @@ namespace vmm
 
         ttbr *ret = nullptr;
 
-        if (curr_lvl->entries[entry].getflags(Valid | Table))
+        if (curr_lvl->entries[entry].getflags(Valid))
             ret = reinterpret_cast<ttbr*>(tohh(curr_lvl->entries[entry].getaddr()));
         else if (allocate == true)
         {
@@ -123,14 +123,15 @@ namespace vmm
         if (pml3 == nullptr)
             return nullptr;
 
-        if (psize == this->llpage_size)
+        // TODO: ???????????????????????????????
+        if (psize == this->llpage_size /* || pml3->entries[pml3_entry].getflags(Table) */)
             return &pml3->entries[pml3_entry];
 
         pml2 = get_next_lvl(pml3, pml3_entry, allocate);
         if (pml2 == nullptr)
             return nullptr;
 
-        if (psize == this->lpage_size)
+        if (psize == this->lpage_size /* || pml2->entries[pml2_entry].getflags(Table) */)
             return &pml2->entries[pml2_entry];
 
         pml1 = get_next_lvl(pml2, pml2_entry, allocate);
@@ -166,7 +167,7 @@ namespace vmm
 
         auto realflags = flags2arch(flags) | cache2flags(cache);
 
-        pml_entry->value = 0;
+        pml_entry->reset();
         pml_entry->setaddr(paddr);
         pml_entry->setflags(realflags, true);
         return true;
@@ -182,7 +183,7 @@ namespace vmm
             return false;
         }
 
-        pml_entry->value = 0;
+        pml_entry->reset();
         cpu::invlpg(vaddr);
         return true;
     }
@@ -200,7 +201,7 @@ namespace vmm
         auto realflags = flags2arch(flags) | cache2flags(cache);
         auto addr = pml_entry->getaddr();
 
-        pml_entry->value = 0;
+        pml_entry->reset();
         pml_entry->setaddr(addr);
         pml_entry->setflags(realflags, true);
         return true;

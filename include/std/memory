@@ -82,6 +82,7 @@ namespace std
         deallocator<Alloc> dealloc(alloc, 1);
         return unique_ptr<Type, deallocator<Alloc>>(ptr, dealloc);
     }
+
     template<typename Type, typename Allocator> requires (is_array_v<Type> && extent_v<Type> == 0)
     inline constexpr unique_ptr<Type, deallocator<Rebind<Allocator, remove_extent_t<Type>>>> allocate_unique(const Allocator &allocator, size_t size)
     {
@@ -141,6 +142,12 @@ namespace std
         {
             auto size = count * sizeof(Type);
             pmm::free(div_roundup(size, pmm::page_size));
+        }
+
+        template<typename Type1, typename ...Args>
+        constexpr void construct(Type1 *ptr, Args &&...args)
+        {
+	        std::construct_at(tohh(ptr), std::forward<Args>(args)...);
         }
     };
 

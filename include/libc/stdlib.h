@@ -19,33 +19,36 @@ namespace cdecl
     } // extern "C"
 } // namespace cdecl
 
-template<typename Type = void*>
-inline Type malloc(size_t size)
+extern "C++"
 {
-    return reinterpret_cast<Type>(cdecl::malloc(size));
-}
+    template<typename Type = void*>
+    inline Type malloc(size_t size)
+    {
+        return reinterpret_cast<Type>(cdecl::malloc(size));
+    }
 
-template<typename Type = void*>
-inline Type calloc(size_t num, size_t size)
-{
-    return reinterpret_cast<Type>(cdecl::calloc(num, size));
-}
+    template<typename Type = void*>
+    inline Type calloc(size_t num, size_t size)
+    {
+        return reinterpret_cast<Type>(cdecl::calloc(num, size));
+    }
 
-template<typename Type>
-inline Type realloc(Type oldptr, size_t size)
-{
-    return reinterpret_cast<Type>(cdecl::realloc(reinterpret_cast<void*>(oldptr), size));
-}
+    template<typename Type>
+    inline Type realloc(Type oldptr, size_t size)
+    {
+        return reinterpret_cast<Type>(cdecl::realloc(reinterpret_cast<void*>(oldptr), size));
+    }
 
-inline void free(auto ptr)
-{
-    cdecl::free(reinterpret_cast<void*>(ptr));
-}
+    inline void free(auto ptr)
+    {
+        cdecl::free(reinterpret_cast<void*>(ptr));
+    }
 
-inline size_t allocsize(auto ptr)
-{
-    return cdecl::allocsize(reinterpret_cast<void*>(ptr));
-}
+    inline size_t allocsize(auto ptr)
+    {
+        return cdecl::allocsize(reinterpret_cast<void*>(ptr));
+    }
+} // extern "C++"
 
 extern "C"
 {

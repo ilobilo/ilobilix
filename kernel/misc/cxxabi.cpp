@@ -9,13 +9,21 @@
 
 extern "C"
 {
-    atexit_func_entry_t __atexit_funcs[ATEXIT_MAX_FUNCS];
-    uarch_t __atexit_func_count = 0;
+    static constexpr uint64_t atexit_max_funcs = 128;
+
+    struct {
+        void (*destructor_func)(void*);
+        void *obj_ptr;
+        void *dso_handle;
+    }  __atexit_funcs[atexit_max_funcs];
+
+    unsigned __atexit_func_count = 0;
     void *__dso_handle = nullptr;
 
     int __cxa_atexit(void (*func)(void *), void *objptr, void *dso)
     {
-        if (__atexit_func_count >= ATEXIT_MAX_FUNCS) return -1;
+        if (__atexit_func_count >= atexit_max_funcs)
+            return -1;
 
         __atexit_funcs[__atexit_func_count].destructor_func = func;
         __atexit_funcs[__atexit_func_count].obj_ptr = objptr;
@@ -27,15 +35,13 @@ extern "C"
 
     void __cxa_finalize(void *func)
     {
-        uarch_t i = __atexit_func_count;
+        auto i = __atexit_func_count;
         if (func == nullptr)
         {
             while (i--)
             {
                 if (__atexit_funcs[i].destructor_func)
-                {
                     (*__atexit_funcs[i].destructor_func)(__atexit_funcs[i].obj_ptr);
-                }
             }
             return;
         }
@@ -77,7 +83,7 @@ extern "C"
         {
             PANIC("__cxa_guard_abort({})", static_cast<void*>(guard));
         }
-    }
+    } // namespace __cxxabiv1
 
     uintptr_t __stack_chk_guard = 0x595E9FBD94FDA766;
     [[noreturn]] void __stack_chk_fail()
