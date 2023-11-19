@@ -8,5 +8,7 @@ namespace serial
     char readc();
 
     void early_init();
+    void second_early_init();
+
     void init();
 } // namespace serial

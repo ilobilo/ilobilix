@@ -56,6 +56,11 @@ namespace vmm
     {
         uintptr_t value = 0;
 
+        void reset()
+        {
+            this->value = 0;
+        }
+
         void setflags(uintptr_t flags, bool enabled)
         {
             auto temp = this->value;
@@ -242,4 +247,12 @@ namespace vmm
 
     void arch_destroy_pmap(pagemap *pmap);
     [[gnu::weak]] void arch_init();
+
+    enum class vsptypes
+    {
+        modules,
+        ecam,
+        other
+    };
+    uintptr_t alloc_vspace(vsptypes type, size_t increment = 0);
 } // namespace vmm

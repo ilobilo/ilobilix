@@ -14,7 +14,7 @@ namespace pci::ecam
         uint8_t bus_start;
         uint8_t bus_end;
 
-        // std::unordered_map<uintptr_t, uintptr_t> mappings;
+        std::unordered_map<uintptr_t, uintptr_t> mappings;
 
         uintptr_t getaddr(uint32_t bus, uint32_t dev, uint32_t func, size_t offset);
 

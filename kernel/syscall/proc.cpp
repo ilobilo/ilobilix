@@ -96,8 +96,7 @@ namespace proc
         else
             new_proc->parent = old_proc;
 
-        // TODO: sigmask
-        // TODO: sigactions
+        // TODO: sigmask and sigactions
 
         new_thread->regs = old_thread->saved_regs;
 

@@ -30,7 +30,7 @@ struct [[gnu::packed, gnu::aligned(8)]] driver_t
 
 #define __DRIVER_rename(random, func) __DRIVER_rename_impl(func, __DRIVER_rename_get(random, func))
 
-#define __DRIVER_random(name) __DRIVER_glue(_, __DRIVER_glue(name, __DRIVER_glue(__COUNTER__, __LINE__)))
+#define __DRIVER_random(name) __DRIVER_glue(_, __DRIVER_glue(name ## _, __DRIVER_glue(__COUNTER__, __LINE__)))
 #define __DRIVER_depcount(deps...) sizeof((const char*[]){ deps }) / sizeof(char*)
 
 #define __DRIVER_internal(_depcount, drv_name, deps_name, _init, _fini, _name, _deps...)  \

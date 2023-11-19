@@ -51,7 +51,7 @@ namespace serial
         // io::out<uint8_t>(COM2 + 1, 0x01);
     }
 
-    void init()
-    {
-    }
+    // unused on x86_64
+    void second_early_init() { }
+    void init() { }
 } // namespace serial

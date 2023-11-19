@@ -146,7 +146,7 @@ namespace nvme
                 .opcode = static_cast<uint8_t>(opcode),
                 .nsid = this->nsid,
                 .dataPtr {
-                    .prp1 = reinterpret_cast<uintptr_t>(buffer)
+                    .prp1 = fromhh(reinterpret_cast<uintptr_t>(buffer))
                 },
                 .startLba = sector,
                 .length = static_cast<uint16_t>(num - 1)
@@ -170,7 +170,7 @@ namespace nvme
             auto vprp_list = tohh(prp_list.get());
 
             for (size_t i = 0; i < prp_num; i++)
-                vprp_list[i] = reinterpret_cast<uintptr_t>(buffer) + pmm::page_size + i * pmm::page_size;
+                vprp_list[i] = fromhh(reinterpret_cast<uintptr_t>(buffer)) + pmm::page_size + i * pmm::page_size;
 
             cmd.readWrite.dataPtr.prp2 = reinterpret_cast<uintptr_t>(prp_list.get());
         }

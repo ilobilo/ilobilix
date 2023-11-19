@@ -3,37 +3,41 @@
 #pragma once
 
 #include <cstdint>
+#include <concepts>
 
 extern uintptr_t hhdm_offset;
+
+template<typename Type>
+using _get_ret_t = std::conditional_t<std::integral<Type>, std::conditional_t<std::unsigned_integral<Type>, uintptr_t, intptr_t>, Type>;
 
 inline constexpr bool ishh(auto a)
 {
     return uintptr_t(a) >= hhdm_offset;
 }
 
-template<typename Type>
-inline constexpr Type tohh(Type a)
+template<typename Type, typename Ret = _get_ret_t<Type>>
+inline constexpr Ret tohh(Type a)
 {
-    return ishh(a) ? a : Type(uintptr_t(a) + hhdm_offset);
+    return ishh(a) ? Ret(a) : Ret(uintptr_t(a) + hhdm_offset);
 }
 
-template<typename Type>
-inline constexpr Type fromhh(Type a)
+template<typename Type, typename Ret = _get_ret_t<Type>>
+inline constexpr Ret fromhh(Type a)
 {
-    return !ishh(a) ? a : Type(uintptr_t(a) - hhdm_offset);
+    return !ishh(a) ? Ret(a) : Ret(uintptr_t(a) - hhdm_offset);
 }
 
-inline constexpr auto align_down(auto n, auto a)
+inline constexpr auto align_down(std::integral auto n, std::integral auto a)
 {
     return (n & ~(a - 1));
 }
 
-inline constexpr auto align_up(auto n, auto a)
+inline constexpr auto align_up(std::integral auto n, std::integral auto a)
 {
     return align_down(n + a - 1, a);
 }
 
-inline constexpr auto div_roundup(auto n, auto a)
+inline constexpr auto div_roundup(std::integral auto n, std::integral auto a)
 {
     return align_down(n + a - 1, a) / a;
 }
@@ -42,8 +46,7 @@ inline constexpr auto next_pow2(uint64_t n)
 {
     return n == 1UL ? 1UL : 1UL << (64 - __builtin_clzl(n - 1UL));
 }
-template<typename Type>
-inline constexpr Type pow(Type base, Type exp)
+inline constexpr auto pow(std::integral auto base, std::integral auto exp)
 {
     int result = 1;
     for (; exp > 0; exp--)
@@ -51,14 +54,12 @@ inline constexpr Type pow(Type base, Type exp)
     return result;
 }
 
-template<typename Type>
-inline constexpr Type abs(Type num)
+inline constexpr auto abs(std::signed_integral auto num)
 {
     return num < 0 ? -num : num;
 }
 
-template<typename Type>
-inline constexpr Type sign(Type num)
+inline constexpr auto sign(std::signed_integral auto num)
 {
     return num > 0 ? 1 : (num < 0 ? -1 : 0);
 }

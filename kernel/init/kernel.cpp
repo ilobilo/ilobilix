@@ -8,6 +8,10 @@
 
 #include <arch/arch.hpp>
 #include <lib/panic.hpp>
+
+#include <mm/pmm.hpp>
+#include <mm/vmm.hpp>
+
 #include <string.h>
 
 const char *cmdline = nullptr;
@@ -136,6 +140,17 @@ extern "C" void _start()
 {
     serial::early_init();
 
+    assert(memmap_request.response, "Could not get memmap response!");
+    assert(paging_mode_request.response, "Could not get paging mode response!");
+
+    hhdm_offset = hhdm_request.response->offset;
+    paging_mode = paging_mode_request.mode;
+
+    pmm::init();
+    vmm::init();
+
+    serial::second_early_init();
+
 // #if defined(__aarch64__)
 //     assert(dtb_request.response, "Could not get dtb response!");
 // #endif
@@ -145,8 +160,6 @@ extern "C" void _start()
     assert(LIMINE_BASE_REVISION_SUPPORTED, "Limine base revision not supported!");
     assert(framebuffer_request.response, "Could not get framebuffer response!");
     assert(smp_request.response, "Could not get smp response!");
-    assert(paging_mode_request.response, "Could not get paging mode response!");
-    assert(memmap_request.response, "Could not get memmap response!");
     assert(rsdp_request.response, "Could not get rsdp response!");
     assert(module_request.response, "Could not get module response!");
     assert(kernel_file_request.response, "Could not get kernel file response!");
@@ -156,8 +169,6 @@ extern "C" void _start()
     assert(stack_size_request.response, "Could not get stack size response!");
 
     cmdline = kernel_file_request.response->kernel_file->cmdline;
-    hhdm_offset = hhdm_request.response->offset;
-    paging_mode = paging_mode_request.mode;
 
     kmain();
     arch::halt();
