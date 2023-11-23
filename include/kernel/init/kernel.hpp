@@ -12,7 +12,7 @@ extern uintptr_t hhdm_offset;
 extern uint64_t paging_mode;
 extern bool uefi;
 
-#define if_max_pgmode(then) (paging_mode == LIMINE_PAGING_MODE_MAX) ? then
+#define if_max_pgmode(then) (paging_mode == LIMINE_PAGING_MODE_MAX) ? (then)
 
 // #if defined(__aarch64__)
 // extern volatile limine_dtb_request dtb_request;

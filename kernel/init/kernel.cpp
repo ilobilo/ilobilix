@@ -144,7 +144,7 @@ extern "C" void _start()
     assert(paging_mode_request.response, "Could not get paging mode response!");
 
     hhdm_offset = hhdm_request.response->offset;
-    paging_mode = paging_mode_request.mode;
+    paging_mode = paging_mode_request.response->mode;
 
     pmm::init();
     vmm::init();
@@ -154,8 +154,6 @@ extern "C" void _start()
 // #if defined(__aarch64__)
 //     assert(dtb_request.response, "Could not get dtb response!");
 // #endif
-
-    uefi = efi_system_table_request.response != nullptr;
 
     assert(LIMINE_BASE_REVISION_SUPPORTED, "Limine base revision not supported!");
     assert(framebuffer_request.response, "Could not get framebuffer response!");
@@ -169,6 +167,7 @@ extern "C" void _start()
     assert(stack_size_request.response, "Could not get stack size response!");
 
     cmdline = kernel_file_request.response->kernel_file->cmdline;
+    uefi = efi_system_table_request.response != nullptr;
 
     kmain();
     arch::halt();

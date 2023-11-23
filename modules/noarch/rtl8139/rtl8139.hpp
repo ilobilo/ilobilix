@@ -69,7 +69,10 @@ namespace rtl8139
         {
 #if CAN_LEGACY_IO
             if (this->is_mmio == false)
+            {
                 io::out<Type>(this->base + std::to_underlying(reg), value);
+                return;
+            }
 #endif
             mmio::out<Type>(this->base + std::to_underlying(reg), value);
         }

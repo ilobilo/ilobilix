@@ -86,7 +86,7 @@ namespace proc
 
         gdt::tss[this_cpu()->id].IST[1] = thread->pfstack;
         this_cpu()->fpu_restore(thread->fpu_storage);
-        thread->parent->pagemap->load();
+        thread->parent->pagemap->load(false);
 
         cpu::set_gs(reinterpret_cast<uint64_t>(thread));
         cpu::set_kernel_gs(thread->gs_base);

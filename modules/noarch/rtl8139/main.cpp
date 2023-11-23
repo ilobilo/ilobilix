@@ -133,7 +133,7 @@ namespace rtl8139
             if (bar.type == pci::PCI_BARTYPE_MMIO)
             {
                 this->is_mmio = true;
-                this->base = bar.base;
+                this->base = bar.map();
                 break;
             }
 #if CAN_LEGACY_IO

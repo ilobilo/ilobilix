@@ -2,8 +2,11 @@
 
 #include <init/kernel.hpp>
 #include <arch/arch.hpp>
+
+#include <lib/panic.hpp>
 #include <lib/math.hpp>
 #include <lib/log.hpp>
+
 #include <lai/host.h>
 #include <mm/vmm.hpp>
 
@@ -14,7 +17,7 @@ namespace vmm
     pagemap *kernel_pagemap = nullptr;
     bool print_errors = true;
 
-    static uintptr_t vspbaddrs[magic_enum::enum_count<vsptypes>()] { };
+    static uintptr_t vspbaddrs[magic_enum::enum_count<vsptypes>() + 1] { };
 
     void init()
     {
@@ -28,7 +31,7 @@ namespace vmm
             auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
             for (size_t i = 0; i < gib1 * 4; i += psize)
             {
-                // assert(kernel_pagemap->map(i, i, rwx | flags));
+                // assert(kernel_pagemap->map(i, i, rw | flags));
                 assert(kernel_pagemap->map(tohh(i), i, rw | flags));
             }
         }
@@ -57,7 +60,7 @@ namespace vmm
                 if (t < gib1 * 4)
                     continue;
 
-                assert(kernel_pagemap->map(t, t, rwx | flags, cache));
+                // assert(kernel_pagemap->map(t, t, rw | flags, cache));
                 assert(kernel_pagemap->map(tohh(t), t, rw | flags, cache));
             }
             base += alsize;
@@ -67,7 +70,7 @@ namespace vmm
                 if (t < gib1 * 4)
                     continue;
 
-                assert(kernel_pagemap->map(t, t, rwx, cache));
+                // assert(kernel_pagemap->map(t, t, rw, cache));
                 assert(kernel_pagemap->map(tohh(t), t, rw, cache));
             }
         }
@@ -80,20 +83,63 @@ namespace vmm
             assert(kernel_pagemap->map(vaddr, paddr, rwx, write_back));
         }
 
-        auto base = align_up(tohh(pmm::mem_top), gib1);
-        for (size_t i = 0; auto &entry : vspbaddrs)
-            entry = base + (gib1 * i);
+        {
+            auto base = tohh(align_up(pmm::mem_top, gib1));
+            vspbaddrs[0] = base;
 
-        kernel_pagemap->load();
+            for (size_t i = 1; auto &entry : vspbaddrs)
+                entry = base + (gib1 * i);
+        }
+
+        kernel_pagemap->load(true);
     }
 
-    uintptr_t alloc_vspace(vsptypes type, size_t increment)
+    uintptr_t alloc_vspace(vsptypes type, size_t increment, size_t alignment)
     {
         auto index = std::to_underlying(type);
-        auto ret = vspbaddrs[index];
 
-        vspbaddrs[index] += increment;
+        uintptr_t *entry = &vspbaddrs[index];
+        if (type != vsptypes::other && increment > 0 && *entry + increment > (vspbaddrs[0] + (gib1 * (index + 1))))
+            entry = &vspbaddrs[std::to_underlying(vsptypes::other)];
+
+        uintptr_t ret = alignment ? align_up(*entry, alignment) : *entry;
+        *entry += increment + (ret - *entry);
+
         return ret;
+    }
+
+    void *pagemap::get_next_lvl(ptentry &entry, bool allocate, uintptr_t vaddr, size_t opsize, size_t psize)
+    {
+        void *ret = nullptr;
+
+        if (entry.is_valid())
+        {
+            if (entry.is_large() && opsize != static_cast<size_t>(-1))
+            {
+                auto [old_flags, old_caching] = arch2flags(entry.getflags(), opsize > this->page_size);
+                auto old_paddr = entry.getaddr();
+                auto old_vaddr = vaddr & ~(opsize - 1);
+
+                if (old_paddr & (opsize - 1))
+                    PANIC("VMM: Unexpected page table entry address: 0x{:X}", old_paddr);
+
+                ret = vmm::arch::alloc_ptable();
+                entry.setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
+                entry.setflags(arch::new_table_flags, true);
+
+                for (size_t i = 0; i < opsize; i += psize)
+                    this->map_nolock(old_vaddr + i, old_paddr + i, old_flags | this->get_psize_flags(psize), old_caching);
+            }
+            else ret = reinterpret_cast<void*>(entry.getaddr());
+        }
+        else if (allocate == true)
+        {
+            ret = vmm::arch::alloc_ptable();
+            entry.setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
+            entry.setflags(arch::new_table_flags, true);
+        }
+
+        return ret ? tohh(ret) : nullptr;
     }
 } // namespace vmm
 

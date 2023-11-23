@@ -42,7 +42,7 @@ namespace vmm
     };
 
     inline constexpr caching default_caching = write_back;
-    inline constexpr size_t default_flags = rwx;
+    inline constexpr size_t default_flags = rw;
 
     inline constexpr size_t kib4 = 0x1000;
     inline constexpr size_t mib2 = 0x200000;
@@ -50,7 +50,13 @@ namespace vmm
 
     inline constexpr auto invalid_addr = uintptr_t(-1);
 
-    extern uintptr_t pa_mask;
+    namespace arch
+    {
+        extern uintptr_t pa_mask;
+        extern uintptr_t new_table_flags;
+
+        extern void *alloc_ptable();
+    } // namespace arch
 
     struct ptentry
     {
@@ -77,21 +83,26 @@ namespace vmm
 
         uintptr_t getflags()
         {
-            return this->value & ~pa_mask;
+            return this->value & ~arch::pa_mask;
         }
 
         uintptr_t getaddr()
         {
-            return this->value & pa_mask;
+            return this->value & arch::pa_mask;
         }
 
         void setaddr(uintptr_t address)
         {
+            // address &= arch::pa_mask;
+
             auto temp = this->value;
-            temp &= ~pa_mask;
+            temp &= ~arch::pa_mask;
             temp |= address;
             this->value = temp;
         }
+
+        bool is_valid();
+        bool is_large();
     };
 
     namespace mmap
@@ -154,6 +165,15 @@ namespace vmm
             return psize;
         }
 
+        inline size_t get_psize_flags(size_t psize)
+        {
+            if (psize == this->lpage_size)
+                return lpage;
+            if (psize == this->llpage_size)
+                return llpage;
+            return 0;
+        }
+
         inline std::pair<size_t, size_t> required_size(size_t size)
         {
             if (size >= this->llpage_size)
@@ -165,13 +185,20 @@ namespace vmm
         }
 
         std::optional<std::tuple<std::shared_ptr<mmap::local>, size_t, size_t>> addr2range(uintptr_t addr);
+        void *get_next_lvl(ptentry &entry, bool allocate, uintptr_t vaddr = -1, size_t opsize = -1, size_t psize = -1);
 
-        ptentry *virt2pte(uint64_t vaddr, bool allocate, uint64_t psize);
+        ptentry *virt2pte(uint64_t vaddr, bool allocate, uint64_t psize, bool checkll);
         uintptr_t virt2phys(uintptr_t vaddr, size_t flags = 0);
 
-        bool map(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching);
+        bool map_nolock(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching);
         bool unmap_nolock(uintptr_t vaddr, size_t flags = 0);
         bool setflags_nolock(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching);
+
+        inline bool map(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching)
+        {
+            std::unique_lock guard(this->lock);
+            return this->map_nolock(vaddr, paddr, flags, cache);
+        }
 
         inline bool unmap(uintptr_t vaddr, size_t flags = 0)
         {
@@ -179,7 +206,7 @@ namespace vmm
             return this->unmap_nolock(vaddr, flags);
         }
 
-        bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching)
+        inline bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching)
         {
             std::unique_lock guard(this->lock);
             return this->setflags_nolock(vaddr, flags, cache);
@@ -226,7 +253,7 @@ namespace vmm
         bool mprotect(uintptr_t addr, size_t length, int prot);
         bool munmap(uintptr_t addr, size_t length);
 
-        void load();
+        void load(bool hh);
         void save();
 
         pagemap();
@@ -240,6 +267,7 @@ namespace vmm
 
     bool is_canonical(uintptr_t addr);
     uintptr_t flags2arch(size_t flags);
+    std::pair<size_t, caching> arch2flags(uintptr_t flags, bool lpages);
 
     bool page_fault(uintptr_t addr);
 
@@ -252,7 +280,8 @@ namespace vmm
     {
         modules,
         ecam,
+        bars,
         other
     };
-    uintptr_t alloc_vspace(vsptypes type, size_t increment = 0);
+    uintptr_t alloc_vspace(vsptypes type, size_t increment = 0, size_t alignment = 0);
 } // namespace vmm

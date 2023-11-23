@@ -40,7 +40,7 @@ namespace proc
     void load_thread(thread *thread, cpu::registers_t *regs)
     {
         thread->running_on = this_cpu()->id;
-        thread->parent->pagemap->load();
+        thread->parent->pagemap->load(false);
 
         cpu::set_el1_base(reinterpret_cast<uint64_t>(thread));
         cpu::set_el0_base(thread->el0_base);

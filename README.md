@@ -3,12 +3,12 @@ Second attempt at making an OS
 
 ## [LICENSE](LICENSE)
 
-## Building And Running
+## Building and Running
 
 Make sure you have following programs installed:
 * meson
 * ninja
-* clang/clang++
+* clang/clang++ (version >= 17)
 * lld
 * llvm
 * xorriso
@@ -19,8 +19,8 @@ Make sure you have following programs installed:
 
 Note: you may need more tools to build the sysroot, such as flex, bison, automake, autoconf, texinfo, gmp, mpc, mpfr etc
 
-<!-- On debian based systems, I recommend installing llvm, clang and lld from here: https://apt.llvm.org\ -->
-If are on Debian based system (Ubuntu, linux mint, Pop_os! etc) you can install most of them with this command:\
+On debian based systems, I recommend installing llvm, clang and lld from here: https://apt.llvm.org \
+If you are on a up-to-date Debian based system (Ubuntu, linux mint, Pop_os!, etc) you can install most of them with this command:\
 ``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``\
 For meson, ninja and xbstrap, first make sure you have python and python-pip installed and then run:\
 ``python -m pip install meson ninja xbstrap``
@@ -29,7 +29,7 @@ Follow these steps to build and run the os:
 1. Clone this repo with:\
 ``git clone --depth=1 https://github.com/ilobilo/ilobilix``
 
-1. Currently you have to manually build the sysroot:
+2. Currently you have to manually build the sysroot:
 * Set the architecture in `boostrap.yml`
 * ``mkdir build-sysroot``
 * ``pushd build-sysroot``
@@ -41,37 +41,45 @@ For example: \
 ``ln -s build-sysroot/system-root ../sysroot``
 * ``popd``
 
-1. Set up the build system:\
+3. Set up the build system:\
 ``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64)(-ccache).cross-file -Doptions=values``
 
-1. Build and run the kernel:\
-``ninja -C builddir (optionally add norun/run_bios/run_uefi)``
+4. Build and run the kernel:\
+``ninja -C builddir <see Ninja Targets>``
+
+### Ninja Targets
+|  Target Name   |               Description               |
+| ---------------| --------------------------------------- |
+| run_bios       | Run with legacy BIOS (only on x86_64)   |
+| run_bios_debug | Same but with debugging enabled         |
+| run_uefi       | Run with UEFI                           |
+| run_uefi_debug | Same but with debugging enabled         |
+| norun          | Do not run the OS                       |
 
 Notes:
-* On aarch64, only run_uefi is available.
-* If firmware type is not specified and architecture supports bios mode, run_bios will be used, if it doesn't, then run_uefi.
+* run_(bios/uefi)_debug: Runs QEMU with `-d int` and `-monitor telnet:127.0.0.1:12345`. If `gdb` option is enabled, adds `-s -S`
+* If target is not specified and architecture supports bios mode, `run_bios` will be used, otherwise `run_uefi`.
 
 ### Options
 
-|  Project options  | Default Value |               Description                |
-| ----------------- | ------------- | ---------------------------------------- |
-| kernel_cflags     |               | Extra c compiler arguments for kernel    |
-| kernel_cxxflags   |               | Extra cpp compiler arguments for kernel  |
-| modules_cflags    |               | Extra c compiler arguments for modules   |
-| modules_cxxflags  |               | Extra cpp compiler arguments for modules |
-| kernel_ubsan      | false         | Enable ubsanitizer in kernel             |
-| modules_ubsan     | false         | Enable ubsanitizer in modules            |
-| 5lvl_paging       | false         | Enable 5 level paging in kernel          |
-| syscall_debug     | false         | Print syscall log on serial              |
-| qemu_debug        | false         | Enable interrupt logging in qemu and starts monitor on telnet:127.0.0.1:12345. Enables 'noaccel' |
-| gdb               | false         | Add -s -S to qemu. Enables 'qemu_debug'  |
-| noaccel           | false         | Disable qemu accelerators                |
-| vnc               | false         | Start qemu VNC server on 127.0.0.1:5901  |
+|  Project options  | Default Value |                Description                |
+| ----------------- | ------------- | ----------------------------------------- |
+| kernel_cflags     |               | Extra c compiler arguments for kernel     |
+| kernel_cxxflags   |               | Extra cpp compiler arguments for kernel   |
+| modules_cflags    |               | Extra c compiler arguments for modules    |
+| modules_cxxflags  |               | Extra cpp compiler arguments for modules  |
+| kernel_ubsan      | false         | Enable ubsanitizer in kernel              |
+| modules_ubsan     | false         | Enable ubsanitizer in modules             |
+| 5lvl_paging       | false         | Enable 5 level paging in kernel           |
+| syscall_debug     | false         | Print syscall log in serial console       |
+| gdb               | false         | Add `-s -S` to QEMU when debugging        |
+| noaccel           | false         | Disable QEMU accelerators                 |
+| vnc               | false         | Start QEMU VNC server on `127.0.0.1:5901` |
 
-## Discord server
+## Discord Server
 https://discord.gg/fM5GK3RpS7
 
-## Resources/projects:
+## Resources and Projects:
 * meson: https://mesonbuild.com
 * osdev wiki: https://wiki.osdev.org
 * osdev discord server: https://discord.gg/RnCtsqD
