@@ -322,7 +322,7 @@ namespace proc
 
         enqueue(new thread(old_proc, entry, argvs, envps, auxv));
 
-        vmm::kernel_pagemap->load();
+        vmm::kernel_pagemap->load(false);
         delete old_pagemap;
 
         exit();

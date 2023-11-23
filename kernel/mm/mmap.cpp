@@ -351,11 +351,11 @@ namespace vmm
                 global->locals.push_back(new_local);
                 for (uintptr_t i = local->base; i < local->base + local->length; i += other->page_size)
                 {
-                    auto old_pte = other->virt2pte(i, false, other->page_size);
+                    auto old_pte = other->virt2pte(i, false, other->page_size, false);
                     if (old_pte == nullptr)
                         continue;
 
-                    this->virt2pte(i, true, this->page_size)->value = old_pte->value;
+                    this->virt2pte(i, true, this->page_size, false)->value = old_pte->value;
                 }
             }
             else
@@ -375,12 +375,12 @@ namespace vmm
                 assert(local->flags & mmap::map_anonymous, "non anonymous pagemap fork");
                 for (uintptr_t i = local->base; i < local->base + local->length; i += other->page_size)
                 {
-                    auto old_pte = other->virt2pte(i, false, other->page_size);
+                    auto old_pte = other->virt2pte(i, false, other->page_size, false);
                     if (old_pte == nullptr || !old_pte->getflags(flags2arch(0) /* valid flags */))
                         continue;
 
-                    auto new_pte = this->virt2pte(i, true, this->page_size);
-                    auto new_spte = new_global->shadow->virt2pte(i, true, new_global->shadow->page_size);
+                    auto new_pte = this->virt2pte(i, true, this->page_size, false);
+                    auto new_spte = new_global->shadow->virt2pte(i, true, new_global->shadow->page_size, false);
 
                     auto old_page = old_pte->getaddr();
                     auto page = pmm::alloc<uintptr_t>(other->page_size / pmm::page_size);

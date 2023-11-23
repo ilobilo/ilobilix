@@ -84,6 +84,7 @@ namespace e1000
             {
                 io::out<uint32_t>(this->base, std::to_underlying(reg));
                 io::out<uint32_t>(this->base + sizeof(uint32_t), value);
+                return;
             }
 #endif
             mmio::out<uint32_t>(this->base + std::to_underlying(reg), value);

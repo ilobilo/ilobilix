@@ -23,7 +23,7 @@ namespace smp
 
         if (cpuptr->arch_id != bsp_id)
         {
-            vmm::kernel_pagemap->load();
+            vmm::kernel_pagemap->load(true);
             cpu::set_el1_base(cpu->extra_argument);
         }
     }

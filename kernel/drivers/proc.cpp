@@ -177,7 +177,7 @@ namespace proc
         arch::int_toggle(true);
         if (this_thread()->parent == proc)
         {
-            vmm::kernel_pagemap->load();
+            vmm::kernel_pagemap->load(false);
             yield();
             std::unreachable();
         }

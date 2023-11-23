@@ -9,6 +9,8 @@
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 
+#include <mm/vmm.hpp>
+
 #include <lai/helpers/pci.h>
 
 #if defined(__x86_64__)
@@ -43,7 +45,7 @@ namespace pci
 
         for (size_t num = 0; num < count; num++)
         {
-            bar_t ret = { 0, 0, PCI_BARTYPE_INVALID, false, false };
+            bar_t ret = { vmm::invalid_addr, vmm::invalid_addr, 0, PCI_BARTYPE_INVALID, false, false };
             bool bit64 = false;
 
             auto offset = PCI_BAR0 + num * sizeof(uint32_t);
@@ -59,6 +61,7 @@ namespace pci
                 size_t length = (~(lenlow & ~0b11) + 1) & 0xFFFF;
 
                 ret.base = addr;
+                ret.pbase = addr;
                 ret.len = length;
                 ret.type = PCI_BARTYPE_IO;
                 ret.prefetchable = false;
@@ -97,23 +100,54 @@ namespace pci
                         break;
                 }
 
-                ret.base = addr;
+                ret.base = vmm::invalid_addr;
+                ret.pbase = addr;
                 ret.len = length;
                 ret.type = PCI_BARTYPE_MMIO;
                 ret.prefetchable = bar & (1 << 3);
                 ret.bit64 = bit64;
 
-                if (ret.base == 0 && ret.len == 0)
+                if (ret.pbase == 0 && ret.len == 0)
+                {
+                    ret.pbase = vmm::invalid_addr;
                     ret.type = PCI_BARTYPE_INVALID;
+                }
             }
-
-            // TODO: Map?
-            ret.base = tohh(ret.base);
 
             bars[num] = ret;
             if (bit64 == true)
-                bars[++num] = { 0, 0, PCI_BARTYPE_INVALID, false, false };
+                bars[++num] = { vmm::invalid_addr, vmm::invalid_addr, 0, PCI_BARTYPE_INVALID, false, true };
         }
+    }
+
+    uintptr_t bar_t::map(size_t alignment)
+    {
+        if (this->type != PCI_BARTYPE_MMIO)
+            return vmm::invalid_addr;
+
+        if (this->base != vmm::invalid_addr)
+            return this->base;
+
+        if (this->bit64 == true)
+        {
+            if (vmm::kernel_pagemap->virt2phys(tohh(this->pbase)) == vmm::invalid_addr)
+            {
+                auto psize = vmm::kernel_pagemap->page_size;
+
+                auto albase = align_down(this->pbase, psize);
+                auto len = align_up(this->pbase + this->len, psize) - albase;
+
+                auto vaddr = vmm::alloc_vspace(vmm::vsptypes::bars, len, alignment ?: psize);
+
+                vmm::kernel_pagemap->map_range(vaddr, albase, len, vmm::rw, vmm::mmio);
+                this->base = vaddr + (this->pbase - albase);
+            }
+            else this->base = tohh(this->pbase);
+        }
+        // TODO: map 32 bit bars too
+        else this->base = tohh(this->pbase);
+
+        return this->base;
     }
 
     bridge_t::bridge_t(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, bus_t *parent) : entity(seg, bus, dev, func, parent)
@@ -176,8 +210,9 @@ namespace pci
         this->write<uint16_t>(this->msix.offset + 0x02, control.raw);
 
         auto table_bar = this->bars[this->msix.table.bar];
-        auto base = table_bar.base + this->msix.table.offset;
         assert(table_bar.type == PCI_BARTYPE_MMIO);
+
+        auto base = table_bar.map() + this->msix.table.offset;
 
         volatile auto *table = reinterpret_cast<volatile msix::entry*>(tohh(base));
 

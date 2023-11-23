@@ -113,12 +113,12 @@ void kmain()
     cxxabi::init();
     elf::syms::init();
 
+    frm::early_init();
+    term::early_init();
+
 #if defined(__aarch64__)
     dtb::init();
 #endif
-
-    frm::early_init();
-    term::early_init();
 
     acpi::init();
     arch::early_init();

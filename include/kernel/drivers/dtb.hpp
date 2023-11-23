@@ -131,6 +131,19 @@ namespace dtb
 
     struct node
     {
+        struct property
+        {
+            std::string_view name;
+            std::span<const std::byte> data;
+
+            template<std::unsigned_integral Type>
+            Type asint(size_t offset = 0)
+            {
+                assert(offset + sizeof(Type) <= this->data.size());
+                return from_endian<std::endian::big>(*reinterpret_cast<const Type*>(this->data.data() + offset));
+            }
+        };
+
         struct property_range
         {
             struct iterator
@@ -140,7 +153,7 @@ namespace dtb
 
                 bool operator==(const iterator &rhs) const = default;
 
-                std::pair<std::string_view, std::span<const std::byte>> operator*()
+                property operator*()
                 {
                     auto tmp = this->ptr;
 

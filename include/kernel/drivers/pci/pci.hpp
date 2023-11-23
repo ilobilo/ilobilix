@@ -84,10 +84,13 @@ namespace pci
     struct bar_t
     {
         uintptr_t base;
+        uintptr_t pbase;
         size_t len;
         bartype type;
         bool prefetchable;
         bool bit64;
+
+        uintptr_t map(size_t alignment = 0);
     };
 
     namespace msi

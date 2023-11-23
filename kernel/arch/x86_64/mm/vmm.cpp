@@ -26,30 +26,32 @@ namespace vmm
         PATlg = (1 << 12), // PAT lvl2+
         NoExec = (1UL << 63)
     };
+
     struct [[gnu::packed]] ptable { ptentry entries[512]; };
     static bool gib1_pages = false;
 
-    uintptr_t pa_mask = 0x000FFFFFFFFFF000;
-
-    static ptable *get_next_lvl(ptable *curr_lvl, size_t entry, bool allocate = true)
+    namespace arch
     {
-        if (curr_lvl == nullptr)
-            return nullptr;
+        uintptr_t pa_mask = 0x000FFFFFFFFFF000;
+        uintptr_t new_table_flags = Present | Write | UserSuper;
 
-        ptable *ret = nullptr;
-
-        if (curr_lvl->entries[entry].getflags(Present))
-            ret = reinterpret_cast<ptable*>(tohh(curr_lvl->entries[entry].getaddr()));
-        else if (allocate == true)
+        void *alloc_ptable()
         {
-            ret = new ptable;
-            curr_lvl->entries[entry].setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
-            curr_lvl->entries[entry].setflags(Present | Write | UserSuper, true);
+            return new ptable;
         }
-        return ret;
+    } // namespace arch
+
+    bool ptentry::is_valid()
+    {
+        return this->getflags(Present);
     }
 
-    ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize)
+    bool ptentry::is_large()
+    {
+        return this->getflags(LargerPages);
+    }
+
+    ptentry *pagemap::virt2pte(uint64_t vaddr, bool allocate, uint64_t psize, bool checkll)
     {
         size_t pml5_entry = (vaddr & (0x1FFULL << 48)) >> 48;
         size_t pml4_entry = (vaddr & (0x1FFULL << 39)) >> 39;
@@ -58,26 +60,28 @@ namespace vmm
         size_t pml1_entry = (vaddr & (0x1FFULL << 12)) >> 12;
 
         ptable *pml4, *pml3, *pml2, *pml1;
+        if (this->toplvl == nullptr)
+            return nullptr;
 
-        pml4 = if_max_pgmode(get_next_lvl(this->toplvl, pml5_entry, allocate)) : this->toplvl;
+        pml4 = static_cast<ptable*>(if_max_pgmode(this->get_next_lvl(this->toplvl->entries[pml5_entry], allocate)) : this->toplvl);
         if (pml4 == nullptr)
             return nullptr;
 
-        pml3 = get_next_lvl(pml4, pml4_entry, allocate);
+        pml3 = static_cast<ptable*>(this->get_next_lvl(pml4->entries[pml4_entry], allocate));
         if (pml3 == nullptr)
             return nullptr;
 
-        if (psize == this->llpage_size || pml3->entries[pml3_entry].getflags(LargerPages))
+        if (psize == this->llpage_size || (checkll && pml3->entries[pml3_entry].is_large()))
             return &pml3->entries[pml3_entry];
 
-        pml2 = get_next_lvl(pml3, pml3_entry, allocate);
+        pml2 = static_cast<ptable*>(this->get_next_lvl(pml3->entries[pml3_entry], allocate, vaddr, this->llpage_size, psize));
         if (pml2 == nullptr)
             return nullptr;
 
-        if (psize == this->lpage_size || pml2->entries[pml2_entry].getflags(LargerPages))
+        if (psize == this->lpage_size || (checkll && pml2->entries[pml2_entry].is_large()))
             return &pml2->entries[pml2_entry];
 
-        pml1 = get_next_lvl(pml2, pml2_entry, allocate);
+        pml1 = static_cast<ptable*>(this->get_next_lvl(pml2->entries[pml2_entry], allocate, vaddr, this->lpage_size, psize));
         if (pml1 == nullptr)
             return nullptr;
 
@@ -126,20 +130,18 @@ namespace vmm
         std::unique_lock guard(lock);
 
         auto psize = this->get_psize(flags);
-        ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
+        ptentry *pml_entry = this->virt2pte(vaddr, false, psize, true);
         if (pml_entry == nullptr || !pml_entry->getflags(Present))
             return invalid_addr;
 
         return pml_entry->getaddr() + (vaddr % psize);
     }
 
-    bool pagemap::map(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
+    bool pagemap::map_nolock(uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache)
     {
-        std::unique_lock guard(this->lock);
-
         auto map_one = [this](uintptr_t vaddr, uintptr_t paddr, size_t flags, caching cache, size_t psize)
         {
-            ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
+            ptentry *pml_entry = this->virt2pte(vaddr, true, psize, false);
             if (pml_entry == nullptr)
             {
                 if (print_errors)
@@ -147,7 +149,7 @@ namespace vmm
                 return false;
             }
 
-            auto realflags = flags2arch(flags) | cache2flags(cache, psize != this->page_size);
+            auto realflags = flags2arch(flags) | cache2flags(cache, psize > this->page_size);
 
             pml_entry->reset();
             pml_entry->setaddr(paddr);
@@ -173,7 +175,7 @@ namespace vmm
     {
         auto unmap_one = [this](uintptr_t vaddr, size_t psize)
         {
-            ptentry *pml_entry = this->virt2pte(vaddr, false, psize);
+            ptentry *pml_entry = this->virt2pte(vaddr, false, psize, true);
             if (pml_entry == nullptr)
             {
                 if (print_errors)
@@ -203,7 +205,7 @@ namespace vmm
     bool pagemap::setflags_nolock(uintptr_t vaddr, size_t flags, caching cache)
     {
         auto psize = this->get_psize(flags);
-        ptentry *pml_entry = this->virt2pte(vaddr, true, psize);
+        ptentry *pml_entry = this->virt2pte(vaddr, true, psize, true);
         if (pml_entry == nullptr)
         {
             if (print_errors)
@@ -211,7 +213,7 @@ namespace vmm
             return false;
         }
 
-        auto realflags = flags2arch(flags) | cache2flags(cache, psize != this->page_size);
+        auto realflags = flags2arch(flags) | cache2flags(cache, psize > this->page_size);
         auto addr = pml_entry->getaddr();
 
         pml_entry->reset();
@@ -220,7 +222,7 @@ namespace vmm
         return true;
     }
 
-    void pagemap::load()
+    void pagemap::load(bool)
     {
         wrreg(cr3, fromhh(reinterpret_cast<uint64_t>(this->toplvl)));
     }
@@ -239,7 +241,7 @@ namespace vmm
         if (kernel_pagemap == nullptr)
         {
             for (size_t i = 256; i < 512; i++)
-                get_next_lvl(this->toplvl, i, true);
+                get_next_lvl(this->toplvl->entries[i], true);
 
             cpu::enablePAT();
             return;
@@ -260,10 +262,10 @@ namespace vmm
         uintptr_t ret = Present;
         if (flags & write)
             ret |= Write;
-        if (flags & user)
-            ret |= UserSuper;
         if (!(flags & exec))
             ret |= NoExec;
+        if (flags & user)
+            ret |= UserSuper;
         if (flags & global)
             ret |= Global;
         if (islpage(flags))
@@ -271,25 +273,56 @@ namespace vmm
         return ret;
     }
 
-    static void destroy_level(ptable *pml, size_t start, size_t end, size_t level)
+    std::pair<size_t, caching> arch2flags(uintptr_t flags, bool lpages)
     {
-        if (level == 0)
+        size_t ret1 = 0;
+        if (flags & Present)
+            ret1 |= read;
+        if (flags & Write)
+            ret1 |= write;
+        if (!(flags & NoExec))
+            ret1 |= exec;
+        if (flags & UserSuper)
+            ret1 |= user;
+        if (flags & Global)
+            ret1 |= global;
+
+        uint64_t patbit = (lpages ? PATlg : PAT4k);
+        caching ret2;
+
+        if ((flags & (patbit | CacheDisable)) == (patbit | CacheDisable))
+            ret2 = write_back;
+        else if ((flags & (patbit | WriteThrough)) == (patbit | WriteThrough))
+            ret2 = write_protected;
+        else if ((flags & patbit) == patbit)
+            ret2 = write_through;
+        else if ((flags & WriteThrough) == WriteThrough)
+            ret2 = write_combining;
+        else
+            ret2 = uncachable;
+
+        return { ret1, ret2 };
+    }
+
+    static void destroy_level(pagemap *pmap, ptable *pml, size_t start, size_t end, size_t level)
+    {
+        if (level == 0 || pml == nullptr)
             return;
 
         for (size_t i = start; i < end; i++)
         {
-            auto next = get_next_lvl(pml, i, false);
+            auto next = static_cast<ptable*>(pmap->get_next_lvl(pml->entries[i], false));
             if (next == nullptr)
                 continue;
 
-            destroy_level(next, 0, 512, level - 1);
+            destroy_level(pmap, next, 0, 512, level - 1);
         }
         delete pml;
     }
 
     void arch_destroy_pmap(pagemap *pmap)
     {
-        destroy_level(pmap->toplvl, 0, 256, if_max_pgmode(5) : 4);
+        destroy_level(pmap, pmap->toplvl, 0, 256, if_max_pgmode(5) : 4);
     }
 
     void arch_init()

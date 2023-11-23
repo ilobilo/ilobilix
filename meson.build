@@ -72,25 +72,26 @@ xorriso_args = supported_archs[arch][2]
 qemu_args += supported_archs[arch][3]
 qemu = 'qemu-system-' + arch
 
-if get_option('vnc')
-    qemu_args += ['-vnc', '127.0.0.1:1']
+qemu_dbg_args = [
+    '-no-reboot', '-no-shutdown',
+    '-d', 'int', '-D', logfile,
+    '-monitor', 'telnet:127.0.0.1:12345,server,nowait'
+]
+if arch == 'x86_64'
+    qemu_dbg_args += ['-M', 'smm=off']
 endif
 
-gdb = get_option('gdb')
-if get_option('qemu_debug') or gdb
-    qemu_args += [
-        '-no-reboot', '-no-shutdown',
-        '-d', 'int', '-D', logfile,
-        '-monitor', 'telnet:127.0.0.1:12345,server,nowait'
-    ]
-    if arch == 'x86_64'
-        qemu_args += ['-M', 'smm=off']
-    endif
-    if gdb == true
-        qemu_args += ['-s', '-S']
-    endif
-elif not get_option('noaccel')
-    qemu_args += ['-M', 'accel=kvm:hvf:whpx:haxm:tcg']
+if get_option('gdb') == true
+    qemu_dbg_args += ['-s', '-S']
+endif
+
+qemu_accel_args = []
+if not get_option('noaccel')
+    qemu_accel_args += ['-M', 'accel=kvm:hvf:whpx:haxm:tcg']
+endif
+
+if get_option('vnc')
+    qemu_args += ['-vnc', '127.0.0.1:1']
 endif
 
 incs = [
@@ -225,8 +226,18 @@ if supports_bios
     run_bios = custom_target('run_bios',
         input : iso,
         output : 'run_bios',
-        command : [qemu, qemu_args, '-cdrom', '@INPUT@'],
+        command : [qemu, qemu_args, qemu_accel_args, '-cdrom', '@INPUT@'],
         build_by_default : true,
+        console : true,
+        install : false,
+        depends : iso
+    )
+
+    run_bios_debug = custom_target('run_bios_debug',
+        input : iso,
+        output : 'run_bios_debug',
+        command : [qemu, qemu_args, qemu_dbg_args, '-cdrom', '@INPUT@'],
+        build_by_default : false,
         console : true,
         install : false,
         depends : iso
@@ -239,8 +250,18 @@ ovmf = ovmf_binaries.get_variable(ovmf_id)
 run_uefi = custom_target('run_uefi',
     input : iso,
     output : 'run_uefi',
-    command : [qemu, qemu_args, '-cdrom', '@INPUT@', '-bios', ovmf],
+    command : [qemu, qemu_args, qemu_accel_args, '-cdrom', '@INPUT@', '-bios', ovmf],
     build_by_default : not supports_bios,
+    console : true,
+    install : false,
+    depends : iso
+)
+
+run_uefi_debug = custom_target('run_uefi_debug',
+    input : iso,
+    output : 'run_uefi_debug',
+    command : [qemu, qemu_args, qemu_dbg_args, '-cdrom', '@INPUT@', '-bios', ovmf],
+    build_by_default : false,
     console : true,
     install : false,
     depends : iso
