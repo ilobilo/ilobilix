@@ -12,7 +12,7 @@ struct path_segment
     std::string_view segment;
     cwk_segment_type type;
     bool is_last;
-    cwk_segment seg = cwk_segment { .path = nullptr };
+    cwk_segment seg;
 };
 
 class path_view_t

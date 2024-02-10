@@ -42,6 +42,7 @@ struct [[gnu::packed, gnu::aligned(8)]] driver_t
     {                                                                                     \
         .name = _name,                                                                    \
         .initialised = false,                                                             \
+        .failed = false,                                                                  \
         .init = _init,                                                                    \
         .fini = _fini,                                                                    \
         .depcount = _depcount,                                                            \

@@ -376,8 +376,6 @@ namespace pci
     };
 
     extern std::unordered_map<uint32_t, configio*> configspaces;
-    extern std::vector<device_t*> devices;
-    extern std::vector<bus_t*> root_buses;
 
     inline configio *getconfigio(uint32_t seg, uint32_t bus)
     {
@@ -397,6 +395,8 @@ namespace pci
         auto io = getconfigio(seg, bus);
         io->write<Type>(seg, bus, dev, func, offset, value);
     }
+
+    std::vector<device_t*> &get_devices();
 
     void addconfigio(uint32_t seg, uint32_t bus, configio *io);
     void addrootbus(bus_t *bus);

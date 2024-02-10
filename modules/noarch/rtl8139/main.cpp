@@ -263,7 +263,7 @@ DRIVER(rtl8139, init, fini)
 __init__ bool init()
 {
     bool at_least_one = false;
-    for (const auto dev : pci::devices)
+    for (const auto dev : pci::get_devices())
     {
         if (dev->vendorid != rtl8139::vendorid || dev->deviceid != rtl8139::deviceid)
             continue;

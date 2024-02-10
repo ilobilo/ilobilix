@@ -22,8 +22,13 @@
 namespace pci
 {
     std::unordered_map<uint32_t, configio*> configspaces;
-    std::vector<device_t*> devices;
-    std::vector<bus_t*> root_buses;
+    static std::vector<device_t*> devices;
+    static std::vector<bus_t*> root_buses;
+
+    std::vector<device_t*> &get_devices()
+    {
+        return devices;
+    }
 
     void addconfigio(uint32_t seg, uint32_t bus, configio *io)
     {

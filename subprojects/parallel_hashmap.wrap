@@ -1,4 +1,4 @@
 [wrap-git]
-url = https://github.com/ilobilo/parallel-hashmap
+url = https://github.com/greg7mdp/parallel-hashmap
 revision = master
 depth = 1

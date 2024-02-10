@@ -170,7 +170,11 @@ namespace proc
             .parent_tid = parent_tidptr,
             .exit_signal = uint32_t(clone_flags) & csignal,
             .stack = newsp,
+            .stack_size = kernel_stack_size,
             .tls = tls,
+            .set_tid = nullptr,
+            .set_tid_size = 0,
+            .cgroup = 0
         });
     }
 
