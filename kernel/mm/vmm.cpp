@@ -29,7 +29,7 @@ namespace vmm
         kernel_pagemap = new pagemap();
         {
             auto [psize, flags] = kernel_pagemap->required_size(gib1 * 4);
-            for (size_t i = 0; i < gib1 * 4; i += psize)
+            for (uintptr_t i = 0; i < gib1 * 4; i += psize)
             {
                 // assert(kernel_pagemap->map(i, i, rw | flags));
                 assert(kernel_pagemap->map(tohh(i), i, rw | flags));
@@ -40,8 +40,8 @@ namespace vmm
         {
             limine_memmap_entry *mmap = memmap_request.response->entries[i];
 
-            uint64_t base = align_down(mmap->base, kernel_pagemap->page_size);
-            uint64_t top = align_up(mmap->base + mmap->length, kernel_pagemap->page_size);
+            uintptr_t base = align_down(mmap->base, kernel_pagemap->page_size);
+            uintptr_t top = align_up(mmap->base + mmap->length, kernel_pagemap->page_size);
             if (top < gib1 * 4)
                 continue;
 
@@ -55,7 +55,7 @@ namespace vmm
             auto alsize = align_down(size, psize);
             auto diff = size - alsize;
 
-            for (uint64_t t = base; t < (base + alsize); t += psize)
+            for (uintptr_t t = base; t < (base + alsize); t += psize)
             {
                 if (t < gib1 * 4)
                     continue;
@@ -65,7 +65,7 @@ namespace vmm
             }
             base += alsize;
 
-            for (uint64_t t = base; t < (base + diff); t += kernel_pagemap->page_size)
+            for (uintptr_t t = base; t < (base + diff); t += kernel_pagemap->page_size)
             {
                 if (t < gib1 * 4)
                     continue;
@@ -78,8 +78,8 @@ namespace vmm
         // TODO: Correct perms
         for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += kernel_pagemap->page_size)
         {
-            uint64_t paddr = kernel_address_request.response->physical_base + i;
-            uint64_t vaddr = kernel_address_request.response->virtual_base + i;
+            uintptr_t paddr = kernel_address_request.response->physical_base + i;
+            uintptr_t vaddr = kernel_address_request.response->virtual_base + i;
             assert(kernel_pagemap->map(vaddr, paddr, rwx, write_back));
         }
 
@@ -124,7 +124,7 @@ namespace vmm
                     PANIC("VMM: Unexpected page table entry address: 0x{:X}", old_paddr);
 
                 ret = vmm::arch::alloc_ptable();
-                entry.setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
+                entry.setaddr(fromhh(reinterpret_cast<uintptr_t>(ret)));
                 entry.setflags(arch::new_table_flags, true);
 
                 for (size_t i = 0; i < opsize; i += psize)
@@ -135,7 +135,7 @@ namespace vmm
         else if (allocate == true)
         {
             ret = vmm::arch::alloc_ptable();
-            entry.setaddr(fromhh(reinterpret_cast<uint64_t>(ret)));
+            entry.setaddr(fromhh(reinterpret_cast<uintptr_t>(ret)));
             entry.setflags(arch::new_table_flags, true);
         }
 

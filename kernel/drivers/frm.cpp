@@ -38,11 +38,17 @@ namespace frm
                 .smem_start = reinterpret_cast<uintptr_t>(frm->address),
                 .smem_len = static_cast<uint32_t>(frm->pitch * frm->height),
                 .type = fb_type_packed_pixels,
+                .type_aux = 0,
                 .visual = fb_visual_truecolor,
+                .xpanstep = 0,
+                .ypanstep = 0,
+                .ywrapstep = 0,
                 .line_length = static_cast<uint32_t>(frm->pitch),
+                .mmio_start = 0,
+                .mmio_len = 0,
                 .accel = fb_accel_none,
                 .capabilities = 0,
-                .reserved = { 0 }
+                .reserved { }
             };
             this->var = {
                 .xres = static_cast<uint32_t>(frm->width),

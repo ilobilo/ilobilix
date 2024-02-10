@@ -144,12 +144,22 @@ namespace nvme
         {
             .readWrite {
                 .opcode = static_cast<uint8_t>(opcode),
+                .flags = 0,
+                .commandId = 0,
                 .nsid = this->nsid,
+                .rsv2 = 0,
+                .metadata = 0,
                 .dataPtr {
-                    .prp1 = fromhh(reinterpret_cast<uintptr_t>(buffer))
+                    .prp1 = fromhh(reinterpret_cast<uintptr_t>(buffer)),
+                    .prp2 = 0
                 },
                 .startLba = sector,
-                .length = static_cast<uint16_t>(num - 1)
+                .length = static_cast<uint16_t>(num - 1),
+                .control = 0,
+                .dsMgmt = 0,
+                .refTag = 0,
+                .appTag = 0,
+                .appMask = 0
             }
         };
 
@@ -245,10 +255,18 @@ namespace nvme
             {
                 .identify {
                     .opcode = spec::AdminOpcode::identify,
+                    .flags = 0,
+                    .commandId = 0,
+                    .nsid = 0,
+                    .rsv2 { },
                     .dataPtr {
-                        .prp1 = reinterpret_cast<uintptr_t>(identify.get())
+                        .prp1 = reinterpret_cast<uintptr_t>(identify.get()),
+                        .prp2 = 0,
                     },
-                    .cns = spec::IdentifyCNS::identifyController
+                    .cns = spec::IdentifyCNS::identifyController,
+                    .rsv3 = 0,
+                    .controllerId = 0,
+                    .rsv11 { }
                 }
             };
 
@@ -266,10 +284,18 @@ namespace nvme
             {
                 .identify {
                     .opcode = spec::AdminOpcode::identify,
+                    .flags = 0,
+                    .commandId = 0,
+                    .nsid = 0,
+                    .rsv2 { },
                     .dataPtr {
-                        .prp1 = reinterpret_cast<uintptr_t>(nsid_list)
+                        .prp1 = reinterpret_cast<uintptr_t>(nsid_list),
+                        .prp2 = 0
                     },
-                    .cns = spec::IdentifyCNS::identifyActiveList
+                    .cns = spec::IdentifyCNS::identifyActiveList,
+                    .rsv3 = 0,
+                    .controllerId = 0,
+                    .rsv11 { }
                 }
             };
 
@@ -296,11 +322,16 @@ namespace nvme
             {
                 .createCQ {
                     .opcode = spec::AdminOpcode::createCQ,
+                    .flags = 0,
+                    .commandId = 0,
+                    .rsv1 { },
                     .prp1 = io_queue->completion.phys_queue,
+                    .prp2 = 0,
                     .cqid = io_queue->id,
                     .qSize = static_cast<uint16_t>(io_queue->size - 1),
                     .cqFlags = spec::queuePhysContig | spec::CQIrqEnabled,
-                    .irqVector = io_queue->irq
+                    .irqVector = io_queue->irq,
+                    .rsv2 { }
                 }
             };
             if (this->admin_queue->submit_command(io_cq_cmd) == false)
@@ -310,11 +341,16 @@ namespace nvme
             {
                 .createSQ {
                     .opcode = spec::AdminOpcode::createSQ,
+                    .flags = 0,
+                    .commandId = 0,
+                    .rsv1 { },
                     .prp1 = io_queue->submission.phys_queue,
+                    .prp2 = 0,
                     .sqid = io_queue->id,
                     .qSize = static_cast<uint16_t>(io_queue->size - 1),
                     .sqFlags = spec::queuePhysContig | spec::CQIrqEnabled,
-                    .cqid = io_queue->id
+                    .cqid = io_queue->id,
+                    .rsv2 { }
                 }
             };
             if (this->admin_queue->submit_command(io_sq_cmd) == false)
@@ -343,11 +379,18 @@ namespace nvme
                 {
                     .identify {
                         .opcode = spec::AdminOpcode::identify,
+                        .flags = 0,
+                        .commandId = 0,
                         .nsid = nsid,
+                        .rsv2 { },
                         .dataPtr {
-                            .prp1 = reinterpret_cast<uintptr_t>(identify.get())
+                            .prp1 = reinterpret_cast<uintptr_t>(identify.get()),
+                            .prp2 = 0
                         },
-                        .cns = spec::IdentifyCNS::identifyNamespace
+                        .cns = spec::IdentifyCNS::identifyNamespace,
+                        .rsv3 = 0,
+                        .controllerId = 0,
+                        .rsv11 { }
                     }
                 };
                 if (this->admin_queue->submit_command(cmd) == false)
@@ -392,7 +435,7 @@ DRIVER(nvme, init, fini)
 __init__ bool init()
 {
     bool at_least_one = false;
-    for (const auto dev : pci::devices)
+    for (const auto dev : pci::get_devices())
     {
         if (dev->Class != nvme::Class || dev->subclass != nvme::subclass || dev->progif != nvme::progif)
             continue;

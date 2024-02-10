@@ -170,7 +170,11 @@ namespace e1000
             {
                 new (&desc) spec::rxd {
                     .addr = pmm::alloc<uint64_t>(div_roundup(spec::bsize2size(default_bsize), pmm::page_size)),
-                    .status = 0
+                    .length = 0,
+                    .chksum = 0,
+                    .status = 0,
+                    .error = 0,
+                    .spec = 0
                 };
             }
 
@@ -201,8 +205,12 @@ namespace e1000
             {
                 new (&desc) spec::txd {
                     .addr = 0,
+                    .length = 0,
+                    .cso = 0,
                     .cmd = 0,
                     .status = std::to_underlying(spec::tstats::descdone),
+                    .css = 0,
+                    .spec = 0
                 };
             }
 
@@ -281,7 +289,7 @@ DRIVER(e1000, init, fini)
 __init__ bool init()
 {
     bool at_least_one = false;
-    for (const auto dev : pci::devices)
+    for (const auto dev : pci::get_devices())
     {
         if (dev->vendorid != e1000::vendorid || !contains(e1000::deviceids, dev->deviceid))
             continue;

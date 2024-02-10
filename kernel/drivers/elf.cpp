@@ -173,7 +173,7 @@ namespace elf
                 base_addr = vmm::alloc_vspace(vmm::vsptypes::modules);
 
             uintptr_t loadaddr = base_addr;
-            base_addr += size;
+            base_addr += (size = align_up(size, pmm::page_size));
 
             uintptr_t paddr = pmm::alloc<uintptr_t>(size / pmm::page_size);
             vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);

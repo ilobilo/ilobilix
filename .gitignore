@@ -1,12 +1,13 @@
-sysroot
-.vscode
-.clang-format
-.iwyu*
+.*
+!.gitignore
+!.github
+!.clang_format
 
 serial.txt
 log.txt
 
-/build*
+build*
+sysroot
 sources
 
 subprojects/*

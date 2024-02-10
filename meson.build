@@ -112,7 +112,8 @@ macros = [
 warnigns = [
     '-Wno-error=#warnings',
     '-Wno-builtin-macro-redefined',
-    '-Wno-macro-redefined'
+    '-Wno-macro-redefined',
+    '-Wno-nan-infinity-disabled'
 ]
 
 add_global_arguments([
@@ -124,6 +125,10 @@ add_global_arguments([
     '-fno-pie',
     '-Ofast'
 ], language : ['c', 'cpp'])
+
+if not meson.get_compiler('cpp').has_argument('-std=gnu++23')
+    error('C++23 support is needed. Please install clang 17 or higher.')
+endif
 
 add_global_arguments([
     '-std=gnu++23',
