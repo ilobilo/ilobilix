@@ -1,4 +1,4 @@
-// Copyright (C) 2022-2023  ilobilo
+// Copyright (C) 2022-2024  ilobilo
 
 #include <drivers/initrd/ilar.hpp>
 #include <drivers/vfs.hpp>

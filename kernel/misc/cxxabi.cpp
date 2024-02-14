@@ -1,4 +1,4 @@
-// Copyright (C) 2022-2023  ilobilo
+// Copyright (C) 2022-2024  ilobilo
 
 #include <misc/cxxabi.hpp>
 #include <lib/panic.hpp>

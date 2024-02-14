@@ -1,4 +1,4 @@
-# Copyright (C) 2022-2023  ilobilo
+# Copyright (C) 2022-2024  ilobilo
 
 project('ilobilix', ['c', 'cpp'],
     version : 'v0.1',
