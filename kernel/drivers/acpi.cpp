@@ -19,7 +19,6 @@
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 
-#include <lai/host.h>
 #include <lai/core.h>
 
 #if defined(__x86_64__)
@@ -255,8 +254,3 @@ namespace acpi
         // lai_create_namespace(); // see arch/*/drivers/pci/pci.cpp
     }
 } // namespace acpi
-
-void *laihost_scan(const char *signature, size_t index)
-{
-    return acpi::findtable(signature, index);
-}

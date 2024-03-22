@@ -7,7 +7,6 @@
 #include <lib/math.hpp>
 #include <lib/log.hpp>
 
-#include <lai/host.h>
 #include <mm/vmm.hpp>
 
 #include <magic_enum.hpp>
@@ -142,10 +141,3 @@ namespace vmm
         return ret ? tohh(ret) : nullptr;
     }
 } // namespace vmm
-
-void *laihost_map(size_t address, size_t count)
-{
-    return reinterpret_cast<void*>(tohh(address));
-}
-
-void laihost_unmap(void *address, size_t count) { }

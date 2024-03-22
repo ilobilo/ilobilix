@@ -80,9 +80,9 @@ namespace std
         }
 
         explicit unique_lock(mutex_type &m) : _mutex(addressof(m)), _locked(true) { m.lock(); }
-        unique_lock(mutex_type &m, defer_lock_t t) noexcept : _mutex(addressof(m)), _locked(false) { }
-        unique_lock(mutex_type &m, try_to_lock_t t) : _mutex(addressof(m)), _locked(true) { m.try_lock(); }
-        unique_lock(mutex_type &m, adopt_lock_t t) : _mutex(addressof(m)), _locked(true) { }
+        unique_lock(mutex_type &m, defer_lock_t) noexcept : _mutex(addressof(m)), _locked(false) { }
+        unique_lock(mutex_type &m, try_to_lock_t) : _mutex(addressof(m)), _locked(true) { m.try_lock(); }
+        unique_lock(mutex_type &m, adopt_lock_t) : _mutex(addressof(m)), _locked(true) { }
 
         ~unique_lock()
         {

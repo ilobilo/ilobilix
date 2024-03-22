@@ -572,33 +572,3 @@ namespace pci
         // TODO: Configure bridges from managarm
     }
 } // namespace pci
-
-void laihost_pci_writeb(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint8_t val)
-{
-    pci::write<uint8_t>(seg, bus, slot, fun, offset, val);
-}
-
-void laihost_pci_writew(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint16_t val)
-{
-    pci::write<uint16_t>(seg, bus, slot, fun, offset, val);
-}
-
-void laihost_pci_writed(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint32_t val)
-{
-    pci::write<uint32_t>(seg, bus, slot, fun, offset, val);
-}
-
-uint8_t laihost_pci_readb(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset)
-{
-    return pci::read<uint8_t>(seg, bus, slot, fun, offset);
-}
-
-uint16_t laihost_pci_readw(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset)
-{
-    return pci::read<uint16_t>(seg, bus, slot, fun, offset);
-}
-
-uint32_t laihost_pci_readd(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset)
-{
-    return pci::read<uint32_t>(seg, bus, slot, fun, offset);
-}

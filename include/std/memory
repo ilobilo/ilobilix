@@ -141,7 +141,7 @@ namespace std
         constexpr void deallocate(Type *ptr, size_t count)
         {
             auto size = count * sizeof(Type);
-            pmm::free(div_roundup(size, pmm::page_size));
+            pmm::free(ptr, div_roundup(size, pmm::page_size));
         }
 
         template<typename Type1, typename ...Args>

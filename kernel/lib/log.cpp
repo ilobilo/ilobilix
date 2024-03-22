@@ -2,9 +2,7 @@
 
 #include <drivers/serial.hpp>
 #include <drivers/term.hpp>
-#include <frg/macros.hpp>
 #include <lib/log.hpp>
-#include <lai/host.h>
 
 namespace log
 {
@@ -34,24 +32,7 @@ namespace log
     }
 } // namespace log
 
-void laihost_log(int level, const char *msg)
-{
-    switch (level)
-    {
-        case LAI_DEBUG_LOG:
-            log::infoln("LAI: {}", msg);
-            break;
-        case LAI_WARN_LOG:
-            log::warnln("LAI: {}", msg);
-            break;
-    }
-}
-
 extern "C"
 {
-    void FRG_INTF(log)(const char *msg)
-    {
-        log::infoln("FRG: {}{}", char(toupper(*msg)), msg + 1);
-    }
     void putchar_(char c) { log::printc(c); }
 } // extern "C"
