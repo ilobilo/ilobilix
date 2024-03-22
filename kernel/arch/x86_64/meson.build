@@ -25,7 +25,6 @@ src += files(
     'drivers/serial.cpp',
     'drivers/smp.cpp',
 
-    'lib/io.cpp',
     'lib/memory.S',
 
     'mm/vmm.cpp',

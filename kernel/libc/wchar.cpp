@@ -30,7 +30,7 @@ extern "C"
             count--;
             ptr++;
         }
-	    return count ? const_cast<wchar_t*>(ptr) : nullptr;
+        return count ? const_cast<wchar_t*>(ptr) : nullptr;
     }
 
     int wmemcmp(const wchar_t *lhs, const wchar_t *rhs, size_t count)
@@ -41,7 +41,7 @@ extern "C"
             lhs++;
             rhs++;
         }
-	    return count ? *lhs - *rhs : 0;
+        return count ? *lhs - *rhs : 0;
     }
 
     size_t wcslen(const wchar_t *start)

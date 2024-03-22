@@ -1,13 +1,13 @@
 // Copyright (C) 2022-2024  ilobilo
 
 #include <drivers/proc.hpp>
-#include <frg/macros.hpp>
 #include <arch/arch.hpp>
+
 #include <lib/panic.hpp>
 #include <lib/trace.hpp>
-#include <cpu/cpu.hpp>
 #include <lib/log.hpp>
-#include <lai/host.h>
+
+#include <cpu/cpu.hpp>
 
 [[noreturn]] void vpanic(const char *file, int line, const char *func, std::string_view format, fmt::format_args args)
 {
@@ -79,11 +79,6 @@
 
 extern "C"
 {
-    [[gnu::noreturn]] void FRG_INTF(panic)(const char *cstring)
-    {
-        panic(cstring);
-    }
-
     [[noreturn]] void abort() noexcept
     {
         panic("abort()");
@@ -94,5 +89,3 @@ extern "C"
         panic(file, line, func, message);
     }
 } // extern "C"
-
-[[gnu::noreturn]] void laihost_panic(const char *msg) { panic(msg); }

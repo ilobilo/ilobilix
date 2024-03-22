@@ -30,6 +30,9 @@ src = files(
     'init/kernel.cpp',
     'init/main.cpp',
 
+    'lib/glue/frigg.cpp',
+    'lib/glue/lai.cpp',
+
     'lib/net/ipv4/icmp.cpp',
     'lib/net/arp.cpp',
     'lib/net/net.cpp',

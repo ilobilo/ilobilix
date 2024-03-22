@@ -2,8 +2,9 @@
 
 #include <lib/alloc.hpp>
 #include <lib/math.hpp>
-#include <lai/host.h>
+
 #include <mm/pmm.hpp>
+
 #include <cstring>
 #include <cstdlib>
 #include <cstddef>
@@ -176,7 +177,8 @@ namespace heap
             this->free(oldptr);
             return nullptr;
         }
-        if (size < oldsize) oldsize = size;
+        if (size < oldsize)
+            oldsize = size;
 
         void *newptr = this->malloc(size);
         if (newptr == nullptr)
@@ -264,21 +266,6 @@ void operator delete[](void *ptr, size_t) noexcept
 }
 
 void operator delete[](void *ptr, size_t, std::align_val_t) noexcept
-{
-    free(ptr);
-}
-
-void *laihost_malloc(size_t size)
-{
-    return malloc(size);
-}
-
-void *laihost_realloc(void *ptr, size_t size, size_t)
-{
-    return realloc(ptr, size);
-}
-
-void laihost_free(void *ptr, size_t)
 {
     free(ptr);
 }

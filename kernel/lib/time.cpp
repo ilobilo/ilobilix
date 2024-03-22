@@ -3,7 +3,6 @@
 #include <arch/arch.hpp>
 #include <lib/time.hpp>
 #include <lib/misc.hpp>
-#include <lai/host.h>
 
 namespace time
 {
@@ -56,14 +55,4 @@ void stat_t::update_time(size_t flags)
         this->st_mtim = time::realtime;
     if (flags & which::status)
         this->st_ctim = time::realtime;
-}
-
-void laihost_sleep(uint64_t ms)
-{
-    time::msleep(ms);
-}
-
-uint64_t laihost_timer()
-{
-    return time::time_ns() / 100;
 }
