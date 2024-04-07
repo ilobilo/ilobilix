@@ -7,7 +7,6 @@
 #include <init/kernel.hpp>
 
 #include <arch/arch.hpp>
-#include <lib/panic.hpp>
 
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
@@ -142,8 +141,8 @@ extern "C" void _start()
 {
     serial::early_init();
 
-    assert(memmap_request.response, "Could not get memmap response!");
-    assert(paging_mode_request.response, "Could not get paging mode response!");
+    assert(memmap_request.response, "Could not get memmap response");
+    assert(paging_mode_request.response, "Could not get paging mode response");
 
     hhdm_offset = hhdm_request.response->offset;
     paging_mode = paging_mode_request.response->mode;
@@ -154,19 +153,19 @@ extern "C" void _start()
     serial::second_early_init();
 
 // #if defined(__aarch64__)
-//     assert(dtb_request.response, "Could not get dtb response!");
+//     assert(dtb_request.response, "Could not get dtb response");
 // #endif
 
-    assert(LIMINE_BASE_REVISION_SUPPORTED, "Limine base revision not supported!");
-    assert(framebuffer_request.response, "Could not get framebuffer response!");
-    assert(smp_request.response, "Could not get smp response!");
-    assert(rsdp_request.response, "Could not get rsdp response!");
-    assert(module_request.response, "Could not get module response!");
-    assert(kernel_file_request.response, "Could not get kernel file response!");
-    assert(boot_time_request.response, "Could not get boot time response!");
-    assert(hhdm_request.response, "Could not get hhdm response!");
-    assert(kernel_address_request.response, "Could not get kernel address response!");
-    assert(stack_size_request.response, "Could not get stack size response!");
+    assert(LIMINE_BASE_REVISION_SUPPORTED, "Limine base revision not supported");
+    assert(framebuffer_request.response, "Could not get framebuffer response");
+    assert(smp_request.response, "Could not get smp response");
+    assert(rsdp_request.response, "Could not get rsdp response");
+    assert(module_request.response, "Could not get module response");
+    assert(kernel_file_request.response, "Could not get kernel file response");
+    assert(boot_time_request.response, "Could not get boot time response");
+    assert(hhdm_request.response, "Could not get hhdm response");
+    assert(kernel_address_request.response, "Could not get kernel address response");
+    assert(stack_size_request.response, "Could not get stack size response");
 
     cmdline = kernel_file_request.response->kernel_file->cmdline;
     uefi = efi_system_table_request.response != nullptr;

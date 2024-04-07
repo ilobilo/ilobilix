@@ -1,17 +1,14 @@
 // Copyright (C) 2022-2024  ilobilo
 
 #include <drivers/pci/pci_acpi.hpp>
-#include <lai/core.h>
+#include <drivers/acpi.hpp>
 
 namespace pci
 {
     void arch_init()
     {
         pci::acpi::init_ios();
-
-        // We run this here because it might need pci to work
-        lai_create_namespace();
-
+        ::acpi::enable();
         pci::acpi::init_rbs();
     }
 } // namespace pci

@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/managarm/lai
-revision = master
-depth = 1
-patch_filename = lai.tar
-
-[provide]
-lai = lai_dep

@@ -31,13 +31,14 @@ namespace vmm
 
     enum caching
     {
-        uncachable,
+        uncacheable,
+        uncacheable_strong,
         write_through,
         write_protected,
         write_combining,
         write_back,
 
-        mmio = uncachable,
+        mmio = uncacheable_strong,
         framebuffer = write_combining
     };
 
@@ -145,6 +146,7 @@ namespace vmm
     struct ptable;
     struct pagemap
     {
+        private:
         std::vector<std::shared_ptr<mmap::local>> ranges;
         uintptr_t mmap_bump_base = mmap::def_bump_base;
 
@@ -155,7 +157,10 @@ namespace vmm
         size_t page_size = 0;
         std::mutex lock;
 
-        inline size_t get_psize(size_t flags)
+        public:
+        auto get_raw() const { return this->toplvl; }
+
+        size_t get_psize(size_t flags = 0) const
         {
             size_t psize = this->page_size;
             if (flags & lpage)
@@ -165,7 +170,7 @@ namespace vmm
             return psize;
         }
 
-        inline size_t get_psize_flags(size_t psize)
+        size_t get_psize_flags(size_t psize) const
         {
             if (psize == this->lpage_size)
                 return lpage;
@@ -174,7 +179,7 @@ namespace vmm
             return 0;
         }
 
-        inline std::pair<size_t, size_t> required_size(size_t size)
+        std::pair<size_t, size_t> required_size(size_t size) const
         {
             if (size >= this->llpage_size)
                 return { this->llpage_size, llpage };
@@ -194,57 +199,73 @@ namespace vmm
         bool unmap_nolock(uintptr_t vaddr, size_t flags = 0);
         bool setflags_nolock(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching);
 
-        inline bool map(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching)
+        bool map(uintptr_t vaddr, uintptr_t paddr, size_t flags = default_flags, caching cache = default_caching)
         {
             std::unique_lock guard(this->lock);
             return this->map_nolock(vaddr, paddr, flags, cache);
         }
 
-        inline bool unmap(uintptr_t vaddr, size_t flags = 0)
+        bool unmap(uintptr_t vaddr, size_t flags = 0)
         {
             std::unique_lock guard(this->lock);
             return this->unmap_nolock(vaddr, flags);
         }
 
-        inline bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching)
+        bool setflags(uintptr_t vaddr, size_t flags = default_flags, caching cache = default_caching)
         {
             std::unique_lock guard(this->lock);
             return this->setflags_nolock(vaddr, flags, cache);
         }
 
-        inline bool remap(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t flags = default_flags, caching cache = default_caching)
+        bool remap(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t flags = default_flags, caching cache = default_caching)
         {
             uint64_t paddr = this->virt2phys(vaddr_old, flags);
             this->unmap(vaddr_old, flags);
             return this->map(vaddr_new, paddr, flags, cache);
         }
 
-        inline void map_range(uintptr_t vaddr, uintptr_t paddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
+        bool map_range(uintptr_t vaddr, uintptr_t paddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-                this->map(vaddr + i, paddr + i, flags, cache);
+            {
+                if (!this->map(vaddr + i, paddr + i, flags, cache))
+                {
+                    this->unmap_range(vaddr, i - psize);
+                    return false;
+                }
+            }
+            return true;
         }
 
-        inline void unmap_range(uintptr_t vaddr, size_t size, size_t flags = 0)
+        bool unmap_range(uintptr_t vaddr, size_t size, size_t flags = 0)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-                this->unmap(vaddr + i, flags);
+                if (!this->unmap(vaddr + i, flags))
+                    return false;
+
+            return true;
         }
 
-        inline void remap_range(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t size, size_t flags = default_flags, caching cache = default_caching)
+        bool remap_range(uintptr_t vaddr_old, uintptr_t vaddr_new, size_t size, size_t flags = default_flags, caching cache = default_caching)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-                this->remap(vaddr_old + i, vaddr_new + i, flags, cache);
+                if (!this->remap(vaddr_old + i, vaddr_new + i, flags, cache))
+                    return false;
+
+            return true;
         }
 
-        inline void setflags_range(uintptr_t vaddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
+        bool setflags_range(uintptr_t vaddr, size_t size, size_t flags = default_flags, caching cache = default_caching)
         {
             size_t psize = this->get_psize(flags);
             for (size_t i = 0; i < size; i += psize)
-                this->setflags(vaddr + i, flags, cache);
+                if (!this->setflags(vaddr + i, flags, cache))
+                    return false;
+
+            return true;
         }
 
         bool mmap_range(uintptr_t vaddr, uintptr_t paddr, size_t length, int prot, int flags);
@@ -279,8 +300,8 @@ namespace vmm
     enum class vsptypes
     {
         modules,
-        ecam,
-        bars,
+        uacpi,
+        ecam, bars,
         other
     };
     uintptr_t alloc_vspace(vsptypes type, size_t increment = 0, size_t alignment = 0);

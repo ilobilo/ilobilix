@@ -5,7 +5,6 @@
 #include <lib/bitmap.hpp>
 
 #include <unordered_map>
-#include <lai/core.h>
 #include <cstdint>
 #include <vector>
 
@@ -192,6 +191,14 @@ namespace pci
             none,
             root,
             expansion
+        };
+
+        enum flags
+        {
+            edge = (1 << 0),
+            level = (1 << 1),
+            high = (1 << 2),
+            low = (1 << 3)
         };
 
         struct entry

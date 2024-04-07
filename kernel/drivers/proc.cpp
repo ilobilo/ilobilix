@@ -1,7 +1,6 @@
 // Copyright (C) 2022-2024  ilobilo
 
 #include <lib/containers.hpp>
-#include <lib/panic.hpp>
 
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
@@ -33,7 +32,7 @@ namespace proc
     static auto active = &queues[0];
     static auto expired = &queues[1];
 
-    thread *next_thread()
+    thread *next_thread(size_t cpu_id)
     {
         std::unique_lock guard(lock);
 
@@ -43,10 +42,18 @@ namespace proc
         if (active->size() == 0)
             return nullptr;
 
-        auto ret = active->pop_back_element();
-        ret->in_queue = false;
+        for (auto it = active->rbegin(); it != active->rend(); it++)
+        {
+            auto ret = (*it);
+            if (ret->run_on < 0 || ret->run_on == static_cast<ssize_t>(cpu_id))
+            {
+                active->erase(std::next(it).base());
+                ret->in_queue = false;
 
-        return ret;
+                return ret;
+            }
+        }
+        return nullptr;
     }
 
     void yield()
@@ -127,8 +134,7 @@ namespace proc
 
     void pexit(process *proc, int code)
     {
-        if (proc->pid == 1)
-            PANIC("PID 1 exit()");
+        assert(proc->pid != 1, "PID 1 exit()");
 
         arch::int_toggle(false);
 
@@ -214,8 +220,7 @@ namespace proc
         uintptr_t pstack = pmm::alloc<uintptr_t>(user_stack_size / pmm::page_size);
         uintptr_t vustack = parent->usr_stack_top - user_stack_size;
 
-        if (!parent->pagemap->mmap_range(vustack, pstack, user_stack_size, vmm::mmap::prot_read | vmm::mmap::prot_write, vmm::mmap::map_anonymous))
-            PANIC("Could not map user stack!");
+        assert(parent->pagemap->mmap_range(vustack, pstack, user_stack_size, vmm::mmap::prot_read | vmm::mmap::prot_write, vmm::mmap::map_anonymous), "Could not map user stack");
 
         parent->usr_stack_top = vustack - pmm::page_size;
 
@@ -223,13 +228,17 @@ namespace proc
         return { tohh(pstack) + user_stack_size, vustack + user_stack_size };
     }
 
-    thread::thread(process *parent) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
+    thread::thread(process *parent) :
+        self(this), error(no_error), parent(parent),
+        user(false), in_queue(false), status(status::dequeued), run_on(-1)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
     }
 
-    thread::thread(process *parent, uintptr_t pc, uintptr_t arg) : self(this), error(no_error), parent(parent), user(false), in_queue(false), status(status::dequeued)
+    thread::thread(process *parent, uintptr_t pc, uintptr_t arg, ssize_t run_on) :
+        self(this), error(no_error), parent(parent),
+        user(false), in_queue(false), status(status::dequeued), run_on(run_on)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
@@ -238,7 +247,9 @@ namespace proc
         parent->threads.push_back(this);
     }
 
-    thread::thread(process *parent, uintptr_t pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : self(this), error(no_error), parent(parent), user(true), in_queue(false), status(status::dequeued)
+    thread::thread(process *parent, uintptr_t pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) :
+        self(this), error(no_error), parent(parent),
+        user(true), in_queue(false), status(status::dequeued), run_on(-1)
     {
         this->running_on = size_t(-1);
         this->tid = this->parent->alloc_tid();
@@ -283,7 +294,7 @@ namespace proc
 
     static void scheduler(cpu::registers_t *regs)
     {
-        auto new_thread = next_thread();
+        auto new_thread = next_thread(this_cpu()->id);
         while (new_thread != nullptr && new_thread->status != status::ready)
         {
             if (new_thread->status == status::killed)
@@ -303,7 +314,7 @@ namespace proc
             }
 
             enqueue_notready(new_thread);
-            new_thread = next_thread();
+            new_thread = next_thread(this_cpu()->id);
         }
 
         if (new_thread == nullptr)

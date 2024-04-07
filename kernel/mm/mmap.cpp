@@ -411,7 +411,7 @@ namespace vmm
 
         void *page = nullptr;
         if (local->flags & mmap::map_anonymous)
-            page = pmm::alloc(pagemap->page_size / pmm::page_size);
+            page = pmm::alloc(pagemap->get_psize() / pmm::page_size);
         else
         {
             auto res = local->global->res;
@@ -421,6 +421,6 @@ namespace vmm
         if (page == nullptr)
             return false;
 
-        return local->global->mmap_page(mpage * pagemap->page_size + 1, reinterpret_cast<uintptr_t>(page), local->prot);
+        return local->global->mmap_page(mpage * pagemap->get_psize() + 1, reinterpret_cast<uintptr_t>(page), local->prot);
     }
 } // namespace vmm

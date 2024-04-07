@@ -9,15 +9,16 @@ namespace time
     timespec realtime;
     timespec monotonic;
 
+    void init()
+    {
+        realtime = timespec(arch::epoch(), 0);
+        monotonic = timespec(arch::epoch(), 0);
+    }
+
     void timer_handler(size_t ns)
     {
-        if (realtime.to_ns() == 0)
-            realtime = timespec(arch::epoch(), 0);
-
-        if (monotonic.to_ns() == 0)
-            monotonic = timespec(arch::epoch(), 0);
-
         timespec interval(0, ns);
+
         realtime += interval;
         monotonic += interval;
     }

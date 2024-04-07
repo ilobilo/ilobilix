@@ -2,6 +2,7 @@
 
 #include <arch/x86_64/drivers/pci/pci_legacy.hpp>
 #include <drivers/pci/pci_acpi.hpp>
+#include <drivers/acpi.hpp>
 
 namespace pci
 {
@@ -10,8 +11,7 @@ namespace pci
         if (pci::acpi::init_ios() == false)
             pci::legacy::init_ios();
 
-        // We run this here because it might need pci to work
-        lai_create_namespace();
+        ::acpi::enable();
 
         if (pci::acpi::init_rbs() == false)
             pci::legacy::init_rbs();

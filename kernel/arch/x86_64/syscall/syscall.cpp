@@ -82,7 +82,7 @@ namespace syscall
         }
         else
         {
-            log::errorln("Unknown syscall {}!", regs->rax);
+            log::errorln("Unknown syscall {}", regs->rax);
             regs->rax = -ENOSYS;
         }
     }

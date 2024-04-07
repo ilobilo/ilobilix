@@ -303,7 +303,7 @@ __init__ bool init()
             at_least_one = true;
             net::register_nic(std::move(ctrl));
         }
-        else log::errorln("E1000: {}!", ret.error());
+        else log::errorln("E1000: {}", ret.error());
     }
 
     return at_least_one;
@@ -311,6 +311,6 @@ __init__ bool init()
 
 __fini__ bool fini()
 {
-    assert(false, "E1000->fini() not implemented!");
+    assert(false, "E1000->fini() not implemented");
     return false;
 }

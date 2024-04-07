@@ -15,6 +15,8 @@ void *memmove(void *dest, const void *src, size_t len);
 void *memchr(const void *ptr, int ch, size_t len);
 
 size_t strlen(const char *str);
+size_t strnlen(const char *str, size_t len);
+
 char *strdup(const char *str);
 
 char *strcat(char *dest, const char *src);

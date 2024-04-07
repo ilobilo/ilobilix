@@ -289,6 +289,6 @@ __init__ bool init()
 
 __fini__ bool fini()
 {
-    assert(false, "VMWare->fini() not implemented!");
+    assert(false, "VMWare->fini() not implemented");
     return false;
 }

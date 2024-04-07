@@ -14,7 +14,7 @@ namespace initrd
         auto mod = find_module("initrd");
         if (mod == nullptr)
         {
-            log::errorln("Could not find initrd module!");
+            log::errorln("Could not find initrd module");
             return;
         }
 
@@ -32,7 +32,7 @@ namespace initrd
         }
         else
         {
-            log::errorln("Initrd: Unknown archive format!");
+            log::errorln("Initrd: Unknown archive format");
             return;
         }
 

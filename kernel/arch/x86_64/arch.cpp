@@ -157,13 +157,25 @@ namespace arch
 
 namespace interrupts
 {
-    std::pair<handler&, size_t> allocate_handler()
+    std::pair<handler &, size_t> allocate_handler(size_t hint)
     {
-        return idt::allocate_handler();
+        return idt::allocate_handler(hint);
     }
 
     handler &get_handler(size_t vector)
     {
         return idt::handlers[vector];
+    }
+
+    void mask(size_t vector)
+    {
+        assert(vector >= 0x20);
+        idt::mask(vector - 0x20);
+    }
+
+    void unmask(size_t vector)
+    {
+        assert(vector >= 0x20);
+        idt::unmask(vector - 0x20);
     }
 } // namespace interrupts

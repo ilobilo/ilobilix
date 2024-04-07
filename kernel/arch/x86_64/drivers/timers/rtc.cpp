@@ -1,7 +1,9 @@
 // Copyright (C) 2022-2024  ilobilo
 
-#include <arch/x86_64/lib/io.hpp>
 #include <drivers/acpi.hpp>
+#include <arch/arch.hpp>
+
+#include <lib/io.hpp>
 
 namespace timers::rtc
 {
@@ -18,8 +20,10 @@ namespace timers::rtc
 
     uint8_t century()
     {
-        if (acpi::fadthdr && acpi::fadthdr->Century == 0)
+        auto fadt = acpi::get_fadt();
+        if (fadt != nullptr && fadt->century == 0)
             return 20;
+
         return read(0x32);
     }
 
@@ -62,10 +66,10 @@ namespace timers::rtc
     {
         uint64_t lastsec = time();
         while (lastsec == time())
-            asm volatile ("pause");
+            arch::pause();
 
         lastsec = time() + sec;
         while (lastsec != time())
-            asm volatile ("pause");
+            arch::pause();
     }
 } // namespace timers::rtc

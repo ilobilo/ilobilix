@@ -21,7 +21,7 @@ namespace timers::pit
     {
         volatile uint64_t target = time_ms() + ms;
         while (time_ms() < target)
-            asm volatile ("pause");
+            arch::pause();
     }
 
     void init()
@@ -30,7 +30,7 @@ namespace timers::pit
 
         uint64_t divisor = 1193180 / frequency;
 
-        io::out<uint8_t>(0x43, 0x36);
+        io::out<uint8_t>(0x43, 0x34);
 
         uint8_t l = static_cast<uint8_t>(divisor);
         uint8_t h = static_cast<uint8_t>(divisor >> 8);
@@ -39,11 +39,12 @@ namespace timers::pit
         io::out<uint8_t>(0x40, h);
 
         auto [handler, _vector] = idt::allocate_handler(idt::IRQ(0));
-        handler.set([](cpu::registers_t *regs)
+        handler.set([](cpu::registers_t *)
         {
             tick++;
-            time::timer_handler(1'000'000'000 / frequency);
+            time::timer_handler((1'000 / frequency) * 1'000'000);
         });
+        handler.eoi_first = true;
         idt::unmask((vector = _vector) - 0x20);
     }
 } // namespace timers::pit

@@ -25,7 +25,7 @@
 
     trace::print(reinterpret_cast<uintptr_t>(__builtin_frame_address(1)), 0, log::error_prefix);
 
-    log::errorln("System halted!");
+    log::errorln("System halted");
     arch::halt(false);
 }
 
@@ -42,7 +42,7 @@
 
     trace::print(reinterpret_cast<uintptr_t>(__builtin_frame_address(1)), 0, log::error_prefix);
 
-    log::errorln("System halted!");
+    log::errorln("System halted");
     arch::halt(false);
 }
 
@@ -72,7 +72,7 @@
     }
 
     log::errorln();
-    log::errorln("System halted!");
+    log::errorln("System halted");
 
     arch::halt(false);
 }

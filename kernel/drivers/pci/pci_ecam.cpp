@@ -7,7 +7,6 @@
 
 namespace pci::ecam
 {
-    static uintptr_t base_addr = -1;
     uintptr_t configio::getaddr(uint32_t bus, uint32_t dev, uint32_t func, size_t offset)
     {
         assert(bus >= this->bus_start && bus <= this->bus_end);
@@ -16,18 +15,13 @@ namespace pci::ecam
         if (this->mappings.contains(phys_addr))
             return this->mappings[phys_addr] + offset;
 
-        if (base_addr == static_cast<uintptr_t>(-1))
-            base_addr = vmm::alloc_vspace(vmm::vsptypes::ecam);
-
         static constexpr uintptr_t size = 1 << 20;
+        auto vaddr = vmm::alloc_vspace(vmm::vsptypes::ecam, size, sizeof(uint32_t));
 
-        auto virt_addr = base_addr;
-        base_addr += size;
+        vmm::kernel_pagemap->map_range(vaddr, phys_addr, size, vmm::rw, vmm::mmio);
+        this->mappings[phys_addr] = vaddr;
 
-        vmm::kernel_pagemap->map_range(virt_addr, phys_addr, size, vmm::rw, vmm::mmio);
-        this->mappings[phys_addr] = virt_addr;
-
-        return virt_addr + offset;
+        return vaddr + offset;
     }
 
     uint32_t configio::read(uint16_t seg, uint8_t bus, uint8_t dev, uint8_t func, size_t offset, size_t width)

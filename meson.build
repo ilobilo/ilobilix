@@ -168,9 +168,9 @@ deps = [
     dependency('string'),
     dependency('printf'),
     dependency('limine'),
+    dependency('uacpi'),
     dependency('cwalk'),
     dependency('veque'),
-    dependency('lai'),
     dependency('fmt')
 ]
 

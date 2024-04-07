@@ -4,12 +4,16 @@
 #include <arch/x86_64/drivers/timers/pit.hpp>
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
+
 #include <drivers/pci/pci.hpp>
 #include <drivers/smp.hpp>
+
 #include <lib/panic.hpp>
 #include <lib/time.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
+
+// #include <mm/vmm.hpp>
 
 namespace timers::hpet
 {
@@ -64,8 +68,14 @@ namespace timers::hpet
         this->regs->cmd &= ~(1 << 0);
     }
 
-    device::device(acpi::HPETHeader *table) : regs(reinterpret_cast<HPET*>(tohh(table->address.Address)))
+    device::device(header *table)
     {
+        // auto vaddr = vmm::alloc_vspace(vmm::vsptypes::other, sizeof(registers), sizeof(uint64_t));
+        // vmm::kernel_pagemap->map_range(vaddr, table->address.address, sizeof(registers), vmm::rw, vmm::mmio);
+
+        // this->regs = reinterpret_cast<registers *>(vaddr);
+        this->regs = reinterpret_cast<registers *>(tohh(table->address.address));
+
         this->stop();
         this->regs->cmd &= ~0b10;
 
@@ -199,7 +209,7 @@ namespace timers::hpet
             }
             else
             {
-                log::errorln("HPET: Neither standard nor FSB interrupt mappings are supported!");
+                log::errorln("HPET: Neither standard nor FSB interrupt mappings are supported");
                 continue;
             }
 
@@ -265,16 +275,19 @@ namespace timers::hpet
     {
         log::infoln("HPET: Initialising...");
 
-        auto table = acpi::findtable<acpi::HPETHeader>("HPET", 0);
-
-        if (table == nullptr)
+        uacpi_table *out_table;
+        if (uacpi_table_find_by_signature(acpi::signature("HPET"), &out_table) != UACPI_STATUS_OK)
         {
-            log::errorln("HPET table not found!");
+            log::errorln("HPET table not found");
             return;
         }
 
-        for (size_t i = 0; table != nullptr; i++, table = acpi::findtable<acpi::HPETHeader>("HPET", i))
-            devices.push_back(new device(table));
+        while (out_table != nullptr)
+        {
+            devices.push_back(new device(reinterpret_cast<header *>(out_table->virt_addr)));
+            if (uacpi_table_find_next_with_same_signature(&out_table) != UACPI_STATUS_OK)
+                break;
+        }
 
 #if !SYSCALL_DEBUG
         arch::int_toggle(false);

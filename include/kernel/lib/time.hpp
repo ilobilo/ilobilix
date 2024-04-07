@@ -10,6 +10,8 @@ namespace time
     extern timespec realtime;
     extern timespec monotonic;
 
+    void init();
+
     void timer_handler(size_t ns);
 
     uint64_t time_ns();
