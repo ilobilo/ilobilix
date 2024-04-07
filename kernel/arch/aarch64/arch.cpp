@@ -1,10 +1,14 @@
 // Copyright (C) 2022-2024  ilobilo
 
-#include <lib/interrupts.hpp>
-#include <lib/panic.hpp>
-
 #include <drivers/smp.hpp>
 #include <arch/arch.hpp>
+
+#include <init/kernel.hpp>
+
+#include <lib/interrupts.hpp>
+#include <lib/panic.hpp>
+#include <lib/time.hpp>
+
 #include <utility>
 
 namespace arch
@@ -67,7 +71,7 @@ namespace arch
 
     uint64_t epoch()
     {
-        return 0;
+        return boot_time_request.response->boot_time + (time::time_ms() / 1000);
     }
 
     // TODO
@@ -96,13 +100,23 @@ namespace arch
 
 namespace interrupts
 {
-    std::pair<handler&, size_t> allocate_handler()
+    std::pair<handler &, size_t> allocate_handler(size_t hint)
     {
-        PANIC("Not implemented!");
+        PANIC("Not implemented");
     }
 
     handler &get_handler(size_t vector)
     {
-        PANIC("Not implemented!");
+        PANIC("Not implemented");
+    }
+
+    void mask(size_t vector)
+    {
+        PANIC("Not implemented");
+    }
+
+    void unmask(size_t vector)
+    {
+        PANIC("Not implemented");
     }
 } // namespace interrupts

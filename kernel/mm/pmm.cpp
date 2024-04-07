@@ -4,7 +4,6 @@
 
 #include <lib/bitmap.hpp>
 #include <lib/alloc.hpp>
-#include <lib/panic.hpp>
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 
@@ -78,8 +77,7 @@ namespace pmm
         {
             lastindex = 0;
             ret = inner_alloc(i);
-            if (ret == nullptr)
-                PANIC("PMM: Out of memory!");
+            assert(ret != nullptr, "PMM: Out of memory");
         }
         memset(tohh(ret), 0, count * page_size);
 

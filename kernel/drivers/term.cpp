@@ -77,7 +77,7 @@ namespace term
 
         auto back_mod = find_module("background");
         if (back_mod == nullptr)
-            log::errorln("Terminal background not found!");
+            log::errorln("Terminal background not found");
         else
             image = image_open(back_mod->address, back_mod->size);
 

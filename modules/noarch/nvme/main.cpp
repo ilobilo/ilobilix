@@ -449,7 +449,7 @@ __init__ bool init()
             at_least_one = true;
             nvme::ctrls.push_back(std::move(ctrl));
         }
-        else log::errorln("NVME: {}!", ret.error());
+        else log::errorln("NVME: {}", ret.error());
     }
 
     return at_least_one;
@@ -457,6 +457,6 @@ __init__ bool init()
 
 __fini__ bool fini()
 {
-    assert(false, "NVME->fini() not implemented!");
+    assert(false, "NVME->fini() not implemented");
     return false;
 }

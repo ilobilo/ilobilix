@@ -1,10 +1,5 @@
 // Copyright (C) 2022-2024  ilobilo
 
-#include <acpispec/tables.h>
-#include <lai/helpers/sci.h>
-#include <lai/helpers/pm.h>
-#include <lai/drivers/ec.h>
-
 #include <drivers/acpi.hpp>
 #include <init/kernel.hpp>
 
@@ -14,12 +9,18 @@
 #include <lib/panic.hpp>
 #include <lib/time.hpp>
 #include <lib/log.hpp>
+
 #include <cpu/cpu.hpp>
 
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 
-#include <lai/core.h>
+#include <lib/glue/uacpi.hpp>
+
+#include <uacpi/utilities.h>
+#include <uacpi/notify.h>
+#include <uacpi/event.h>
+#include <uacpi/sleep.h>
 
 #if defined(__x86_64__)
 #include <arch/x86_64/cpu/ioapic.hpp>
@@ -29,228 +30,163 @@
 
 namespace acpi
 {
-    FADTHeader *fadthdr = nullptr;
-    MADTHeader *madthdr = nullptr;
-
-    std::vector<SDTHeader*> tables;
-
-    std::vector<MADTLapic> lapics;
-    std::vector<MADTIOApic> ioapics;
-    std::vector<MADTIso> isos;
-    std::vector<MADTIONmi> ionmis;
-    std::vector<MADTLNmi> lnmis;
-    std::vector<MADTLAPICAO> laddrovers;
-    std::vector<MADTLx2APIC> x2apics;
-
-    RSDP *rsdp = nullptr;
-    RSDT *rsdt = nullptr;
-    bool xsdt = false;
-
-    void *findtable(const char *signature, size_t skip)
+    acpi_fadt *get_fadt()
     {
-        if (!strncmp(signature, "DSDT", 4))
+        static acpi_fadt *fadt = nullptr;
+        static bool first = true;
+
+        if (first)
         {
-            uintptr_t dsdt_addr = 0;
-
-            if (xsdt == true && vmm::is_canonical(fadthdr->X_Dsdt))
-                dsdt_addr = fadthdr->X_Dsdt;
-            else
-                dsdt_addr = fadthdr->Dsdt;
-
-            return reinterpret_cast<void*>(tohh(dsdt_addr));
+            uacpi_table_fadt(&fadt);
+            first = false;
         }
+        return fadt;
+    }
 
-        for (const auto &header : tables)
+    namespace madt
+    {
+        header *hdr = nullptr;
+
+        // std::vector<lapic *> lapics;
+        std::vector<ioapic *> ioapics;
+        std::vector<iso *> isos;
+        // std::vector<ionmi *> ionmis;
+        // std::vector<lnmi *> lnmis;
+        // std::vector<lapicao *> laddrovers;
+        // std::vector<x2apic *> x2apics;
+
+        void init()
         {
-            if (!strncmp(reinterpret_cast<const char*>(header->signature), signature, 4))
+            uacpi_table *out_table;
+            if (uacpi_table_find_by_signature(signature("APIC"), &out_table) != UACPI_STATUS_OK)
+                return;
+
+            hdr = reinterpret_cast<header *>(out_table->virt_addr);
+
+            auto start = tohh(reinterpret_cast<uintptr_t>(hdr->entries));
+            auto end = tohh(reinterpret_cast<uintptr_t>(hdr) + hdr->sdt.length);
+
+            auto madt = reinterpret_cast<madt_t *>(start);
+
+            for (uintptr_t entry = start; entry < end; entry += madt->length, madt = reinterpret_cast<madt_t *>(entry))
             {
-                if (skip > 0)
-                    skip--;
-                else
-                    return reinterpret_cast<void*>(header);
+                switch (madt->type)
+                {
+                    // case 0:
+                    //     lapics.push_back(reinterpret_cast<lapic*>(entry));
+                    //     break;
+                    case 1:
+                        ioapics.push_back(reinterpret_cast<ioapic*>(entry));
+                        break;
+                    case 2:
+                        isos.push_back(reinterpret_cast<iso*>(entry));
+                        break;
+                    // case 3:
+                    //     ionmis.push_back(reinterpret_cast<ionmi*>(entry));
+                    //     break;
+                    // case 4:
+                    //     lnmis.push_back(reinterpret_cast<lnmi*>(entry));
+                    //     break;
+                    // case 5:
+                    //     laddrovers.push_back(reinterpret_cast<lapicao*>(entry));
+                    //     break;
+                    // case 9:
+                    //     x2apics.push_back(reinterpret_cast<x2apic*>(entry));
+                    //     break;
+                }
             }
         }
 
-        return nullptr;
-    }
-
-    void madt_init()
-    {
-        if (madthdr == nullptr)
-            return;
-
-        uintptr_t start = tohh(reinterpret_cast<uintptr_t>(madthdr->entries));
-        uintptr_t end = tohh(reinterpret_cast<uintptr_t>(madthdr) + madthdr->sdt.length);
-
-        MADT *madt = reinterpret_cast<MADT*>(start);
-
-        for (uintptr_t entry = start; entry < end; entry += madt->length, madt = reinterpret_cast<MADT*>(entry))
-        {
-            switch (madt->type)
-            {
-                case 0:
-                    lapics.push_back(*reinterpret_cast<MADTLapic*>(entry));
-                    break;
-                case 1:
-                    ioapics.push_back(*reinterpret_cast<MADTIOApic*>(entry));
-                    break;
-                case 2:
-                    isos.push_back(*reinterpret_cast<MADTIso*>(entry));
-                    break;
-                case 3:
-                    ionmis.push_back(*reinterpret_cast<MADTIONmi*>(entry));
-                    break;
-                case 4:
-                    lnmis.push_back(*reinterpret_cast<MADTLNmi*>(entry));
-                    break;
-                case 5:
-                    laddrovers.push_back(*reinterpret_cast<MADTLAPICAO*>(entry));
-                    break;
-                case 9:
-                    x2apics.push_back(*reinterpret_cast<MADTLx2APIC*>(entry));
-                    break;
-            }
-        }
-    }
+    } // namespace madt
 
     void ec_init()
     {
-        log::infoln("ACPI: Initialising ECs...");
-
-        LAI_CLEANUP_STATE lai_state_t state;
-        lai_init_state(&state);
-
-        LAI_CLEANUP_VAR lai_variable_t pnp_id = LAI_VAR_INITIALIZER;
-        lai_eisaid(&pnp_id, ACPI_EC_PNP_ID);
-
-        lai_ns_iterator it = LAI_NS_ITERATOR_INITIALIZER;
-        lai_nsnode_t *node = nullptr;
-        while ((node = lai_ns_iterate(&it)))
-        {
-            if (lai_check_device_pnp_id(node, &pnp_id, &state))
-                continue;
-
-            auto driver = new lai_ec_driver;
-            lai_init_ec(node, driver);
-
-            lai_ns_child_iterator child_it = LAI_NS_CHILD_ITERATOR_INITIALIZER(node);
-            lai_nsnode_t *child_node = nullptr;
-            while ((child_node = lai_ns_child_iterate(&child_it)))
-            {
-                if (lai_ns_get_node_type(child_node) == LAI_NODETYPE_OPREGION)
-                    if (lai_ns_get_opregion_address_space(child_node) == ACPI_OPREGION_EC)
-                        lai_ns_override_opregion(child_node, &lai_ec_opregion_override, driver);
-            }
-
-            // lai_nsnode_t* reg = lai_resolve_path(node, "_REG");
-            // if (reg != nullptr)
-            // {
-            //     LAI_CLEANUP_VAR lai_variable_t address_space = LAI_VAR_INITIALIZER;
-            //     LAI_CLEANUP_VAR lai_variable_t enable = LAI_VAR_INITIALIZER;
-
-            //     address_space.type = LAI_INTEGER;
-            //     address_space.integer = 3;
-
-            //     enable.type = LAI_INTEGER;
-            //     enable.integer = 1;
-
-            //     lai_api_error_t error = lai_eval_largs(nullptr, reg, &state, &address_space, &enable, nullptr);
-            //     if (error != LAI_ERROR_NONE)
-            //         log::errorln("ACPI: Failed to evaluate EC _REG: {}", lai_api_error_to_string(error));
-            // }
-        }
+        // TODO
+        // log::infoln("ACPI: Initialising ECs...");
     }
 
     void poweroff()
     {
-        lai_enter_sleep(5);
+        log::infoln("ACPI: Preparing for sleep state 5...");
+
+        auto ret = uacpi_prepare_for_sleep_state(UACPI_SLEEP_STATE_S5);
+        assert(ret == UACPI_STATUS_OK);
+
+        log::infoln("ACPI: Disabling interrupts and entering sleep state 5...");
+
+        arch::int_toggle(false);
+
+        ret = uacpi_enter_sleep_state(UACPI_SLEEP_STATE_S5);
+        assert(ret == UACPI_STATUS_OK);
     }
 
     void reboot()
     {
-        lai_acpi_reset();
+        auto ret = uacpi_reboot();
+        if (uacpi_unlikely_error(ret))
+            log::errorln("ACPI: Reset failed: {}", uacpi_status_to_string(ret));
     }
 
+    // called from arch/*/drivers/pci/pci.cpp
     void enable()
     {
-        // lai_enable_tracing(LAI_TRACE_OP);
+        log::infoln("ACPI: Enabling...");
+
+        uacpi::init_workers();
+
+        auto ret = uacpi_namespace_load();
+        assert(ret == UACPI_STATUS_OK);
+
+        ret = uacpi_set_interrupt_model(UACPI_INTERRUPT_MODEL_IOAPIC);
+        assert(ret == UACPI_STATUS_OK);
+
         ec_init();
 
-        log::infoln("ACPI: Enabling...");
-#if defined(__x86_64__)
-        lai_enable_acpi(ioapic::initialised ? 1 : 0);
+        ret = uacpi_namespace_initialize();
+        assert(ret == UACPI_STATUS_OK);
 
-        log::infoln("ACPI: Remapping SCI interrupt...");
+        uacpi_finalize_gpe_initialization();
 
-        uint8_t sci_int = fadthdr->SCI_Interrupt;
+        uacpi_install_fixed_event_handler(
+            UACPI_FIXED_EVENT_POWER_BUTTON,
+            [](uacpi_handle) -> uacpi_interrupt_ret
+            {
+                uacpi_kernel_schedule_work(UACPI_WORK_GPE_EXECUTION, [](uacpi_handle) { arch::shutdown(); }, nullptr);
+                return UACPI_INTERRUPT_HANDLED;
+            }, nullptr
+        );
 
-        if(madthdr->legacy_pic() == false && ioapic::initialised == true)
-            ioapic::set(sci_int, sci_int + 0x20, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic::active_low | ioapic::level_sensative, smp_request.response->bsp_lapic_id);
-
-        idt::handlers[sci_int + 0x20].set([](auto)
+        uacpi_find_devices("PNP0C0C", [](void *, uacpi_namespace_node *node)
         {
-            uint16_t event = lai_get_sci_event();
-            if (event & ACPI_POWER_BUTTON)
-                arch::shutdown();
-        });
-        idt::unmask(sci_int);
-#else
-        lai_enable_acpi(0);
-#endif
+            uacpi_install_notify_handler(node, [](uacpi_handle, uacpi_namespace_node *, uacpi_u64 value) -> uacpi_status
+                {
+                    // 0x80: S0 Power Button Pressed
+                    if (value != 0x80)
+                        return UACPI_STATUS_OK;
+
+                    arch::shutdown();
+
+                    return UACPI_STATUS_OK;
+                }, nullptr
+            );
+            return UACPI_NS_ITERATION_DECISION_CONTINUE;
+        }, nullptr);
     }
 
     void init()
     {
         log::infoln("ACPI: Initialising...");
 
-        rsdp = reinterpret_cast<RSDP*>(tohh(rsdp_request.response->address));
+        uacpi_init_params params {
+            .rsdp = reinterpret_cast<uacpi_phys_addr>(fromhh(rsdp_request.response->address)),
+            .rt_params = {
+                .log_level = UACPI_LOG_INFO,
+                .flags = 0
+            },
+            .no_acpi_mode = false
+        };
+        assert(uacpi_initialize(&params) == UACPI_STATUS_OK);
 
-        if (rsdp->revision >= 2 && rsdp->xsdtaddr)
-        {
-            xsdt = true;
-            rsdt = reinterpret_cast<RSDT*>(tohh(rsdp->xsdtaddr));
-            log::infoln("ACPI: Found XSDT at: 0x{:X}", reinterpret_cast<uintptr_t>(rsdt));
-        }
-        else
-        {
-            xsdt = false;
-            rsdt = reinterpret_cast<RSDT*>(tohh(rsdp->rsdtaddr));
-            log::infoln("ACPI: Found RSDT at: 0x{:X}", reinterpret_cast<uintptr_t>(rsdt));
-        }
-
-        size_t entries = (rsdt->header.length - sizeof(SDTHeader)) / (xsdt ? 8 : 4);
-        if (entries != 0)
-        {
-            log::info("ACPI: Found Tables:");
-            for (size_t i = 0; i < entries; i++)
-            {
-                auto header = reinterpret_cast<SDTHeader*>(tohh(xsdt ? rsdt->tablesx[i] : rsdt->tables[i]));
-                if (header == nullptr)
-                    continue;
-
-                auto checksum = [header]() -> bool
-                {
-                    uint8_t sum = 0;
-                    for (size_t i = 0; i < header->length; i++)
-                        sum += reinterpret_cast<uint8_t*>(header)[i];
-                    return sum == 0;
-                };
-
-                if (checksum())
-                {
-                    log::print(" {}", std::string_view(reinterpret_cast<const char *>(header->signature), 4));
-                    tables.push_back(header);
-                }
-            }
-            log::println();
-        }
-
-        madthdr = reinterpret_cast<MADTHeader*>(findtable("APIC", 0));
-        fadthdr = reinterpret_cast<FADTHeader*>(findtable("FACP", 0));
-
-        madt_init();
-
-        lai_set_acpi_revision(rsdp->revision);
-        // lai_create_namespace(); // see arch/*/drivers/pci/pci.cpp
+        madt::init();
     }
 } // namespace acpi

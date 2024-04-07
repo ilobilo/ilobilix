@@ -445,7 +445,7 @@ namespace vfs
         {
             case s_ififo:
             case s_ifsock:
-                log::errorln("mknod: s_ififo and s_ifsock are not yet supported!");
+                log::errorln("mknod: s_ififo and s_ifsock are not yet supported");
                 return_err(-1, EINVAL);
             case s_ifdir:
             case s_iflnk:

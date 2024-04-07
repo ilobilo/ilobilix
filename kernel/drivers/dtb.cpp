@@ -15,8 +15,8 @@ namespace dtb
     void init()
     {
         auto dtb = find_module("dtb");
-        assert(dtb != nullptr, "Could not find DTB module!");
-        assert(dtb->address != nullptr, "Could not find DTB module!");
+        assert(dtb != nullptr, "Could not find DTB module");
+        assert(dtb->address != nullptr, "Could not find DTB module");
 
         tree.initialize(dtb->address);
     }

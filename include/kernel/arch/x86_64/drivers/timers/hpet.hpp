@@ -11,29 +11,25 @@
 
 namespace timers::hpet
 {
+    struct [[gnu::packed]] header
+    {
+        acpi_sdt_hdr header;
+        uint8_t hardware_rev_id;
+        uint8_t comparator_count : 5;
+        uint8_t counter_size : 1;
+        uint8_t reserved : 1;
+        uint8_t legacy_replacement : 1;
+        uint16_t pci_vendor_id;
+        acpi::genericaddr address;
+        uint8_t hpet_number;
+        uint16_t minimum_tick;
+        uint8_t page_protection;
+    };
+
     enum class modes
     {
         periodic,
         oneshot
-    };
-
-    struct [[gnu::packed]] HPET
-    {
-        uint64_t cap;
-        uint64_t reserved;
-        uint64_t cmd;
-        uint64_t reserved2;
-        uint64_t ist;
-        uint64_t reserved3[25];
-        uint64_t main_counter;
-        uint64_t reserved4;
-        struct [[gnu::packed]]
-        {
-            uint64_t cmd;
-            uint64_t val;
-            uint64_t fsb;
-            uint64_t reserved;
-        } comparators[];
     };
 
     class device;
@@ -103,7 +99,26 @@ namespace timers::hpet
     {
         friend class comparator;
         private:
-        volatile HPET *regs;
+        struct [[gnu::packed]] registers
+        {
+            uint64_t cap;
+            uint64_t reserved;
+            uint64_t cmd;
+            uint64_t reserved2;
+            uint64_t ist;
+            uint64_t reserved3[25];
+            uint64_t main_counter;
+            uint64_t reserved4;
+            struct [[gnu::packed]]
+            {
+                uint64_t cmd;
+                uint64_t val;
+                uint64_t fsb;
+                uint64_t reserved;
+            } comparators[];
+        };
+
+        volatile registers *regs;
 
         uint8_t comp_count;
         uint64_t clk;
@@ -116,7 +131,7 @@ namespace timers::hpet
         void stop();
 
         public:
-        device(acpi::HPETHeader *table);
+        device(header *table);
 
         void nsleep(uint64_t ns);
         void msleep(uint64_t ms);

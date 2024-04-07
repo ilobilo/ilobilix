@@ -5,6 +5,8 @@
 #include <atomic>
 
 namespace arch { void pause(); }
+namespace time { uint64_t time_ns(); }
+
 struct ticket_lock
 {
     private:
@@ -12,7 +14,8 @@ struct ticket_lock
     std::atomic_size_t _serving_ticket;
 
     public:
-    constexpr ticket_lock() : _next_ticket(0), _serving_ticket(0) { }
+    constexpr ticket_lock() :
+        _next_ticket(0), _serving_ticket(0) { }
 
     ticket_lock(const ticket_lock &) = delete;
     ticket_lock &operator=(const ticket_lock &) = delete;
@@ -33,7 +36,7 @@ struct ticket_lock
         this->_serving_ticket.store(current + 1, std::memory_order_release);
     }
 
-    bool is_locked()
+    bool is_locked() const
     {
         auto current = this->_serving_ticket.load(std::memory_order_relaxed);
         auto next = this->_next_ticket.load(std::memory_order_relaxed);
@@ -47,6 +50,16 @@ struct ticket_lock
 
         this->lock();
         return true;
+    }
+
+    bool try_lock_until(uint64_t ntimeout)
+    {
+        // TODO: proper sleep
+        uint64_t target = time::time_ns() + ntimeout;
+        while (this->is_locked() && time::time_ns() < target)
+            arch::pause();
+
+        return this->try_lock();
     }
 };
 

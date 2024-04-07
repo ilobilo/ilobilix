@@ -13,28 +13,21 @@ namespace event
     {
         struct event_t
         {
-            std::atomic_size_t triggered = 0;
-            // std::atomic_bool triggered = false;
-            std::mutex lock;
-
-            void await();
-            bool await_timeout(size_t ms);
-            void trigger(bool drop = false);
-
-            event_t() = default;
-        };
-
-        struct alt_event_t
-        {
+            private:
             std::atomic_size_t triggered = 0;
             std::atomic_size_t awaiters = 0;
             std::mutex lock;
 
+            public:
             void await();
             bool await_timeout(size_t ms);
-            void trigger(bool drop = false);
 
-            alt_event_t() = default;
+            void trigger(bool drop = false);
+            bool drop();
+
+            bool has_awaiters();
+
+            event_t() = default;
         };
     } // namespace simple
 

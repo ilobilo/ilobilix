@@ -123,12 +123,14 @@ namespace proc
         ssize_t timeout = -1;
         size_t event = 0;
 
+        ssize_t run_on;
+
         thread(process *parent);
 
-        thread(process *parent, uintptr_t pc, uintptr_t arg = 0);
+        thread(process *parent, uintptr_t pc, uintptr_t arg, ssize_t run_on = -1);
         thread(process *parent, uintptr_t pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv);
 
-        thread(process *parent, auto pc, auto arg = 0) : thread(parent, uintptr_t(pc), uintptr_t(arg)) { }
+        thread(process *parent, auto pc, auto arg, ssize_t run_on = -1) : thread(parent, uintptr_t(pc), uintptr_t(arg), run_on) { }
         thread(process *parent, auto pc, std::span<std::string_view> argv, std::span<std::string_view> envp, elf::exec::auxval auxv) : thread(parent, uintptr_t(pc), argv, envp, auxv) { }
 
         ~thread();

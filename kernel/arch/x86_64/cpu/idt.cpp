@@ -24,11 +24,14 @@ namespace idt
 
     IDTPtr invalid { 0, 0 };
 
-    std::pair<interrupts::handler&, uint8_t> allocate_handler(uint8_t hint)
+    std::pair<interrupts::handler &, uint8_t> allocate_handler(uint8_t hint)
     {
+        if (hint < 0x20)
+            hint += 0x20;
+
         hint = std::max(hint, IRQ(0));
 
-        if (acpi::madthdr->legacy_pic() == true)
+        if (acpi::madt::hdr->legacy_pic() == true)
         {
             if ((hint >= IRQ(0) && hint <= IRQ(15)) && handlers[hint].used() == false)
                 return { handlers[hint], hint };
@@ -43,12 +46,12 @@ namespace idt
             }
         }
 
-        PANIC("IDT: Out of interrupt handlers!");
+        PANIC("IDT: Out of interrupt handlers");
     }
 
     void mask(uint8_t irq)
     {
-        if (ioapic::initialised == true && acpi::madthdr->legacy_pic())
+        if (ioapic::initialised == true && acpi::madt::hdr->legacy_pic())
             ioapic::mask_irq(irq);
         else
             pic::mask(irq);
@@ -56,7 +59,7 @@ namespace idt
 
     void unmask(uint8_t irq)
     {
-        if (ioapic::initialised == true && acpi::madthdr->legacy_pic())
+        if (ioapic::initialised == true && acpi::madt::hdr->legacy_pic())
             ioapic::unmask_irq(irq);
         else
             pic::unmask(irq);

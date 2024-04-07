@@ -80,7 +80,7 @@ namespace smp
             cpuptr->fpu_save = cpu::fxsave;
             cpuptr->fpu_restore = cpu::fxrstor;
         }
-        else PANIC("No known SIMD save mechanism!");
+        else PANIC("No known SIMD save mechanism");
 
         cpu::wrmsr(0xC0000080, cpu::rdmsr(0xC0000080) | (1 << 0)); // IA32_EFER enable syscall
         cpu::wrmsr(0xC0000081, ((uint64_t(gdt::GDT_DATA) | 0x03) << 48) | (uint64_t(gdt::GDT_CODE) << 32)); // IA32_STAR ss and cs

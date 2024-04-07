@@ -76,6 +76,14 @@ extern "C"
         return length;
     }
 
+    size_t strnlen(const char *str, size_t len)
+    {
+        size_t length = 0;
+        while (length < len && str[length])
+            length++;
+        return length;
+    }
+
     char *strdup(const char *str)
     {
         size_t len = strlen(str) + 1;

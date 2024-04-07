@@ -72,7 +72,8 @@ namespace vmm
     {
         switch (cache)
         {
-            case uncachable:
+            case uncacheable:
+            case uncacheable_strong:
                 return NC;
             case write_through:
                 return WT;
@@ -251,7 +252,7 @@ namespace vmm
 
         caching ret2;
         if (flags & NC)
-            ret2 = uncachable;
+            ret2 = uncacheable_strong;
         if (flags & WT)
             ret2 = write_through;
         if (flags & WB)
@@ -347,7 +348,7 @@ namespace vmm
         else if (aa64mmfr0.tgran64 == 0b0000)
             psize = psize_64kib;
         else
-            PANIC("VMM: Unknown page size!");
+            PANIC("VMM: Unknown page size");
 
         if (paging_mode == LIMINE_PAGING_MODE_MAX && (
                 ((tcr_el1 << 59) & 1) == 1 && feat_lpa == true && (

@@ -29,7 +29,7 @@ namespace interrupts
             return true;
         }
 
-        bool is_reserved()
+        bool is_reserved() const
         {
             return this->reserved == true;
         }
@@ -46,11 +46,16 @@ namespace interrupts
         {
             bool ret = static_cast<bool>(this->handler);
             this->handler.clear();
-            this->reserved = false;
             return ret;
         }
 
-        bool used()
+        bool reset_all()
+        {
+            this->reserved = false;
+            return this->reset();
+        }
+
+        bool used() const
         {
             return bool(this->handler);
         }
@@ -65,6 +70,9 @@ namespace interrupts
         }
     };
 
-    std::pair<handler&, size_t> allocate_handler();
+    std::pair<handler &, size_t> allocate_handler(size_t hint = 0);
     handler &get_handler(size_t vector);
+
+    void mask(size_t vector);
+    void unmask(size_t vector);
 } // namespace interrupts

@@ -41,8 +41,9 @@ namespace ioapic
     ioapic::ioapic(uintptr_t phys_mmio_base, uint32_t gsi_base) : gsi_base(gsi_base)
     {
         this->mmio_base = tohh(phys_mmio_base);
-        // this->mmio_base = malloc<uintptr_t>(0x1000);
-        // vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw);
+
+        this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
+        vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw, vmm::caching::mmio);
 
         this->redirs = ((this->read(0x01) >> 16) & 0xFF) + 1;
 
@@ -93,10 +94,10 @@ namespace ioapic
 
     std::optional<std::pair<uint8_t, uint16_t>> irq_for_gsi(uint32_t gsi)
     {
-        for (const auto &entry : acpi::isos)
+        for (const auto entry : acpi::madt::isos)
         {
-            if (entry.gsi == gsi)
-                return std::make_pair(entry.irq_source, entry.flags);
+            if (entry->gsi == gsi)
+                return std::make_pair(entry->irq_source, entry->flags);
         }
         return std::nullopt;
     }
@@ -130,11 +131,11 @@ namespace ioapic
 
     void mask_irq(uint8_t irq)
     {
-        for (const auto &iso : acpi::isos)
+        for (const auto iso : acpi::madt::isos)
         {
-            if (iso.irq_source == irq)
+            if (iso->irq_source == irq)
             {
-                mask(iso.gsi);
+                mask(iso->gsi);
                 return;
             }
         }
@@ -143,11 +144,11 @@ namespace ioapic
 
     void unmask_irq(uint8_t irq)
     {
-        for (const auto &iso : acpi::isos)
+        for (const auto iso : acpi::madt::isos)
         {
-            if (iso.irq_source == irq)
+            if (iso->irq_source == irq)
             {
-                unmask(iso.gsi);
+                unmask(iso->gsi);
                 return;
             }
         }
@@ -158,36 +159,44 @@ namespace ioapic
     {
         log::infoln("IOAPIC: Initialising...");
 
-        if (acpi::madthdr == nullptr || acpi::ioapics.empty())
+        if (acpi::madt::hdr == nullptr || acpi::madt::ioapics.empty())
         {
             // TODO: We currently don't support legacy PIC
-            // log::errorln("MADT table not found!");
-            PANIC("MADT table not found!");
-            return;
+            // log::errorln("MADT table not found");
+            PANIC("MADT table not found");
+            // return;
         }
 
         pic::disable();
 
-        for (const auto &entry : acpi::ioapics)
-            ioapics.emplace_back(entry.addr, entry.gsib);
+        for (const auto entry : acpi::madt::ioapics)
+            ioapics.emplace_back(entry->addr, entry->gsib);
 
         auto redirect_isa_irq = [](size_t i)
         {
-            for (const auto &iso : acpi::isos)
+            for (const auto iso : acpi::madt::isos)
             {
-                if (iso.irq_source == i)
+                if (iso->irq_source == i)
                 {
-                    set(iso.gsi, iso.irq_source + 0x20, delivery::fixed, destmode::physical, iso.flags | masked, smp_request.response->bsp_lapic_id);
-                    idt::handlers[iso.irq_source + 0x20].reserve();
+                    set(
+                        iso->gsi, iso->irq_source + 0x20,
+                        delivery::fixed, destmode::physical,
+                        iso->flags | masked, smp_request.response->bsp_lapic_id
+                    );
+                    idt::handlers[iso->irq_source + 0x20].reserve();
                     return;
                 }
             }
 
-            set(i, i + 0x20, delivery::fixed, destmode::physical, masked, smp_request.response->bsp_lapic_id);
+            set(
+                i, i + 0x20,
+                delivery::fixed, destmode::physical,
+                masked, smp_request.response->bsp_lapic_id
+            );
             idt::handlers[i + 0x20].reserve();
         };
 
-        if (acpi::madthdr->legacy_pic())
+        if (acpi::madt::hdr->legacy_pic())
         {
             for (size_t i = 0; i < 16; i++)
             {

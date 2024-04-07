@@ -123,7 +123,6 @@ namespace elf
     {
         std::unordered_map<std::string_view, driver_t*> drivers;
         std::vector<module_t> modules;
-        static uintptr_t base_addr = 0;
         static std::mutex lock;
 
         static std::vector<driver_t*> get_drivers(const Elf64_Half e_shnum, Elf64_Shdr *sections, char *shstrtable)
@@ -142,7 +141,7 @@ namespace elf
 
                         if (drivers.contains(name))
                         {
-                            log::infoln("ELF: Driver with name '{}' already exists!", name);
+                            log::infoln("ELF: Driver with name '{}' already exists", name);
                             goto next;
                         }
 
@@ -169,25 +168,19 @@ namespace elf
 
         uintptr_t map(uintptr_t size)
         {
-            if (base_addr == 0)
-                base_addr = vmm::alloc_vspace(vmm::vsptypes::modules);
+            auto &pmap = vmm::kernel_pagemap;
 
-            uintptr_t loadaddr = base_addr;
-            base_addr += (size = align_up(size, pmm::page_size));
-
+            uintptr_t vaddr = vmm::alloc_vspace(vmm::vsptypes::modules, size, pmap->get_psize());
             uintptr_t paddr = pmm::alloc<uintptr_t>(size / pmm::page_size);
-            vmm::kernel_pagemap->map_range(loadaddr, paddr, size, vmm::rwx);
 
-            return loadaddr;
+            assert(pmap->map_range(vaddr, paddr, size, vmm::rwx));
+            return vaddr;
         }
 
         void unmap(uintptr_t loadaddr, size_t size)
         {
-            if (loadaddr == base_addr - size)
-                base_addr = loadaddr;
-
             pmm::free(vmm::kernel_pagemap->virt2phys(loadaddr), size / pmm::page_size);
-            vmm::kernel_pagemap->unmap_range(loadaddr, size);
+            assert(vmm::kernel_pagemap->unmap_range(loadaddr, size));
         }
 
         [[clang::no_sanitize("alignment")]]
@@ -196,17 +189,17 @@ namespace elf
             auto unmappedhdr = reinterpret_cast<Elf64_Ehdr*>(address);
             if (memcmp(unmappedhdr->e_ident, ELFMAG, 4))
             {
-                log::errorln("ELF: Invalid magic!");
+                log::errorln("ELF: Invalid magic");
                 return std::nullopt;
             }
             if (unmappedhdr->e_ident[EI_CLASS] != ELFCLASS64)
             {
-                log::errorln("ELF: Invalid class!");
+                log::errorln("ELF: Invalid class");
                 return std::nullopt;
             }
             if (unmappedhdr->e_type != ET_REL)
             {
-                log::errorln("ELF: Not a relocatable object!");
+                log::errorln("ELF: Not a relocatable object");
                 return std::nullopt;
             }
 
@@ -383,7 +376,7 @@ namespace elf
                             // }
 #endif
                             default:
-                                log::errorln("ELF: Unsupported relocation {} found!", ELF64_R_TYPE(entry->r_info));
+                                log::errorln("ELF: Unsupported relocation '{}' found", ELF64_R_TYPE(entry->r_info));
                                 unmap(loadaddr, size);
                                 return std::nullopt;
                         }
@@ -405,7 +398,7 @@ namespace elf
             if (mod.has_drivers == true)
                 syms::symbol_tables.push_back(syms::add_syms(loadaddr, header.e_shnum, sections));
             else
-                log::warnln("ELF: Could not find any drivers in the module!");
+                log::warnln("ELF: Could not find any drivers in the module");
 
             modules.push_back(mod);
             return drvs;
@@ -468,7 +461,7 @@ namespace elf
 
                 if (drivers.contains(dep) == false)
                 {
-                    log::errorln("ELF: Dependency '{}' of driver '{}' not found!", dep, name);
+                    log::errorln("ELF: Dependency '{}' of driver '{}' not found", dep, name);
                     return false;
                 }
 
@@ -477,13 +470,13 @@ namespace elf
                 {
                     if (deps == false)
                     {
-                        log::errorln("ELF: Dependency '{}' of driver '{}' unresolved!", dep, name);
+                        log::errorln("ELF: Dependency '{}' of driver '{}' unresolved", dep, name);
                         return false;
                     }
                     run(depdriver, deps);
                     if (depdriver->initialised == false)
                     {
-                        log::errorln("ELF: Could not initialise dependency '{}' of driver '{}'!", dep, name);
+                        log::errorln("ELF: Could not initialise dependency '{}' of driver '{}'", dep, name);
                         return false;
                     }
                 }
@@ -495,7 +488,7 @@ namespace elf
                 log::infoln("ELF: Running driver '{}'", name);
                 ret = driver->init();
             }
-            else log::errorln("ELF: Driver '{}' does not have init() function!", name);
+            else log::errorln("ELF: Driver '{}' does not have init() function", name);
 
             return driver->failed = !(driver->initialised = ret);
         }
@@ -516,7 +509,7 @@ namespace elf
             if (driver->fini)
                 driver->fini();
             else
-                log::warnln("ELF: Driver '{}' does not have fini() function!", driver->name);
+                log::warnln("ELF: Driver '{}' does not have fini() function", driver->name);
 
             driver->initialised = false;
         }
@@ -538,7 +531,7 @@ namespace elf
 
             auto drvs = get_drivers(header->e_shnum, sections, shstrtable);
             if (drvs.empty())
-                log::errorln("ELF: Could not find any builtin drivers!");
+                log::errorln("ELF: Could not find any builtin drivers");
         }
     } // namespace modules
 

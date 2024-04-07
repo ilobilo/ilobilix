@@ -20,10 +20,10 @@ namespace rtl8139
         if (status.rok == 1)
             this->receive();
         if (status.rer == 1)
-            PANIC("RTL8139: RX error not implemented!");
+            PANIC("RTL8139: RX error not implemented");
         if (status.tok == 1) { /* Transmit OK */ }
         if (status.ter == 1)
-            PANIC("RTL8139: TX error not implemented!");
+            PANIC("RTL8139: TX error not implemented");
         if (status.rxovw == 1)
         {
             // TODO: ???
@@ -34,12 +34,12 @@ namespace rtl8139
         }
         if (status.lnkch == 1) { /* Link change */ }
         if (status.fovw == 1)
-            PANIC("RTL8139: RX FIFO overflow not implemented!");
+            PANIC("RTL8139: RX FIFO overflow not implemented");
         if (status.lench == 1) { /* Cable length change */ }
         if (status.tmout == 1)
-            PANIC("RTL8139: Timeout not implemented!");
+            PANIC("RTL8139: Timeout not implemented");
         if (status.syser == 1)
-            PANIC("RTL8139: System error not implemented!");
+            PANIC("RTL8139: System error not implemented");
     }
 
     void Controller::receive()
@@ -277,7 +277,7 @@ __init__ bool init()
             at_least_one = true;
             net::register_nic(std::move(ctrl));
         }
-        else log::errorln("RTL8139: {}!", ret.error());
+        else log::errorln("RTL8139: {}", ret.error());
     }
 
     return at_least_one;
@@ -285,6 +285,6 @@ __init__ bool init()
 
 __fini__ bool fini()
 {
-    assert(false, "RTL8139->fini() not implemented!");
+    assert(false, "RTL8139->fini() not implemented");
     return false;
 }

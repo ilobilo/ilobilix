@@ -36,7 +36,7 @@ namespace serial
 
     void second_early_init()
     {
-        uintptr_t vaddr = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000);
+        uintptr_t vaddr = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint16_t));
         vmm::kernel_pagemap->map(vaddr, uart, vmm::rw, vmm::mmio);
         addr = vaddr;
 

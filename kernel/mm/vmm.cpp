@@ -39,8 +39,8 @@ namespace vmm
         {
             limine_memmap_entry *mmap = memmap_request.response->entries[i];
 
-            uintptr_t base = align_down(mmap->base, kernel_pagemap->page_size);
-            uintptr_t top = align_up(mmap->base + mmap->length, kernel_pagemap->page_size);
+            uintptr_t base = align_down(mmap->base, kernel_pagemap->get_psize());
+            uintptr_t top = align_up(mmap->base + mmap->length, kernel_pagemap->get_psize());
             if (top < gib1 * 4)
                 continue;
 
@@ -64,7 +64,7 @@ namespace vmm
             }
             base += alsize;
 
-            for (uintptr_t t = base; t < (base + diff); t += kernel_pagemap->page_size)
+            for (uintptr_t t = base; t < (base + diff); t += kernel_pagemap->get_psize())
             {
                 if (t < gib1 * 4)
                     continue;
@@ -75,7 +75,7 @@ namespace vmm
         }
 
         // TODO: Correct perms
-        for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += kernel_pagemap->page_size)
+        for (size_t i = 0; i < kernel_file_request.response->kernel_file->size; i += kernel_pagemap->get_psize())
         {
             uintptr_t paddr = kernel_address_request.response->physical_base + i;
             uintptr_t vaddr = kernel_address_request.response->virtual_base + i;
@@ -129,7 +129,7 @@ namespace vmm
                 for (size_t i = 0; i < opsize; i += psize)
                     this->map_nolock(old_vaddr + i, old_paddr + i, old_flags | this->get_psize_flags(psize), old_caching);
             }
-            else ret = reinterpret_cast<void*>(entry.getaddr());
+            else ret = tohh(reinterpret_cast<void*>(entry.getaddr()));
         }
         else if (allocate == true)
         {
@@ -138,6 +138,6 @@ namespace vmm
             entry.setflags(arch::new_table_flags, true);
         }
 
-        return ret ? tohh(ret) : nullptr;
+        return ret;
     }
 } // namespace vmm

@@ -3,11 +3,18 @@
 #include <arch/x86_64/cpu/lapic.hpp>
 #include <arch/x86_64/cpu/cpu.hpp>
 #include <arch/x86_64/lib/io.hpp>
+
 #include <drivers/acpi.hpp>
+
+#include <arch/arch.hpp>
+
 #include <lib/time.hpp>
 #include <lib/mmio.hpp>
 #include <lib/misc.hpp>
+
 #include <mm/vmm.hpp>
+
+#include <uacpi/tables.h>
 
 namespace lapic
 {
@@ -20,12 +27,12 @@ namespace lapic
         if (!(c & (1 << 21)))
             return this->x2apic = false;
 
-        auto dmar = acpi::findtable<acpi::DMARHeader>("DMAR", 0);
-
-        if (dmar == nullptr)
+        uacpi_table *table;
+        if (uacpi_table_find_by_signature(acpi::signature("DMAR"), &table) != UACPI_STATUS_OK)
             return this->x2apic = true;
 
-        if ((dmar->flags & (1 << 0)) && (dmar->flags & (1 << 1)))
+        auto flags = *(reinterpret_cast<uint8_t *>(table->virt_addr) + sizeof(acpi_sdt_hdr) + sizeof(uint8_t));
+        if ((flags & (1 << 0)) && (flags & (1 << 1)))
             return this->x2apic = false;
 
         return this->x2apic = true;
@@ -35,13 +42,15 @@ namespace lapic
     {
         if (this->x2apic == true)
             return cpu::rdmsr(reg2x2apic(reg));
+
         return mmio::in<uint32_t>(this->mmio_base + reg);
     }
 
     void lapic::write(uint32_t reg, uint64_t value)
     {
         if (this->x2apic == true)
-            cpu::wrmsr(reg2x2apic(reg), value);
+            return cpu::wrmsr(reg2x2apic(reg), value);
+
         mmio::out<uint32_t>(this->mmio_base + reg, value);
     }
 
@@ -51,6 +60,10 @@ namespace lapic
         this->write(0x380, 0xFFFFFFFF);
 
         this->write(0x320, this->read(0x320) & ~(1 << 16));
+
+        // TODO: why would interrupts be disabled here?
+        arch::int_toggle(true);
+
         time::msleep(10);
         this->write(0x320, this->read(0x320) | (1 << 16));
 
@@ -64,15 +77,14 @@ namespace lapic
         auto base = cpu::rdmsr(0x1B) | (1 << 11);
         if (this->x2apic == true)
             base |= (1 << 10);
+
         cpu::wrmsr(0x1B, base);
 
         auto phys_mmio_base = base & ~(0xFFF);
 
-        this->mmio_base = tohh(phys_mmio_base);
-        // this->mmio_base = malloc<uintptr_t>(0x1000);
-
-        // if (this->x2apic == false)
-        //     vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw);
+        this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
+        if (this->x2apic == false)
+            vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw, vmm::caching::mmio);
 
         this->id = (this->x2apic ? this->read(0x20) : (this->read(0x20) >> 24) & 0xFF);
 

@@ -10,57 +10,6 @@ namespace event
     {
         void event_t::await()
         {
-            std::unique_lock guard(this->lock);
-
-            while (this->triggered.load(std::memory_order_acquire) == 0)
-                arch::pause();
-
-            this->triggered.fetch_sub(1, std::memory_order_seq_cst);
-
-            // while (this->triggered.load(std::memory_order_acquire) == false)
-            //     arch::pause();
-
-            // this->triggered.store(false, std::memory_order_seq_cst);
-        }
-
-        bool event_t::await_timeout(size_t ms)
-        {
-            std::unique_lock guard(this->lock);
-
-            auto start = time::time_ms();
-            auto end = start + ms;
-
-            while (start < end)
-            {
-                if (this->triggered.load(std::memory_order_acquire) > 0)
-                    break;
-
-                // if (this->triggered.load(std::memory_order_acquire) == false)
-                //     break;
-
-                time::msleep(1);
-                start++;
-            }
-            if (start >= end)
-                return false;
-
-            this->triggered.fetch_sub(1, std::memory_order_seq_cst);
-            // this->triggered.store(false, std::memory_order_seq_cst);
-
-            return true;
-        }
-
-        void event_t::trigger(bool drop)
-        {
-            if (this->lock.is_locked() == false && drop == true)
-                return;
-
-            this->triggered.fetch_add(1, std::memory_order_release);
-            // this->triggered.store(true, std::memory_order_release);
-        }
-
-        void alt_event_t::await()
-        {
             this->lock.lock();
                 this->awaiters++;
             this->lock.unlock();
@@ -70,10 +19,10 @@ namespace event
 
             std::unique_lock guard(this->lock);
             if (--this->awaiters == 0)
-                this->triggered.fetch_sub(1, std::memory_order_seq_cst);
+                this->triggered.fetch_sub(1, std::memory_order_acquire);
         }
 
-        bool alt_event_t::await_timeout(size_t ms)
+        bool event_t::await_timeout(size_t ms)
         {
             this->lock.lock();
                 this->awaiters++;
@@ -98,18 +47,33 @@ namespace event
                 return false;
 
             if (this->awaiters == 0)
-                this->triggered.fetch_sub(1, std::memory_order_seq_cst);
+                this->triggered.fetch_sub(1, std::memory_order_acquire);
 
             return true;
         }
 
-        void alt_event_t::trigger(bool drop)
+        void event_t::trigger(bool drop)
         {
             std::unique_lock guard(this->lock);
             if (this->awaiters == 0 && drop == true)
                 return;
 
-            this->triggered.fetch_add(1, std::memory_order_release);
+            this->triggered.fetch_add(1, std::memory_order_acq_rel);
+        }
+
+        bool event_t::drop()
+        {
+            std::unique_lock guard(this->lock);
+            if (this->awaiters != 0)
+                return false;
+
+            this->triggered.store(0, std::memory_order_release);
+            return true;
+        }
+
+        bool event_t::has_awaiters()
+        {
+            return this->awaiters > 0;
         }
     } // namespace simple
 

@@ -93,7 +93,7 @@ https://discord.gg/fM5GK3RpS7
 * lyre: https://github.com/lyre-os/lyre
 * limine: https://github.com/limine-bootloader/limine
 * unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
-* lai: https://github.com/managarm/lai
+* uACPI: https://github.com/UltraOS/uACPI
 * frigg: https://github.com/managarm/frigg
 * mlibc: https://github.com/managarm/mlibc
 * magic_enum: https://github.com/Neargye/magic_enum
@@ -131,7 +131,7 @@ https://discord.gg/fM5GK3RpS7
 - [x] ACPI
 - [x] LAPIC
 - [x] IOAPIC
-- [x] LAI
+- [x] uACPI
 - [x] VFS
 - [x] TMPFS
 - [x] DEVTMPFS

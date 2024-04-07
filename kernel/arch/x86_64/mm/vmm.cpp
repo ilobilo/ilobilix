@@ -14,8 +14,8 @@ namespace vmm
         Present = (1 << 0),
         Write = (1 << 1),
         UserSuper = (1 << 2),
-        WriteThrough = (1 << 3), // PWT
-        CacheDisable = (1 << 4), // PCD
+        PWT = (1 << 3), // PWT
+        PCD = (1 << 4), // PCD
         Accessed = (1 << 5),
         LargerPages = (1 << 7),
         PAT4k = (1 << 7), // PAT lvl1
@@ -89,14 +89,14 @@ namespace vmm
     }
 
     /*
-     * Uncachable:     PAT0:  PAT = 0, PCD = 0, PWT = 0
-     * WriteCombining: PAT1:  PAT = 0, PCD = 0, PWT = 1
-     * None            PAT2:  PAT = 0, PCD = 1, PWT = 0
-     * None            PAT3:  PAT = 0, PCD = 1, PWT = 1
-     * WriteThrough:   PAT4:  PAT = 1, PCD = 0, PWT = 0
-     * WriteProtected: PAT5:  PAT = 1, PCD = 0, PWT = 1
-     * WriteBack:      PAT6:  PAT = 1, PCD = 1, PWT = 0
-     * Uncached:       PAT7:  PAT = 1, PCD = 1, PWT = 1
+     * None:              PAT0:  PAT = 0, PCD = 0, PWT = 0
+     * None:              PAT1:  PAT = 0, PCD = 0, PWT = 1
+     * UncacheableStrong: PAT2:  PAT = 0, PCD = 1, PWT = 0
+     * WriteCombining:    PAT3:  PAT = 0, PCD = 1, PWT = 1
+     * WriteThrough:      PAT4:  PAT = 1, PCD = 0, PWT = 0
+     * WriteProtected:    PAT5:  PAT = 1, PCD = 0, PWT = 1
+     * WriteBack:         PAT6:  PAT = 1, PCD = 1, PWT = 0
+     * Uncacheable:       PAT7:  PAT = 1, PCD = 1, PWT = 1
      */
 
     static uint64_t cache2flags(caching cache, bool largepages)
@@ -105,21 +105,23 @@ namespace vmm
         uint64_t ret = 0;
         switch (cache)
         {
-            case uncachable:
+            case uncacheable_strong:
+                ret |= PCD;
                 break;
             case write_combining:
-                ret |= WriteThrough;
+                ret |= PCD | PWT;
                 break;
             case write_through:
                 ret |= patbit;
                 break;
             case write_protected:
-                ret |= patbit | WriteThrough;
+                ret |= patbit | PWT;
                 break;
             case write_back:
-                ret |= patbit | CacheDisable;
+                ret |= patbit | PCD;
                 break;
-            default:
+            case uncacheable:
+                ret |= patbit | PCD | PWT;
                 break;
         }
         return ret;
@@ -290,16 +292,18 @@ namespace vmm
         uint64_t patbit = (lpages ? PATlg : PAT4k);
         caching ret2;
 
-        if ((flags & (patbit | CacheDisable)) == (patbit | CacheDisable))
+        if ((flags & (patbit | PCD | PWT)) == (patbit | PCD | PWT))
+            ret2 = uncacheable;
+        else if ((flags & (patbit | PCD)) == (patbit | PCD))
             ret2 = write_back;
-        else if ((flags & (patbit | WriteThrough)) == (patbit | WriteThrough))
+        else if ((flags & (patbit | PWT)) == (patbit | PWT))
             ret2 = write_protected;
-        else if ((flags & patbit) == patbit)
+        else if ((flags & (patbit)) == (patbit))
             ret2 = write_through;
-        else if ((flags & WriteThrough) == WriteThrough)
+        else if ((flags & (PCD | PWT)) == (PCD | PWT))
             ret2 = write_combining;
-        else
-            ret2 = uncachable;
+        else if ((flags & (PCD)) == (PCD))
+            ret2 = uncacheable_strong;
 
         return { ret1, ret2 };
     }
@@ -322,7 +326,7 @@ namespace vmm
 
     void arch_destroy_pmap(pagemap *pmap)
     {
-        destroy_level(pmap, pmap->toplvl, 0, 256, if_max_pgmode(5) : 4);
+        destroy_level(pmap, pmap->get_raw(), 0, 256, if_max_pgmode(5) : 4);
     }
 
     void arch_init()

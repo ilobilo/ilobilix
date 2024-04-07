@@ -11,8 +11,6 @@
 
 #include <mm/vmm.hpp>
 
-#include <lai/helpers/pci.h>
-
 #if defined(__x86_64__)
 #  include <arch/x86_64/cpu/ioapic.hpp>
 #  include <arch/x86_64/cpu/idt.hpp>
@@ -137,7 +135,7 @@ namespace pci
         {
             if (vmm::kernel_pagemap->virt2phys(tohh(this->pbase)) == vmm::invalid_addr)
             {
-                auto psize = vmm::kernel_pagemap->page_size;
+                auto psize = vmm::kernel_pagemap->get_psize();
 
                 auto albase = align_down(this->pbase, psize);
                 auto len = align_up(this->pbase + this->len, psize) - albase;
@@ -336,9 +334,9 @@ namespace pci
             handler.set([&] (auto) { ref.handler(); });
 
             uint16_t ioapic_flags = 0;
-            if (!(this->route->flags & ACPI_SMALL_IRQ_EDGE_TRIGGERED))
+            if (this->route->flags & pci::irq_router::flags::level)
                 ioapic_flags |= ioapic::flags::level_sensative;
-            if (this->route->flags & ACPI_SMALL_IRQ_ACTIVE_LOW)
+            if (this->route->flags & pci::irq_router::flags::low)
                 ioapic_flags |= ioapic::flags::active_low;
 
             ioapic::set(this->route->gsi, vector, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic_flags, smp::bsp_id);
@@ -441,12 +439,18 @@ namespace pci
             uint8_t Class = bus->read<uint8_t>(dev, func, PCI_CLASS);
 
             auto device = new device_t(vendorid, deviceid, progif, subclass, Class, bus->seg, bus->bus, dev, func, bus);
+            auto fadt = ::acpi::get_fadt();
 
             capabilities(device, [&](uint8_t id, uint8_t offset) -> bool
             {
-                uint16_t flags = ::acpi::fadthdr->BootArchitectureFlags;
-                if (flags & (1 << 3))
-                    return false;
+                uint16_t flags = 0;
+                if (fadt != nullptr)
+                {
+                    flags = fadt->iapc_boot_arch;
+                    if (flags & (1 << 3))
+                        return false;
+                }
+
                 switch (id)
                 {
                     case 0x5:
@@ -556,13 +560,13 @@ namespace pci
 
         if (configspaces.empty())
         {
-            log::errorln("PCI: No config spaces found!");
+            log::errorln("PCI: No config spaces found");
             return;
         }
 
         if (root_buses.empty())
         {
-            log::errorln("PCI: No root buses found!");
+            log::errorln("PCI: No root buses found");
             return;
         }
 

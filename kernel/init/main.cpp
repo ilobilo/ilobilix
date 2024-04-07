@@ -14,6 +14,7 @@
 #include <drivers/frm.hpp>
 #include <drivers/elf.hpp>
 #include <drivers/dtb.hpp>
+#include <drivers/smp.hpp>
 
 #include <drivers/proc.hpp>
 
@@ -28,6 +29,8 @@
 proc::process *kernel_proc = nullptr;
 void kernel_thread()
 {
+    pci::init();
+
     tmpfs::init();
     vfs::mount(nullptr, "", "/", "tmpfs");
 
@@ -49,7 +52,11 @@ void kernel_thread()
     elf::modules::load(nullptr, "/usr/lib/modules/");
     elf::modules::run_all();
 
+    log::infoln("Kernel initialisation complete");
+
     // arch::halt();
+
+    // time::msleep(100);
 
     printf("\033[2J\033[H");
     log::to_term = vmm::print_errors = false;
@@ -110,6 +117,8 @@ void kernel_thread()
 
 void kmain()
 {
+    time::init();
+
     cxxabi::init();
     elf::syms::init();
 
@@ -121,14 +130,12 @@ void kmain()
 #endif
 
     acpi::init();
-    arch::early_init();
 
-    pci::init();
-    acpi::enable();
+    arch::early_init();
 
     kernel_proc = new proc::process("Kernel Process");
     kernel_proc->pagemap = vmm::kernel_pagemap;
 
-    proc::enqueue(new proc::thread(kernel_proc, &kernel_thread, 0));
+    proc::enqueue(new proc::thread(kernel_proc, &kernel_thread, 0, this_cpu()->id));
     proc::init(true);
 }

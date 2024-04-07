@@ -88,7 +88,7 @@ extern "C"
     uintptr_t __stack_chk_guard = 0x595E9FBD94FDA766;
     [[noreturn]] void __stack_chk_fail()
     {
-        PANIC("stack smashing detected!");
+        PANIC("stack smashing detected");
     }
 } // extern "C"
 

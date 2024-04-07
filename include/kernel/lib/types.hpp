@@ -432,9 +432,14 @@ struct timespec
     time_t tv_sec;
     long tv_nsec;
 
-    constexpr timespec() : tv_sec(0), tv_nsec(0) { }
-    constexpr timespec(time_t s, long ns) : tv_sec(s), tv_nsec(ns) { }
-    constexpr timespec(time_t ms) : tv_sec(ms / 1'000), tv_nsec((ms % 1'000) * 1'000'000) { }
+    constexpr timespec() :
+        tv_sec(0), tv_nsec(0) { }
+
+    constexpr timespec(time_t s, long ns) :
+        tv_sec(s + (ns / 1'000'000'000)), tv_nsec(ns % 1'000'000'000) { }
+
+    constexpr timespec(time_t ms) :
+        tv_sec(ms / 1'000), tv_nsec((ms % 1'000) * 1'000'000) { }
 
     constexpr long to_ns()
     {

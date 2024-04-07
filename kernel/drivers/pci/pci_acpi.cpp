@@ -1,24 +1,26 @@
 // Copyright (C) 2022-2024  ilobilo
 
 #include <drivers/pci/pci_ecam.hpp>
-#include <lai/helpers/pci.h>
 #include <drivers/acpi.hpp>
+
+#include <lib/panic.hpp>
 #include <lib/log.hpp>
+
+#include <uacpi/utilities.h>
+#include <uacpi/resources.h>
+#include <uacpi/uacpi.h>
 
 namespace pci::acpi
 {
     struct router : irq_router
     {
         private:
-        lai_nsnode_t *ahandle;
+        uacpi_namespace_node *node;
 
         public:
-        router(irq_router *parent, bus_t *bus, lai_nsnode_t *handle) : irq_router(parent, bus), ahandle(handle)
+        router(irq_router *parent, bus_t *bus, uacpi_namespace_node *node) : irq_router(parent, bus), node(node)
         {
-            LAI_CLEANUP_STATE lai_state_t state;
-            lai_init_state(&state);
-
-            if (this->ahandle == nullptr)
+            if (this->node == nullptr)
             {
                 for (size_t i = 0; i < 4; i++)
                     this->bridgeirqs[i] = this->parent->resolve(this->mybus->bridge->dev, i + 1);
@@ -27,148 +29,201 @@ namespace pci::acpi
                 return;
             }
 
-            lai_nsnode_t *prthandle = lai_resolve_path(this->ahandle, "_PRT");
-            if (prthandle == nullptr)
+            uacpi_pci_routing_table pci_routes;
+            auto ret = uacpi_get_pci_routing_table(this->node, &pci_routes);
+            if (ret == UACPI_STATUS_NOT_FOUND)
             {
                 if (this->parent != nullptr)
                 {
                     log::warnln("PCI: No '_PRT' for bus. assuming expansion bridge routing");
                     for (size_t i = 0; i < 4; i++)
                         this->bridgeirqs[i] = this->parent->resolve(this->mybus->bridge->dev, i + 1);
+
                     this->mod = irq_router::model::expansion;
                 }
                 else log::errorln("PCI: No '_PRT' for bus. giving up IRQ routing for this bus");
-
+                return;
+            }
+            else if (ret != UACPI_STATUS_OK)
+            {
+                log::errorln("PCI: Failed to evaluate '_PRT': {}", uacpi_status_to_string(ret));
                 return;
             }
 
-            LAI_CLEANUP_VAR lai_variable_t prt = LAI_VAR_INITIALIZER;
-            if (lai_eval(&prt, prthandle, &state) != LAI_ERROR_NONE)
+            for (size_t i = 0; i < pci_routes.num_entries; i++)
             {
-                log::errorln("PCI: Could not evaluate '_PRT'. giving up IRQ routing for this bus");
-                return;
-            }
+                auto entry = &pci_routes.entries[i];
 
-            lai_prt_iterator iter = LAI_PRT_ITERATOR_INITIALIZER(&prt);
-            lai_api_error_t err;
-            while ((err = lai_pci_parse_prt(&iter)) == LAI_ERROR_NONE)
-            {
+                auto triggering = flags::level;
+                auto polarity = flags::low;
+
+                auto gsi = entry->index;
+
+                int32_t slot = (entry->address >> 16) & 0xFFFF;
+                int32_t func = entry->address & 0xFFFF;
+                if (func == 0xFFFF)
+                    func = -1;
+
+                assert((entry->address & 0xFFFF) == 0xFFFF, "PCI: TODO: support routing of individual functions");
+
+                if (entry->source)
+                {
+                    assert(entry->index == 0);
+
+                    uacpi_resources resources;
+                    ret = uacpi_get_current_resources(entry->source, &resources);
+                    assert(ret == UACPI_STATUS_OK);
+
+                    switch (resources.head->type)
+                    {
+                        case UACPI_RESOURCE_TYPE_IRQ:
+                        {
+                            auto *irq = &resources.head->irq;
+                            assert(irq->num_irqs >= 1);
+                            gsi = irq->irqs[0];
+
+                            if (irq->triggering == UACPI_TRIGGERING_EDGE)
+                                triggering = flags::edge;
+                            if (irq->polarity == UACPI_POLARITY_ACTIVE_HIGH)
+                                polarity = flags::high;
+
+                            break;
+                        }
+                        case UACPI_RESOURCE_TYPE_EXTENDED_IRQ:
+                        {
+                            auto *irq = &resources.head->extended_irq;
+                            assert(irq->num_irqs >= 1);
+                            gsi = irq->irqs[0];
+
+                            if (irq->triggering == UACPI_TRIGGERING_EDGE)
+                                triggering = flags::edge;
+                            if (irq->polarity == UACPI_POLARITY_ACTIVE_HIGH)
+                                polarity = flags::high;
+
+                            break;
+                        }
+                        default:
+                            PANIC("PCI: Invalid link '_CRS' type");
+                    }
+
+                    uacpi_kernel_free(resources.head);
+                }
+
                 this->table.emplace_back(
-                    iter.gsi, int32_t(iter.slot), int32_t(iter.function), iter.pin + 1,
-                    (iter.level_triggered ? 0 : ACPI_SMALL_IRQ_EDGE_TRIGGERED) |
-                    (iter.active_low ? ACPI_SMALL_IRQ_ACTIVE_LOW : 0)
+                    gsi, slot, func, entry->pin + 1,
+                    triggering | polarity
                 );
             }
+
             this->mod = irq_router::model::root;
         }
 
         router *downstream(bus_t *bus) override
         {
-            lai_nsnode_t *dhandle = nullptr;
-            if (this->ahandle != nullptr)
+            uacpi_namespace_node *dhandle = nullptr;
+            if (this->node != nullptr)
             {
-                LAI_CLEANUP_STATE lai_state_t state;
-                lai_init_state(&state);
-                dhandle = lai_pci_find_device(this->ahandle, bus->bridge->dev, bus->bridge->func, &state);
+                struct devctx
+                {
+                    uint64_t addr;
+                    uacpi_namespace_node *out;
+                } ctx {
+                    .addr = static_cast<uint64_t>((bus->bridge->dev << 16) | bus->bridge->func),
+                    .out = nullptr
+                };
+
+                uacpi_namespace_for_each_node_depth_first(this->node,
+                    [](uacpi_handle opaque, uacpi_namespace_node *node) -> uacpi_ns_iteration_decision
+                    {
+                        auto *ctx = reinterpret_cast<devctx *>(opaque);
+                        uint64_t addr = 0;
+
+                        auto *obj = uacpi_namespace_node_get_object(node);
+                        if (obj == nullptr || obj->type != UACPI_OBJECT_DEVICE)
+                            return UACPI_NS_ITERATION_DECISION_CONTINUE;
+
+                        auto ret = uacpi_eval_integer(node, "_ADR", UACPI_NULL, &addr);
+                        if (ret != UACPI_STATUS_OK && ret != UACPI_STATUS_NOT_FOUND)
+                            return UACPI_NS_ITERATION_DECISION_CONTINUE;
+
+                        if (addr == ctx->addr)
+                        {
+                            ctx->out = node;
+                            return UACPI_NS_ITERATION_DECISION_BREAK;
+                        }
+
+                        return UACPI_NS_ITERATION_DECISION_CONTINUE;
+                    }, &ctx
+                );
+
+                dhandle = ctx.out;
             }
             return new router(this, bus, dhandle);
         }
     };
 
-    static uint64_t eval_aml_method(lai_state_t *state, lai_nsnode_t *node, const char *name)
-    {
-        LAI_CLEANUP_VAR lai_variable_t var = LAI_VAR_INITIALIZER;
-        uint64_t ret = 0;
-
-        lai_nsnode_t *handle = lai_resolve_path(node, name);
-        if (handle == nullptr)
-        {
-            log::warnln("PCI: Root bus doesn't have {}, assuming 0", name);
-            return 0;
-        }
-
-        if (auto e = lai_eval(&var, handle, state); e != LAI_ERROR_NONE)
-        {
-            log::warnln("PCI: Couldn't evaluate Root Bus {}, assuming 0", name);
-            return 0;
-        }
-
-        if (auto e = lai_obj_get_integer(&var, &ret); e != LAI_ERROR_NONE)
-        {
-            log::warnln("PCI: Root Bus {} evaluation didn't result in an integer, assuming 0", name);
-            return 0;
-        }
-
-        return ret;
-    }
-
     bool init_ios()
     {
         using namespace ::acpi;
 
-        auto mcfg = findtable<MCFGHeader>("MCFG", 0);
-        if (mcfg == nullptr)
+        uacpi_table *mcfgtable;
+        auto ret = uacpi_table_find_by_signature(signature("MCFG"), &mcfgtable);
+        if (ret == UACPI_STATUS_NOT_FOUND)
         {
-            log::warnln("PCI: MCFG table not found!");
+            log::warnln("PCI: MCFG table not found");
             return false;
         }
 
-        bool found = false;
-        for (size_t i = 0; mcfg != nullptr; i++, mcfg = findtable<MCFGHeader>("MCFG", i))
+        auto *mcfg = reinterpret_cast<mcfg::header *>(mcfgtable->virt_addr);
+
+        if (mcfg->header.length < sizeof(mcfg::header) + sizeof(mcfg::entry))
         {
-            if (mcfg->header.length < sizeof(MCFGHeader) + sizeof(MCFGEntry))
-            {
-                log::errorln("PCI: No entries found in MCFG table!");
-                continue;
-            }
-
-            found = true;
-
-            size_t entries = ((mcfg->header.length) - sizeof(MCFGHeader)) / sizeof(MCFGEntry);
-            for (size_t i = 0; i < entries; i++)
-            {
-                auto &entry = mcfg->entries[i];
-                auto io = new ecam::configio(entry.baseaddr, entry.segment, entry.startbus, entry.endbus);
-
-                for (size_t b = entry.startbus; b <= entry.endbus; b++)
-                    addconfigio(entry.segment, b, io);
-            }
+            log::warnln("PCI: MCFG table has no entries");
+            return false;
         }
 
-        return found;
+        size_t entries = ((mcfg->header.length) - sizeof(mcfg::header)) / sizeof(mcfg::entry);
+        for (size_t i = 0; i < entries; i++)
+        {
+            auto &entry = mcfg->entries[i];
+            auto io = new ecam::configio(entry.baseaddr, entry.segment, entry.startbus, entry.endbus);
+
+            for (size_t b = entry.startbus; b <= entry.endbus; b++)
+                addconfigio(entry.segment, b, io);
+        }
+
+        return true;
     }
 
+    bool found = false;
     bool init_rbs()
     {
-        LAI_CLEANUP_STATE lai_state_t state;
-        lai_init_state(&state);
-
-        LAI_CLEANUP_VAR lai_variable_t pci_pnp_id = { };
-        LAI_CLEANUP_VAR lai_variable_t pcie_pnp_id = { };
-        lai_eisaid(&pci_pnp_id, ACPI_PCI_ROOT_BUS_PNP_ID);
-        lai_eisaid(&pcie_pnp_id, ACPI_PCIE_ROOT_BUS_PNP_ID);
-
-        lai_nsnode_t *sb_handle = lai_resolve_path(nullptr, "\\_SB_");
-        LAI_ENSURE(sb_handle);
-
-        lai_ns_child_iterator it = LAI_NS_CHILD_ITERATOR_INITIALIZER(sb_handle);
-        lai_nsnode_t *handle = nullptr;
-
-        bool found = false;
-        while ((handle = lai_ns_child_iterate(&it)))
+        static const char *root_ids[] =
         {
-            if (lai_check_device_pnp_id(handle, &pci_pnp_id, &state) && lai_check_device_pnp_id(handle, &pcie_pnp_id, &state))
-                continue;
+            "PNP0A03",
+            "PNP0A08",
+            nullptr,
+        };
 
-            found = true;
+        uacpi_find_devices_at(
+            uacpi_namespace_get_predefined(UACPI_PREDEFINED_NAMESPACE_SB),
+            root_ids, [](void *, uacpi_namespace_node *node) -> uacpi_ns_iteration_decision
+            {
+                found = true;
 
-            auto seg = eval_aml_method(&state, handle, "_SEG");
-            auto bbn = eval_aml_method(&state, handle, "_BBN");
+                uint64_t seg = 0, bus = 0;
 
-            auto bus = new bus_t(nullptr, nullptr, getconfigio(seg, bbn), seg, bbn);
-            bus->router = new router(nullptr, bus, handle);
-            addrootbus(bus);
-        }
+                uacpi_eval_integer(node, "_SEG", nullptr, &seg);
+                uacpi_eval_integer(node, "_BBN", nullptr, &bus);
+
+                auto rbus = new bus_t(nullptr, nullptr, getconfigio(seg, bus), seg, bus);
+                rbus->router = new router(nullptr, rbus, node);
+                addrootbus(rbus);
+
+                return UACPI_NS_ITERATION_DECISION_CONTINUE;
+            }, nullptr
+        );
+
         return found;
     }
 } // namespace pci::acpi
