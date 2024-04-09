@@ -14,56 +14,49 @@ namespace gdt
     inline constexpr uint8_t GDT_USER_CODE = 0x20;
     inline constexpr uint8_t GDT_TSS = 0x28;
 
-    struct [[gnu::packed]] GDTR
+    struct [[gnu::packed]] ptr
     {
-        uint16_t Size;
-        uint64_t Offset;
+        uint16_t size;
+        uint64_t offset;
     };
 
-    struct [[gnu::packed]] GDTEntry
+    struct [[gnu::packed]] entry
     {
-        uint16_t Limit0;
-        uint16_t Base0;
-        uint8_t Base1;
-        uint8_t Access;
-        uint8_t Granularity;
-        uint8_t Base2;
+        uint16_t limit0;
+        uint16_t base0;
+        uint8_t base1;
+        uint8_t access;
+        uint8_t granularity;
+        uint8_t base2;
     };
 
-    struct [[gnu::packed]] TSSEntry
+    namespace tss
     {
-        uint16_t Length;
-        uint16_t Base0;
-        uint8_t Base1;
-        uint8_t Flags1;
-        uint8_t Flags2;
-        uint8_t Base2;
-        uint32_t Base3;
-        uint32_t Reserved;
-    };
+        struct [[gnu::packed]] ptr
+        {
+            uint32_t reserved0;
+            uint64_t rsp[3];
+            uint64_t reserved1;
+            uint64_t ist[7];
+            uint64_t reserved2;
+            uint16_t reserved3;
+            uint16_t iopboffset;
+        };
 
-    struct [[gnu::packed]] GDT
-    {
-        GDTEntry Null;
-        GDTEntry Code;
-        GDTEntry Data;
-        GDTEntry UserCode;
-        GDTEntry UserData;
-        TSSEntry Tss;
-    };
+        struct [[gnu::packed]] entry
+        {
+            uint16_t length;
+            uint16_t base0;
+            uint8_t base1;
+            uint8_t flags1;
+            uint8_t flags2;
+            uint8_t base2;
+            uint32_t base3;
+            uint32_t reserved;
+        };
+    } // namespace tss
 
-    struct [[gnu::packed]] TSS
-    {
-        uint32_t Reserved0;
-        uint64_t RSP[3];
-        uint64_t Reserved1;
-        uint64_t IST[7];
-        uint64_t Reserved2;
-        uint16_t Reserved3;
-        uint16_t IOPBOffset;
-    };
-
-    extern TSS *tss;
+    extern tss::ptr *tsses;
 
     void init(size_t num);
 } // namespace gdt

@@ -3,6 +3,8 @@
 #include <arch/x86_64/drivers/ps2/ps2.hpp>
 #include <arch/x86_64/drivers/ps2/kbd.hpp>
 #include <arch/arch.hpp>
+
+#include <lib/log.hpp>
 #include <lib/io.hpp>
 
 namespace ps2
@@ -29,6 +31,8 @@ namespace ps2
 
     void init()
     {
+        log::infoln("PS2: Initialising...");
+
         write(ports::command, 0xAD);
         write(ports::command, 0xA7);
 
@@ -47,6 +51,7 @@ namespace ps2
             write(ports::command, 0xA8);
 
         kbd::init();
+        log::infoln("PS2: Keyboard initialised");
 
         flush();
     }

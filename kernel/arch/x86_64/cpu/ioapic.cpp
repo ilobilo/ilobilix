@@ -40,8 +40,6 @@ namespace ioapic
 
     ioapic::ioapic(uintptr_t phys_mmio_base, uint32_t gsi_base) : gsi_base(gsi_base)
     {
-        this->mmio_base = tohh(phys_mmio_base);
-
         this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
         vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw, vmm::caching::mmio);
 
@@ -94,10 +92,10 @@ namespace ioapic
 
     std::optional<std::pair<uint8_t, uint16_t>> irq_for_gsi(uint32_t gsi)
     {
-        for (const auto entry : acpi::madt::isos)
+        for (const auto &entry : acpi::madt::isos)
         {
-            if (entry->gsi == gsi)
-                return std::make_pair(entry->irq_source, entry->flags);
+            if (entry.gsi == gsi)
+                return std::make_pair(entry.irq_source, entry.flags);
         }
         return std::nullopt;
     }
@@ -131,11 +129,11 @@ namespace ioapic
 
     void mask_irq(uint8_t irq)
     {
-        for (const auto iso : acpi::madt::isos)
+        for (const auto &iso : acpi::madt::isos)
         {
-            if (iso->irq_source == irq)
+            if (iso.irq_source == irq)
             {
-                mask(iso->gsi);
+                mask(iso.gsi);
                 return;
             }
         }
@@ -144,11 +142,11 @@ namespace ioapic
 
     void unmask_irq(uint8_t irq)
     {
-        for (const auto iso : acpi::madt::isos)
+        for (const auto &iso : acpi::madt::isos)
         {
-            if (iso->irq_source == irq)
+            if (iso.irq_source == irq)
             {
-                unmask(iso->gsi);
+                unmask(iso.gsi);
                 return;
             }
         }
@@ -169,21 +167,21 @@ namespace ioapic
 
         pic::disable();
 
-        for (const auto entry : acpi::madt::ioapics)
-            ioapics.emplace_back(entry->addr, entry->gsib);
+        for (const auto &entry : acpi::madt::ioapics)
+            ioapics.emplace_back(entry.addr, entry.gsib);
 
         auto redirect_isa_irq = [](size_t i)
         {
-            for (const auto iso : acpi::madt::isos)
+            for (const auto &iso : acpi::madt::isos)
             {
-                if (iso->irq_source == i)
+                if (iso.irq_source == i)
                 {
                     set(
-                        iso->gsi, iso->irq_source + 0x20,
+                        iso.gsi, iso.irq_source + 0x20,
                         delivery::fixed, destmode::physical,
-                        iso->flags | masked, smp_request.response->bsp_lapic_id
+                        iso.flags | masked, smp_request.response->bsp_lapic_id
                     );
-                    idt::handlers[iso->irq_source + 0x20].reserve();
+                    idt::handlers[iso.irq_source + 0x20].reserve();
                     return;
                 }
             }

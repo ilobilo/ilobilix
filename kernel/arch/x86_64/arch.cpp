@@ -159,7 +159,7 @@ namespace interrupts
 {
     std::pair<handler &, size_t> allocate_handler(size_t hint)
     {
-        return idt::allocate_handler(hint);
+        return idt::allocate_handler(hint ?: idt::IRQ(16));
     }
 
     handler &get_handler(size_t vector)

@@ -11,18 +11,25 @@ namespace cpu
     inline constexpr uint64_t CPUID_SMAP = (1 << 20);
     inline constexpr uint64_t CPUID_UMIP = (1 << 2);
 
-    inline constexpr uint64_t UncachableStrong = 0x00;
-    inline constexpr uint64_t WriteCombining = 0x01;
-    inline constexpr uint64_t WriteThrough = 0x04;
-    inline constexpr uint64_t WriteProtected = 0x05;
-    inline constexpr uint64_t WriteBack = 0x06;
-    inline constexpr uint64_t Uncacheable = 0x07;
+    namespace pat
+    {
+        enum entries : uint64_t
+        {
+            UncachableStrong = 0x00,
+            WriteCombining = 0x01,
+            WriteThrough = 0x04,
+            WriteProtected = 0x05,
+            WriteBack = 0x06,
+            Uncacheable = 0x07
+        };
 
-    // values WB WT UC- UC WB WT UC- UC in reverse order
-    inline constexpr uint64_t reset_state_pat = 0x00'07'04'06'00'07'04'06;
+        // values WB WT UC- UC WB WT UC- UC in reverse order
+        inline constexpr uint64_t reset_state = 0x00'07'04'06'00'07'04'06;
 
-    // UC WB WP WT WC UC-
-    inline constexpr uint64_t custom_pat = (Uncacheable << 56) | (WriteBack << 48) | (WriteProtected << 40) | (WriteThrough << 32) | (WriteCombining << 24) | (UncachableStrong << 16);
+        // UC WB WP WT WC UC-
+        inline constexpr uint64_t custom = (Uncacheable << 56) | (WriteBack << 48) | (WriteProtected << 40) | (WriteThrough << 32) | (WriteCombining << 24) | (UncachableStrong << 16);
+
+    } // namespace pat
 
     struct [[gnu::packed]] registers_t
     {

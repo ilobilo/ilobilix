@@ -15,38 +15,37 @@ namespace idt
         return num + 0x20;
     }
 
-    struct [[gnu::packed]] IDTEntry
+    struct [[gnu::packed]] entry
     {
-        uint16_t Offset1;
-        uint16_t Selector;
-        uint8_t IST;
-        uint8_t TypeAttr;
-        uint16_t Offset2;
-        uint32_t Offset3;
-        uint32_t Zero;
+        uint16_t offset0;
+        uint16_t selector;
+        uint8_t ist;
+        uint8_t typeattr;
+        uint16_t offset1;
+        uint32_t offset2;
+        uint32_t zero;
 
         void set(void *isr, uint8_t typeattr = 0x8E, uint8_t ist = 0);
     };
 
-    struct [[gnu::packed]] IDTPtr
+    struct [[gnu::packed]] ptr
     {
-        uint16_t Limit;
-        uint64_t Base;
+        uint16_t limit;
+        uint64_t base;
 
-        void load()
+        void load() const
         {
             asm volatile ("cli");
             asm volatile ("lidt %0" :: "memory"(*this));
             asm volatile ("sti");
         }
     };
+    inline constexpr ptr invalid { 0, 0 };
 
     extern interrupts::handler handlers[];
     extern uint8_t panic_int;
-    extern IDTEntry idt[];
-    extern IDTPtr idtr;
-
-    extern IDTPtr invalid;
+    extern entry idt[];
+    extern ptr idtr;
 
     std::pair<interrupts::handler &, uint8_t> allocate_handler(uint8_t hint = IRQ(16));
 

@@ -84,7 +84,7 @@ namespace proc
     {
         thread->running_on = this_cpu()->id;
 
-        gdt::tss[this_cpu()->id].IST[1] = thread->pfstack;
+        gdt::tsses[this_cpu()->id].ist[1] = thread->pfstack;
         this_cpu()->fpu_restore(thread->fpu_storage);
         thread->parent->pagemap->load(false);
 
@@ -113,8 +113,8 @@ namespace proc
 
     void arch_init(void (*func)(cpu::registers_t *regs))
     {
-        gdt::tss[this_cpu()->id].IST[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
-        idt::idt[14].IST = 2;
+        gdt::tsses[this_cpu()->id].ist[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
+        idt::idt[14].ist = 2;
 
         [[maybe_unused]]
         static auto once = [func]() -> bool
@@ -126,7 +126,7 @@ namespace proc
             });
 
             handler.eoi_first = true;
-            idt::idt[vector].IST = 1;
+            idt::idt[vector].ist = 1;
             sched_vector = vector;
 
             return true;
