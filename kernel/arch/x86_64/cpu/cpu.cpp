@@ -121,7 +121,7 @@ namespace cpu
 
     void enablePAT()
     {
-        wrmsr(0x277, custom_pat);
+        wrmsr(0x277, pat::custom);
     }
 
     void enableSMEP()

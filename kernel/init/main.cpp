@@ -56,8 +56,6 @@ void kernel_thread()
 
     // arch::halt();
 
-    // time::msleep(100);
-
     printf("\033[2J\033[H");
     log::to_term = vmm::print_errors = false;
 

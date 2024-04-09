@@ -127,8 +127,6 @@ namespace pmm
             totalmem += memmaps[i]->length;
         }
 
-        // size_t bitmapSize = align_up((mem_usable_top / page_size) / 8, page_size);
-
         size_t bitmap_entries = mem_usable_top / page_size;
         size_t bitmap_size = align_up(bitmap_entries / 8, page_size);
         bitmap_entries = bitmap_size * 8;

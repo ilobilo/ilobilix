@@ -233,13 +233,13 @@ extern "C"
         // TODO: FIXME
 
         // auto &pmap = vmm::kernel_pagemap;
-        // auto psize = pmap->get_psize();
+        // auto [psize, flags] = pmap->required_size(len);
 
         // auto paddr = align_down(addr, psize);
         // auto size = align_up((addr - paddr) + len, psize);
 
         // auto vaddr = vmm::alloc_vspace(vmm::vsptypes::uacpi, size, psize);
-        // assert(pmap->map_range(vaddr, paddr, size, vmm::rw));
+        // assert(pmap->map_range(vaddr, paddr, size, vmm::rw | flags));
 
         // return reinterpret_cast<uint8_t *>(vaddr) + (addr - paddr);
     }

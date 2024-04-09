@@ -121,13 +121,13 @@ namespace acpi
 
         extern header *hdr;
 
-        // extern std::vector<lapic *> lapics;
-        extern std::vector<ioapic *> ioapics;
-        extern std::vector<iso *> isos;
-        // extern std::vector<ionmi *> ionmis;
-        // extern std::vector<lnmi *> lnmis;
-        // extern std::vector<lapicao *> laddrovers;
-        // extern std::vector<x2apic *> x2apics;
+        // extern std::vector<lapic> lapics;
+        extern std::vector<ioapic> ioapics;
+        extern std::vector<iso> isos;
+        // extern std::vector<ionmi> ionmis;
+        // extern std::vector<lnmi> lnmis;
+        // extern std::vector<lapicao> laddrovers;
+        // extern std::vector<x2apic> x2apics;
 
         void init();
     } // namespace madt

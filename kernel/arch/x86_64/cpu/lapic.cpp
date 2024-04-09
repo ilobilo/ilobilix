@@ -59,11 +59,10 @@ namespace lapic
         this->write(0x3E0, 0x03);
         this->write(0x380, 0xFFFFFFFF);
 
-        this->write(0x320, this->read(0x320) & ~(1 << 16));
-
         // TODO: why would interrupts be disabled here?
         arch::int_toggle(true);
 
+        this->write(0x320, this->read(0x320) & ~(1 << 16));
         time::msleep(10);
         this->write(0x320, this->read(0x320) | (1 << 16));
 
@@ -80,11 +79,13 @@ namespace lapic
 
         cpu::wrmsr(0x1B, base);
 
-        auto phys_mmio_base = base & ~(0xFFF);
-
-        this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
         if (this->x2apic == false)
+        {
+            auto phys_mmio_base = base & ~(0xFFF);
+
+            this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
             vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw, vmm::caching::mmio);
+        }
 
         this->id = (this->x2apic ? this->read(0x20) : (this->read(0x20) >> 24) & 0xFF);
 
@@ -94,13 +95,12 @@ namespace lapic
 
     void lapic::ipi(uint32_t flags, uint32_t id)
     {
-        if (this->x2apic == true)
-            this->write(0x300, (static_cast<uint64_t>(id) << 32) | (1 << 14) | flags);
-        else
+        if (this->x2apic == false)
         {
             this->write(0x310, id << 24);
             this->write(0x300, flags);
         }
+        else this->write(0x300, (static_cast<uint64_t>(id) << 32) | (1 << 14) | flags);
     }
 
     void lapic::eoi()

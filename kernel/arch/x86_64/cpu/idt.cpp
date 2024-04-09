@@ -4,32 +4,33 @@
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/cpu/pic.hpp>
+
 #include <drivers/acpi.hpp>
 #include <drivers/proc.hpp>
 #include <drivers/smp.hpp>
+
 #include <init/kernel.hpp>
 #include <arch/arch.hpp>
+
 #include <lib/panic.hpp>
 #include <lib/trace.hpp>
 #include <lib/log.hpp>
+
 #include <mm/vmm.hpp>
+
 #include <cstdio>
 
 namespace idt
 {
     interrupts::handler handlers[256];
     uint8_t panic_int;
-    IDTEntry idt[256];
-    IDTPtr idtr;
-
-    IDTPtr invalid { 0, 0 };
+    entry idt[256];
+    ptr idtr;
 
     std::pair<interrupts::handler &, uint8_t> allocate_handler(uint8_t hint)
     {
-        if (hint < 0x20)
-            hint += 0x20;
-
-        hint = std::max(hint, IRQ(0));
+        if (hint < IRQ(0))
+            hint += IRQ(0);
 
         if (acpi::madt::hdr->legacy_pic() == true)
         {
@@ -65,16 +66,16 @@ namespace idt
             pic::unmask(irq);
     }
 
-    void IDTEntry::set(void *isr, uint8_t typeattr, uint8_t ist)
+    void entry::set(void *isr, uint8_t typeattr, uint8_t ist)
     {
         uint64_t israddr = reinterpret_cast<uint64_t>(isr);
-        this->Offset1 = static_cast<uint16_t>(israddr);
-        this->Selector = gdt::GDT_CODE;
-        this->IST = ist;
-        this->TypeAttr = typeattr;
-        this->Offset2 = static_cast<uint16_t>(israddr >> 16);
-        this->Offset3 = static_cast<uint32_t>(israddr >> 32);
-        this->Zero = 0;
+        this->offset0 = static_cast<uint16_t>(israddr);
+        this->selector = gdt::GDT_CODE;
+        this->ist = ist;
+        this->typeattr = typeattr;
+        this->offset1 = static_cast<uint16_t>(israddr >> 16);
+        this->offset2 = static_cast<uint32_t>(israddr >> 32);
+        this->zero = 0;
     }
 
     static const char *exception_messages[32]
@@ -148,7 +149,8 @@ namespace idt
             if (handler.eoi_first == true)
                 eoi(regs->int_no);
 
-            handlers[regs->int_no](regs);
+            if (handler.used())
+                handlers[regs->int_no](regs);
 
             if (handler.eoi_first == false)
                 eoi(regs->int_no);
@@ -161,8 +163,8 @@ namespace idt
     {
         log::infoln("IDT: Initialising...");
 
-        idtr.Limit = sizeof(IDTEntry) * 256 - 1;
-        idtr.Base = reinterpret_cast<uint64_t>(&idt);
+        idtr.limit = sizeof(entry) * 256 - 1;
+        idtr.base = reinterpret_cast<uint64_t>(&idt);
 
         for (size_t i = 0; i < 256; i++)
             idt[i].set(int_table[i]);

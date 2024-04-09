@@ -23,9 +23,9 @@
 #include <uacpi/sleep.h>
 
 #if defined(__x86_64__)
-#include <arch/x86_64/cpu/ioapic.hpp>
-#include <arch/x86_64/cpu/idt.hpp>
-#include <arch/x86_64/lib/io.hpp>
+#  include <arch/x86_64/cpu/ioapic.hpp>
+#  include <arch/x86_64/cpu/idt.hpp>
+#  include <arch/x86_64/lib/io.hpp>
 #endif
 
 namespace acpi
@@ -47,13 +47,13 @@ namespace acpi
     {
         header *hdr = nullptr;
 
-        // std::vector<lapic *> lapics;
-        std::vector<ioapic *> ioapics;
-        std::vector<iso *> isos;
-        // std::vector<ionmi *> ionmis;
-        // std::vector<lnmi *> lnmis;
-        // std::vector<lapicao *> laddrovers;
-        // std::vector<x2apic *> x2apics;
+        // std::vector<lapic> lapics;
+        std::vector<ioapic> ioapics;
+        std::vector<iso> isos;
+        // std::vector<ionmi> ionmis;
+        // std::vector<lnmi> lnmis;
+        // std::vector<lapicao> laddrovers;
+        // std::vector<x2apic> x2apics;
 
         void init()
         {
@@ -73,25 +73,25 @@ namespace acpi
                 switch (madt->type)
                 {
                     // case 0:
-                    //     lapics.push_back(reinterpret_cast<lapic*>(entry));
+                    //     lapics.push_back(*reinterpret_cast<lapic*>(entry));
                     //     break;
                     case 1:
-                        ioapics.push_back(reinterpret_cast<ioapic*>(entry));
+                        ioapics.push_back(*reinterpret_cast<ioapic*>(entry));
                         break;
                     case 2:
-                        isos.push_back(reinterpret_cast<iso*>(entry));
+                        isos.push_back(*reinterpret_cast<iso*>(entry));
                         break;
                     // case 3:
-                    //     ionmis.push_back(reinterpret_cast<ionmi*>(entry));
+                    //     ionmis.push_back(*reinterpret_cast<ionmi*>(entry));
                     //     break;
                     // case 4:
-                    //     lnmis.push_back(reinterpret_cast<lnmi*>(entry));
+                    //     lnmis.push_back(*reinterpret_cast<lnmi*>(entry));
                     //     break;
                     // case 5:
-                    //     laddrovers.push_back(reinterpret_cast<lapicao*>(entry));
+                    //     laddrovers.push_back(*reinterpret_cast<lapicao*>(entry));
                     //     break;
                     // case 9:
-                    //     x2apics.push_back(reinterpret_cast<x2apic*>(entry));
+                    //     x2apics.push_back(*reinterpret_cast<x2apic*>(entry));
                     //     break;
                 }
             }

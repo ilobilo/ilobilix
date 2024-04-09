@@ -8,50 +8,57 @@
 
 namespace gdt
 {
-    TSS *tss = nullptr;
+    tss::ptr *tsses = nullptr;
     static std::mutex lock;
 
     void init(size_t num)
     {
         std::unique_lock guard(lock);
-        if (tss == nullptr)
+        if (tsses == nullptr)
         {
             log::infoln("GDT: Initialising...");
-            tss = new TSS[smp_request.response->cpu_count];
+            tsses = new tss::ptr[smp_request.response->cpu_count];
         }
+        tsses[num].rsp[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
 
-        uintptr_t base = reinterpret_cast<uintptr_t>(&tss[num]);
-        uint16_t limit = sizeof(tss[num]);
-
-        GDT *gdt = new GDT
+        struct [[gnu::packed]] entries
         {
-            { 0x0000, 0, 0, 0x00, 0x00, 0 }, // Null
-            { 0x0000, 0, 0, 0x9A, 0x20, 0 }, // Kernel code
-            { 0x0000, 0, 0, 0x92, 0x00, 0 }, // Kernel data
-            { 0x0000, 0, 0, 0xF2, 0x00, 0 }, // User data
-            { 0x0000, 0, 0, 0xFA, 0x20, 0 }, // User code
-            {
-                limit,
-                static_cast<uint16_t>(base),
-                static_cast<uint8_t>(base >> 16),
-                0x89,
-                0x00,
-                static_cast<uint8_t>(base >> 24),
-                static_cast<uint32_t>(base >> 32),
-                0x00
-            } // Tss
+            entry null;
+            entry kcode;
+            entry kdata;
+            entry ucode;
+            entry udata;
+            tss::entry tss;
         };
 
-        tss[num].RSP[0] = tohh(pmm::alloc<uint64_t>(kernel_stack_size / pmm::page_size)) + kernel_stack_size;
+        uintptr_t base = reinterpret_cast<uintptr_t>(&tsses[num]);
+        uint16_t limit = sizeof(tsses[num]);
 
-        GDTR gdtr
+        ptr gdtr
         {
-            sizeof(GDT) - 1,
-            reinterpret_cast<uintptr_t>(gdt),
+            sizeof(entries) - 1,
+            reinterpret_cast<uintptr_t>(
+                new entries {
+                    { 0x0000, 0, 0, 0x00, 0x00, 0 }, // null
+                    { 0x0000, 0, 0, 0x9A, 0x20, 0 }, // kernel code
+                    { 0x0000, 0, 0, 0x92, 0x00, 0 }, // kernel data
+                    { 0x0000, 0, 0, 0xF2, 0x00, 0 }, // user data
+                    { 0x0000, 0, 0, 0xFA, 0x20, 0 }, // user code
+                    { // tss
+                        limit,
+                        static_cast<uint16_t>(base),
+                        static_cast<uint8_t>(base >> 16),
+                        0x89, 0x00,
+                        static_cast<uint8_t>(base >> 24),
+                        static_cast<uint32_t>(base >> 32),
+                        0x00
+                    }
+                }
+            ),
         };
 
         asm volatile (
-            "lgdt %[gdtr]\n\t"
+            "lgdt %[gdtr] \n\t"
             "mov %[dsel], %%ds \n\t"
             "mov %[dsel], %%fs \n\t"
             "mov %[dsel], %%gs \n\t"
