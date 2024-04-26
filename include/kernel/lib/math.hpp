@@ -2,10 +2,14 @@
 
 #pragma once
 
-#include <cstdint>
 #include <concepts>
+#include <utility>
+#include <cstdint>
 
 extern uintptr_t hhdm_offset;
+
+template<typename Type, template<typename> typename Conj>
+concept wrap_cvref = Conj<std::remove_cvref_t<Type>>::value;
 
 template<typename Type>
 using _get_ret_t = std::conditional_t<std::integral<Type>, std::conditional_t<std::unsigned_integral<Type>, uintptr_t, intptr_t>, Type>;
@@ -27,9 +31,14 @@ inline constexpr Ret fromhh(Type a)
     return !ishh(a) ? Ret(a) : Ret(uintptr_t(a) - hhdm_offset);
 }
 
-inline constexpr auto align_down(std::integral auto n, std::integral auto a)
+template<std::integral Type1, std::integral Type2>
+inline constexpr auto align_down(Type1 n, Type2 a)
 {
-    return (n & ~(a - 1));
+    constexpr auto align_down_internal = [&](auto n, auto a)
+    {
+        return (n & ~(a - 1));
+    };
+    return align_down_internal(std::make_unsigned_t<Type1>(n), std::make_unsigned_t<Type2>(a));
 }
 
 inline constexpr auto align_up(std::integral auto n, std::integral auto a)
@@ -42,10 +51,13 @@ inline constexpr auto div_roundup(std::integral auto n, std::integral auto a)
     return align_down(n + a - 1, a) / a;
 }
 
-inline constexpr auto next_pow2(uint64_t n)
+template<std::unsigned_integral Type>
+inline constexpr auto next_pow2(Type n)
 {
-    return n == 1UL ? 1UL : 1UL << (64 - __builtin_clzl(n - 1UL));
+    constexpr Type one { 1 };
+    return n == one ? one : one << ((sizeof(Type) * 8) - __builtin_clzl(n - one));
 }
+
 inline constexpr auto pow(std::integral auto base, std::integral auto exp)
 {
     int result = 1;
@@ -62,6 +74,25 @@ inline constexpr auto abs(std::signed_integral auto num)
 inline constexpr auto sign(std::signed_integral auto num)
 {
     return num > 0 ? 1 : (num < 0 ? -1 : 0);
+}
+
+inline constexpr auto unique_from(wrap_cvref<std::is_integral> auto a)
+{
+    return a;
+}
+
+template<wrap_cvref<std::is_integral> ...Args>
+inline constexpr auto unique_from(wrap_cvref<std::is_integral> auto a, Args &&...args)
+{
+    constexpr auto cantor_pair = [](auto x, auto y)
+    {
+        return ((x + y) * (x + y + 1)) / 2 + y;
+    };
+
+    if constexpr (sizeof...(Args) == 1)
+        return cantor_pair(a, std::forward<Args>(args)...);
+
+    return cantor_pair(a, unique_from(std::forward<Args>(args)...));
 }
 
 inline constexpr uint64_t jdn(uint8_t days, uint8_t months, uint16_t years)

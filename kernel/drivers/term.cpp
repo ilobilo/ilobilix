@@ -86,28 +86,28 @@ namespace term
             font_address,
             UNIFONT_WIDTH,
             UNIFONT_HEIGHT,
-            DEFAULT_FONT_SPACING,
-            DEFAULT_FONT_SCALE_X,
-            DEFAULT_FONT_SCALE_Y,
+            TERM_FONT_SPACING,
+            TERM_FONT_SCALE_X,
+            TERM_FONT_SCALE_Y,
         };
 
         style_t style
         {
-            DEFAULT_ANSI_COLOURS,
-            DEFAULT_ANSI_BRIGHT_COLOURS,
-            DEFAULT_BACKGROUND,
-            DEFAULT_FOREGROUND_BRIGHT,
-            DEFAULT_BACKGROUND_BRIGHT,
-            DEFAULT_FOREGROUND_BRIGHT,
-            DEFAULT_MARGIN,
-            DEFAULT_MARGIN_GRADIENT
+            TERM_ANSI_COLOURS,
+            TERM_ANSI_BRIGHT_COLOURS,
+            TERM_BACKGROUND,
+            TERM_FOREGROUND_BRIGHT,
+            TERM_BACKGROUND_BRIGHT,
+            TERM_FOREGROUND_BRIGHT,
+            TERM_MARGIN,
+            TERM_MARGIN_GRADIENT
         };
 
         background_t back
         {
             image,
             IMAGE_CENTERED,
-            DEFAULT_BACKDROP
+            TERM_BACKDROP
         };
 
         for (size_t i = 0; i < frm::frm_count; i++)
@@ -117,7 +117,13 @@ namespace term
                 reinterpret_cast<uintptr_t>(frm::frms[i]->address),
                 frm::frms[i]->width,
                 frm::frms[i]->height,
-                frm::frms[i]->pitch
+                frm::frms[i]->pitch,
+                frm::frms[i]->red_mask_size,
+                frm::frms[i]->red_mask_shift,
+                frm::frms[i]->green_mask_size,
+                frm::frms[i]->green_mask_shift,
+                frm::frms[i]->blue_mask_size,
+                frm::frms[i]->blue_mask_shift,
             };
 
             if (image && (frm::frms[i]->width > image->x_size || frm::frms[i]->height > image->y_size))

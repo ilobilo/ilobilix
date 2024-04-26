@@ -287,6 +287,9 @@ extern "C"
         std::string_view prefix;
         switch (lvl)
         {
+            case UACPI_LOG_DEBUG:
+                prefix = "[\033[93mDEBUG\033[0m] ";
+                break;
             case UACPI_LOG_TRACE:
                 prefix = "[\033[90mTRACE\033[0m] ";
                 break;

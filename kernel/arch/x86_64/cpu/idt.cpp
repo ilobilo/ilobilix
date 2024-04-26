@@ -172,7 +172,7 @@ namespace idt
         idt[INT_SYSCALL].set(int_table[INT_SYSCALL], 0xEE);
         handlers[INT_SYSCALL].reserve();
 
-        auto [handler, vector] = allocate_handler(IRQ(16));
+        auto [handler, vector] = allocate_handler();
         handler.set([](cpu::registers_t *) { arch::halt(false); });
         panic_int = vector;
     }
