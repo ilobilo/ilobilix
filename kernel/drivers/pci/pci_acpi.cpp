@@ -29,7 +29,7 @@ namespace pci::acpi
                 return;
             }
 
-            uacpi_pci_routing_table pci_routes;
+            uacpi_pci_routing_table *pci_routes;
             auto ret = uacpi_get_pci_routing_table(this->node, &pci_routes);
             if (ret == UACPI_STATUS_NOT_FOUND)
             {
@@ -50,9 +50,9 @@ namespace pci::acpi
                 return;
             }
 
-            for (size_t i = 0; i < pci_routes.num_entries; i++)
+            for (size_t i = 0; i < pci_routes->num_entries; i++)
             {
-                auto entry = &pci_routes.entries[i];
+                auto entry = &pci_routes->entries[i];
 
                 auto triggering = flags::level;
                 auto polarity = flags::low;
@@ -70,15 +70,15 @@ namespace pci::acpi
                 {
                     assert(entry->index == 0);
 
-                    uacpi_resources resources;
+                    uacpi_resources *resources;
                     ret = uacpi_get_current_resources(entry->source, &resources);
                     assert(ret == UACPI_STATUS_OK);
 
-                    switch (resources.head->type)
+                    switch (resources->entries[0].type)
                     {
                         case UACPI_RESOURCE_TYPE_IRQ:
                         {
-                            auto *irq = &resources.head->irq;
+                            auto *irq = &resources->entries[0].irq;
                             assert(irq->num_irqs >= 1);
                             gsi = irq->irqs[0];
 
@@ -91,7 +91,7 @@ namespace pci::acpi
                         }
                         case UACPI_RESOURCE_TYPE_EXTENDED_IRQ:
                         {
-                            auto *irq = &resources.head->extended_irq;
+                            auto *irq = &resources->entries[0].extended_irq;
                             assert(irq->num_irqs >= 1);
                             gsi = irq->irqs[0];
 
@@ -106,7 +106,7 @@ namespace pci::acpi
                             PANIC("PCI: Invalid link '_CRS' type");
                     }
 
-                    uacpi_kernel_free(resources.head);
+                    uacpi_free_resources(resources);
                 }
 
                 this->table.emplace_back(
@@ -115,6 +115,7 @@ namespace pci::acpi
                 );
             }
 
+            uacpi_free_pci_routing_table(pci_routes);
             this->mod = irq_router::model::root;
         }
 
