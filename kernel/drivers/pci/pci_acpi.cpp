@@ -168,28 +168,28 @@ namespace pci::acpi
         using namespace ::acpi;
 
         uacpi_table *mcfgtable;
-        auto ret = uacpi_table_find_by_signature(signature("MCFG"), &mcfgtable);
+        auto ret = uacpi_table_find_by_signature("MCFG", &mcfgtable);
         if (ret == UACPI_STATUS_NOT_FOUND)
         {
             log::warnln("PCI: MCFG table not found");
             return false;
         }
 
-        auto *mcfg = reinterpret_cast<mcfg::header *>(mcfgtable->virt_addr);
+        auto *mcfg = reinterpret_cast<acpi_mcfg *>(mcfgtable->virt_addr);
 
-        if (mcfg->header.length < sizeof(mcfg::header) + sizeof(mcfg::entry))
+        if (mcfg->hdr.length < sizeof(acpi_mcfg) + sizeof(acpi_mcfg_allocation))
         {
             log::warnln("PCI: MCFG table has no entries");
             return false;
         }
 
-        size_t entries = ((mcfg->header.length) - sizeof(mcfg::header)) / sizeof(mcfg::entry);
+        size_t entries = ((mcfg->hdr.length) - sizeof(acpi_mcfg)) / sizeof(acpi_mcfg_allocation);
         for (size_t i = 0; i < entries; i++)
         {
             auto &entry = mcfg->entries[i];
-            auto io = new ecam::configio(entry.baseaddr, entry.segment, entry.startbus, entry.endbus);
+            auto io = new ecam::configio(entry.address, entry.segment, entry.start_bus, entry.end_bus);
 
-            for (size_t b = entry.startbus; b <= entry.endbus; b++)
+            for (size_t b = entry.start_bus; b <= entry.end_bus; b++)
                 addconfigio(entry.segment, b, io);
         }
 

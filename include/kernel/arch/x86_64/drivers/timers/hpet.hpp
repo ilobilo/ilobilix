@@ -3,29 +3,18 @@
 #pragma once
 
 #include <arch/x86_64/cpu/cpu.hpp>
+
 #include <drivers/acpi.hpp>
+#include <uacpi/tables.h>
+
 #include <lib/lock.hpp>
+
 #include <functional>
 #include <cstdint>
 #include <array>
 
 namespace timers::hpet
 {
-    struct [[gnu::packed]] header
-    {
-        acpi_sdt_hdr header;
-        uint8_t hardware_rev_id;
-        uint8_t comparator_count : 5;
-        uint8_t counter_size : 1;
-        uint8_t reserved : 1;
-        uint8_t legacy_replacement : 1;
-        uint16_t pci_vendor_id;
-        acpi::genericaddr address;
-        uint8_t hpet_number;
-        uint16_t minimum_tick;
-        uint8_t page_protection;
-    };
-
     enum class modes
     {
         periodic,
@@ -131,7 +120,7 @@ namespace timers::hpet
         void stop();
 
         public:
-        device(header *table);
+        device(acpi_hpet *table);
 
         void nsleep(uint64_t ns);
         void msleep(uint64_t ms);

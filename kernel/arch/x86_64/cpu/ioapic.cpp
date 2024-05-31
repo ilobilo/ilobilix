@@ -95,7 +95,7 @@ namespace ioapic
         for (const auto &entry : acpi::madt::isos)
         {
             if (entry.gsi == gsi)
-                return std::make_pair(entry.irq_source, entry.flags);
+                return std::make_pair(entry.source, entry.flags);
         }
         return std::nullopt;
     }
@@ -131,7 +131,7 @@ namespace ioapic
     {
         for (const auto &iso : acpi::madt::isos)
         {
-            if (iso.irq_source == irq)
+            if (iso.source == irq)
             {
                 mask(iso.gsi);
                 return;
@@ -144,7 +144,7 @@ namespace ioapic
     {
         for (const auto &iso : acpi::madt::isos)
         {
-            if (iso.irq_source == irq)
+            if (iso.source == irq)
             {
                 unmask(iso.gsi);
                 return;
@@ -168,20 +168,20 @@ namespace ioapic
         pic::disable();
 
         for (const auto &entry : acpi::madt::ioapics)
-            ioapics.emplace_back(entry.addr, entry.gsib);
+            ioapics.emplace_back(entry.address, entry.gsi_base);
 
         auto redirect_isa_irq = [](size_t i)
         {
             for (const auto &iso : acpi::madt::isos)
             {
-                if (iso.irq_source == i)
+                if (iso.source == i)
                 {
                     set(
-                        iso.gsi, iso.irq_source + 0x20,
+                        iso.gsi, iso.source + 0x20,
                         delivery::fixed, destmode::physical,
                         iso.flags | masked, smp_request.response->bsp_lapic_id
                     );
-                    idt::handlers[iso.irq_source + 0x20].reserve();
+                    idt::handlers[iso.source + 0x20].reserve();
                     return;
                 }
             }
@@ -194,7 +194,7 @@ namespace ioapic
             idt::handlers[i + 0x20].reserve();
         };
 
-        if (acpi::madt::hdr->legacy_pic())
+        if (acpi::madt::legacy_pic())
         {
             for (size_t i = 0; i < 16; i++)
             {

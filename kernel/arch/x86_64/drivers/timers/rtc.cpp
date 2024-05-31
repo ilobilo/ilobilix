@@ -21,7 +21,7 @@ namespace timers::rtc
     uint8_t century()
     {
         auto fadt = acpi::get_fadt();
-        if (fadt != nullptr && fadt->century == 0)
+        if (fadt == nullptr || fadt->century == 0)
             return 20;
 
         return read(0x32);

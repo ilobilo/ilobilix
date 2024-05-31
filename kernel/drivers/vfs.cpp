@@ -133,7 +133,7 @@ namespace vfs
         delete node;
     }
 
-    std::tuple<node_t*, node_t*, std::string> path2node(node_t *parent, path_t path, bool automount)
+    std::tuple<node_t *, node_t *, std::string> path2node(node_t *parent, path_t path, bool automount)
     {
         if (parent == nullptr || path.is_absolute())
             parent = get_root();
@@ -155,8 +155,7 @@ namespace vfs
             return parent;
         };
 
-        auto segments = path.segments();
-        for (auto [segment, type, is_last, _] : segments)
+        for (const auto [segment, type, is_last, _] : path.segments())
         {
             if (type != CWK_NORMAL)
             {

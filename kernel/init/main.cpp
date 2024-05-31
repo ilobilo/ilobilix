@@ -115,8 +115,6 @@ void kernel_thread()
 
 void kmain()
 {
-    time::init();
-
     cxxabi::init();
     elf::syms::init();
 
@@ -128,6 +126,8 @@ void kmain()
 #endif
 
     acpi::init();
+
+    time::init();
 
     arch::early_init();
 
