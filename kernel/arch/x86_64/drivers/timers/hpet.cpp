@@ -68,7 +68,7 @@ namespace timers::hpet
         this->regs->cmd &= ~(1 << 0);
     }
 
-    device::device(header *table)
+    device::device(acpi_hpet *table)
     {
         // auto vaddr = vmm::alloc_vspace(vmm::vsptypes::other, sizeof(registers), sizeof(uint64_t));
         // vmm::kernel_pagemap->map_range(vaddr, table->address.address, sizeof(registers), vmm::rw, vmm::mmio);
@@ -92,7 +92,7 @@ namespace timers::hpet
 
         this->_legacy = (this->regs->cap >> 15) & 1;
 
-        log::infoln("HPET: Found device {}: Legacy replacement mode: {}", table->hpet_number, this->_legacy);
+        log::infoln("HPET: Found device {}: Legacy replacement mode: {}", table->number, this->_legacy);
         log::infoln(" Timers:");
 
         uint32_t gsi_mask = 0xFFFFFFFF;
@@ -276,7 +276,7 @@ namespace timers::hpet
         log::infoln("HPET: Initialising...");
 
         uacpi_table *out_table;
-        if (uacpi_table_find_by_signature(acpi::signature("HPET"), &out_table) != UACPI_STATUS_OK)
+        if (uacpi_table_find_by_signature("HPET", &out_table) != UACPI_STATUS_OK)
         {
             log::errorln("HPET table not found");
             return;
@@ -284,7 +284,7 @@ namespace timers::hpet
 
         while (out_table != nullptr)
         {
-            devices.push_back(new device(reinterpret_cast<header *>(out_table->virt_addr)));
+            devices.push_back(new device(reinterpret_cast<acpi_hpet *>(out_table->virt_addr)));
             if (uacpi_table_find_next_with_same_signature(&out_table) != UACPI_STATUS_OK)
                 break;
         }

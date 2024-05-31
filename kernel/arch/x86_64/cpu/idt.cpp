@@ -32,7 +32,7 @@ namespace idt
         if (hint < IRQ(0))
             hint += IRQ(0);
 
-        if (acpi::madt::hdr->legacy_pic() == true)
+        if (acpi::madt::legacy_pic() == true)
         {
             if ((hint >= IRQ(0) && hint <= IRQ(15)) && handlers[hint].used() == false)
                 return { handlers[hint], hint };
@@ -52,7 +52,7 @@ namespace idt
 
     void mask(uint8_t irq)
     {
-        if (ioapic::initialised == true && acpi::madt::hdr->legacy_pic())
+        if (ioapic::initialised == true && acpi::madt::legacy_pic())
             ioapic::mask_irq(irq);
         else
             pic::mask(irq);
@@ -60,7 +60,7 @@ namespace idt
 
     void unmask(uint8_t irq)
     {
-        if (ioapic::initialised == true && acpi::madt::hdr->legacy_pic())
+        if (ioapic::initialised == true && acpi::madt::legacy_pic())
             ioapic::unmask_irq(irq);
         else
             pic::unmask(irq);

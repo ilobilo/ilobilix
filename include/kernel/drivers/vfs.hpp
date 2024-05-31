@@ -166,7 +166,7 @@ namespace vfs
 
     void recursive_delete(node_t *node, bool resources);
 
-    std::tuple<node_t*, node_t*, std::string> path2node(node_t *parent, path_t path, bool automount = true);
+    std::tuple<node_t *, node_t *, std::string> path2node(node_t *parent, path_t path, bool automount = true);
 
     bool mount(node_t *parent, path_view_t source, path_view_t target, std::string_view fs_name, int flags = 0, void *data = nullptr);
     bool unmount(node_t *parent, path_view_t path, int flags = 0);

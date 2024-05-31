@@ -106,7 +106,8 @@ incs = [
 
 macros = [
     '-DLVL5_PAGING=' + (get_option('5lvl_paging') ? '1' : '0'),
-    '-DSYSCALL_DEBUG=' + (get_option('syscall_debug') ? '1' : '0')
+    '-DSYSCALL_DEBUG=' + (get_option('syscall_debug') ? '1' : '0'),
+    '-DUACPI_FORMATTED_LOGGING'
 ]
 
 warnigns = [

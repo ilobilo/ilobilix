@@ -28,7 +28,7 @@ namespace lapic
             return this->x2apic = false;
 
         uacpi_table *table;
-        if (uacpi_table_find_by_signature(acpi::signature("DMAR"), &table) != UACPI_STATUS_OK)
+        if (uacpi_table_find_by_signature("DMAR", &table) != UACPI_STATUS_OK)
             return this->x2apic = true;
 
         auto flags = *(reinterpret_cast<uint8_t *>(table->virt_addr) + sizeof(acpi_sdt_hdr) + sizeof(uint8_t));

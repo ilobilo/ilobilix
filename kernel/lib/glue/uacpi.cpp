@@ -491,4 +491,10 @@ extern "C"
 
         return UACPI_STATUS_OK;
     }
+
+    uacpi_thread_id uacpi_kernel_get_thread_id()
+    {
+        auto [pid, tid] = proc::pid();
+        return reinterpret_cast<void *>(unique_from(pid, tid));
+    }
 } // extern "C"

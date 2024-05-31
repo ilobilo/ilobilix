@@ -37,62 +37,43 @@ namespace acpi
 
         if (first)
         {
-            uacpi_table_fadt(&fadt);
-            first = false;
+            if (uacpi_table_fadt(&fadt) == UACPI_STATUS_OK)
+                first = false;
         }
+
         return fadt;
     }
 
     namespace madt
     {
-        header *hdr = nullptr;
+        acpi_madt *hdr = nullptr;
 
-        // std::vector<lapic> lapics;
-        std::vector<ioapic> ioapics;
-        std::vector<iso> isos;
-        // std::vector<ionmi> ionmis;
-        // std::vector<lnmi> lnmis;
-        // std::vector<lapicao> laddrovers;
-        // std::vector<x2apic> x2apics;
+        std::vector<acpi_madt_ioapic> ioapics;
+        std::vector<acpi_madt_interrupt_source_override> isos;
 
         void init()
         {
             uacpi_table *out_table;
-            if (uacpi_table_find_by_signature(signature("APIC"), &out_table) != UACPI_STATUS_OK)
+            if (uacpi_table_find_by_signature("APIC", &out_table) != UACPI_STATUS_OK)
                 return;
 
-            hdr = reinterpret_cast<header *>(out_table->virt_addr);
+            hdr = reinterpret_cast<acpi_madt *>(out_table->virt_addr);
 
             auto start = tohh(reinterpret_cast<uintptr_t>(hdr->entries));
-            auto end = tohh(reinterpret_cast<uintptr_t>(hdr) + hdr->sdt.length);
+            auto end = tohh(reinterpret_cast<uintptr_t>(hdr) + hdr->hdr.length);
 
-            auto madt = reinterpret_cast<madt_t *>(start);
+            auto madt = reinterpret_cast<acpi_entry_hdr *>(start);
 
-            for (uintptr_t entry = start; entry < end; entry += madt->length, madt = reinterpret_cast<madt_t *>(entry))
+            for (uintptr_t entry = start; entry < end; entry += madt->length, madt = reinterpret_cast<acpi_entry_hdr *>(entry))
             {
                 switch (madt->type)
                 {
-                    // case 0:
-                    //     lapics.push_back(*reinterpret_cast<lapic*>(entry));
-                    //     break;
                     case 1:
-                        ioapics.push_back(*reinterpret_cast<ioapic*>(entry));
+                        ioapics.push_back(*reinterpret_cast<acpi_madt_ioapic*>(entry));
                         break;
                     case 2:
-                        isos.push_back(*reinterpret_cast<iso*>(entry));
+                        isos.push_back(*reinterpret_cast<acpi_madt_interrupt_source_override*>(entry));
                         break;
-                    // case 3:
-                    //     ionmis.push_back(*reinterpret_cast<ionmi*>(entry));
-                    //     break;
-                    // case 4:
-                    //     lnmis.push_back(*reinterpret_cast<lnmi*>(entry));
-                    //     break;
-                    // case 5:
-                    //     laddrovers.push_back(*reinterpret_cast<lapicao*>(entry));
-                    //     break;
-                    // case 9:
-                    //     x2apics.push_back(*reinterpret_cast<x2apic*>(entry));
-                    //     break;
                 }
             }
         }
@@ -179,11 +160,8 @@ namespace acpi
 
         uacpi_init_params params {
             .rsdp = reinterpret_cast<uacpi_phys_addr>(fromhh(rsdp_request.response->address)),
-            .rt_params = {
-                .log_level = UACPI_LOG_INFO,
-                .flags = 0
-            },
-            .no_acpi_mode = false
+            .log_level = UACPI_LOG_INFO,
+            .flags = 0
         };
         assert(uacpi_initialize(&params) == UACPI_STATUS_OK);
 
