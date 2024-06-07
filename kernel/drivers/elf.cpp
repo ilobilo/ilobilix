@@ -1,11 +1,16 @@
 // Copyright (C) 2022-2024  ilobilo
 
+#include <drivers/drivers.hpp>
 #include <drivers/elf.hpp>
+
 #include <init/kernel.hpp>
+
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
+
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
+
 #include <smart_ptr>
 #include <cstddef>
 #include <cstring>
@@ -121,49 +126,28 @@ namespace elf
 
     namespace modules
     {
-        std::unordered_map<std::string_view, driver_t*> drivers;
         std::vector<module_t> modules;
         static std::mutex lock;
 
-        static std::vector<driver_t*> get_drivers(const Elf64_Half e_shnum, Elf64_Shdr *sections, char *shstrtable)
+        static bool get_drivers(const Elf64_Half e_shnum, Elf64_Shdr *sections, char *shstrtable)
         {
-            std::vector<driver_t*> ret;
+            bool found = false;
             for (size_t i = 0; i < e_shnum; i++)
             {
                 auto section = &sections[i];
                 if (section->sh_size != 0 && section->sh_size >= sizeof(driver_t) && !strcmp(DRIVER_SECTION, shstrtable + section->sh_name))
                 {
-                    auto offset = section->sh_addr;
-                    while (offset < section->sh_addr + section->sh_size)
+                    for (auto offset = section->sh_addr; offset < section->sh_addr + section->sh_size; offset += sizeof(driver_t))
                     {
                         auto driver = reinterpret_cast<driver_t*>(offset);
-                        std::string_view name(driver->name);
-
-                        if (drivers.contains(name))
-                        {
-                            log::infoln("ELF: Driver with name '{}' already exists", name);
-                            goto next;
-                        }
-
-                        log::infoln("ELF: Found driver: '{}'", name);
-
-                        if (driver->depcount > 0)
-                        {
-                            log::infoln(" Dependencies: ");
-                            for (size_t d = 0; d < driver->depcount; d++)
-                                log::infoln("  - '{}'", driver->deps[d]);
-                        }
-
-                        drivers[name] = driver;
-                        ret.push_back(driver);
-
-                        next:
-                        offset += sizeof(driver_t);
+                        auto ret = drivers::add_driver(driver);
+                        if (found == false)
+                            found = ret;
                     }
                     break;
                 }
             }
-            return ret;
+            return found;
         }
 
         uintptr_t map(uintptr_t size)
@@ -184,23 +168,23 @@ namespace elf
         }
 
         [[clang::no_sanitize("alignment")]]
-        std::optional<std::vector<driver_t*>> load(uintptr_t address, size_t size)
+        bool load(uintptr_t address, size_t size)
         {
             auto unmappedhdr = reinterpret_cast<Elf64_Ehdr*>(address);
             if (memcmp(unmappedhdr->e_ident, ELFMAG, 4))
             {
                 log::errorln("ELF: Invalid magic");
-                return std::nullopt;
+                return false;
             }
             if (unmappedhdr->e_ident[EI_CLASS] != ELFCLASS64)
             {
                 log::errorln("ELF: Invalid class");
-                return std::nullopt;
+                return false;
             }
             if (unmappedhdr->e_type != ET_REL)
             {
                 log::errorln("ELF: Not a relocatable object");
-                return std::nullopt;
+                return false;
             }
 
             std::unique_lock guard(lock);
@@ -262,20 +246,20 @@ namespace elf
                     {
                         auto entry = &entries[rela];
                         auto sym = symtable + ELF64_R_SYM(entry->r_info);
-                        auto name = strtable + sym->st_name;
+                        auto name = std::string_view(strtable + sym->st_name);
 
                         void *loc = reinterpret_cast<void*>(tgtsect->sh_addr + entry->r_offset);
                         auto locaddr = reinterpret_cast<uintptr_t>(loc);
                         uintptr_t val = 0;
 
-                        if (sym->st_shndx == SHN_UNDEF)
+                        if (sym->st_shndx == SHN_UNDEF && !name.empty())
                         {
                             auto entry = syms::lookup(name);
                             if (entry == syms::empty_sym)
                             {
                                 log::errorln("ELF: Could not find kernel symbol '{}'", name);
                                 unmap(loadaddr, size);
-                                return std::nullopt;
+                                return false;
                             }
                             val = entry.addr;
                         }
@@ -378,7 +362,7 @@ namespace elf
                             default:
                                 log::errorln("ELF: Unsupported relocation '{}' found", ELF64_R_TYPE(entry->r_info));
                                 unmap(loadaddr, size);
-                                return std::nullopt;
+                                return false;
                         }
                     }
                 }
@@ -392,8 +376,8 @@ namespace elf
             };
 
             auto shstrtable = reinterpret_cast<char*>(loadaddr + sections[header.e_shstrndx].sh_offset);
-            auto drvs = get_drivers(header.e_shnum, sections, shstrtable);
-            mod.has_drivers = drvs.empty() == false;
+            bool found = get_drivers(header.e_shnum, sections, shstrtable);
+            mod.has_drivers = found;
 
             if (mod.has_drivers == true)
                 syms::symbol_tables.push_back(syms::add_syms(loadaddr, header.e_shnum, sections));
@@ -401,10 +385,10 @@ namespace elf
                 log::warnln("ELF: Could not find any drivers in the module");
 
             modules.push_back(mod);
-            return drvs;
+            return found;
         }
 
-        std::optional<std::vector<driver_t*>> load(vfs::node_t *node)
+        bool load(vfs::node_t *node)
         {
             auto size = node->res->stat.st_size;
             auto buffer = std::make_unique<uint8_t[]>(size);
@@ -412,16 +396,16 @@ namespace elf
             return load(buffer.get(), size);
         }
 
-        std::optional<std::vector<driver_t*>> load(vfs::node_t *parent, path_view_t directory)
+        bool load(vfs::node_t *parent, path_view_t directory)
         {
             auto node = std::get<1>(vfs::path2node(parent, directory));
             if (node == nullptr)
-                return std::nullopt;
+                return false;
 
             log::infoln("ELF: Loading modules from '{}'", directory);
 
             node->fs->populate(node);
-            std::vector<driver_t*> ret;
+            bool found = false;
 
             for (auto [name, child] : node->res->children)
             {
@@ -431,93 +415,17 @@ namespace elf
                 if (child->type() != s_ifreg)
                     continue;
 
-                auto drvs = load(child);
-
-                if (drvs.has_value())
-                    ret.insert(ret.end(), drvs.value().begin(), drvs.value().end());
+                if (load(child))
+                    found = true;
             }
 
-            if (ret.empty())
+            if (found == false)
             {
                 log::errorln("ELF: Could not find any modules in '{}'", directory);
-                return std::nullopt;
+                return false;
             }
 
-            return ret;
-        }
-
-        bool run(driver_t *driver, bool deps)
-        {
-            if (driver->initialised == true || driver->failed == true)
-                return true;
-
-            std::string_view name(driver->name);
-
-            for (size_t i = 0; i < driver->depcount; i++)
-            {
-                const auto &dep = driver->deps[i];
-                if (name == dep)
-                    continue;
-
-                if (drivers.contains(dep) == false)
-                {
-                    log::errorln("ELF: Dependency '{}' of driver '{}' not found", dep, name);
-                    return false;
-                }
-
-                auto depdriver = drivers[dep];
-                if (depdriver->initialised == false)
-                {
-                    if (deps == false)
-                    {
-                        log::errorln("ELF: Dependency '{}' of driver '{}' unresolved", dep, name);
-                        return false;
-                    }
-                    run(depdriver, deps);
-                    if (depdriver->initialised == false)
-                    {
-                        log::errorln("ELF: Could not initialise dependency '{}' of driver '{}'", dep, name);
-                        return false;
-                    }
-                }
-            }
-
-            bool ret = false;
-            if (driver->init)
-            {
-                log::infoln("ELF: Running driver '{}'", name);
-                ret = driver->init();
-            }
-            else log::errorln("ELF: Driver '{}' does not have init() function", name);
-
-            return driver->failed = !(driver->initialised = ret);
-        }
-
-        void run_all(bool deps)
-        {
-            for (const auto [name, driver] : drivers)
-                run(driver, deps);
-        }
-
-        void destroy(driver_t *driver)
-        {
-            if (driver->initialised == false)
-                return;
-
-            log::infoln("ELF: Destroying driver '{}'", driver->name);
-
-            if (driver->fini)
-                driver->fini();
-            else
-                log::warnln("ELF: Driver '{}' does not have fini() function", driver->name);
-
-            driver->initialised = false;
-        }
-
-        void destroy_all()
-        {
-            for (const auto [name, driver] : drivers)
-                destroy(driver);
+            return true;
         }
 
         void init()
@@ -529,8 +437,7 @@ namespace elf
             auto sections = reinterpret_cast<Elf64_Shdr*>(kfile + header->e_shoff);
             auto shstrtable = reinterpret_cast<char*>(kfile + sections[header->e_shstrndx].sh_offset);
 
-            auto drvs = get_drivers(header->e_shnum, sections, shstrtable);
-            if (drvs.empty())
+            if (!get_drivers(header->e_shnum, sections, shstrtable))
                 log::errorln("ELF: Could not find any builtin drivers");
         }
     } // namespace modules

@@ -1,6 +1,7 @@
 # Copyright (C) 2022-2024  ilobilo
 
 modules = [
+    'ps2',
     'vmware'
 ]
 

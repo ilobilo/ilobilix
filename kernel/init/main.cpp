@@ -9,6 +9,8 @@
 #include <drivers/fs/tmpfs.hpp>
 #include <drivers/vfs.hpp>
 
+#include <drivers/drivers.hpp>
+
 #include <drivers/acpi.hpp>
 #include <drivers/term.hpp>
 #include <drivers/frm.hpp>
@@ -50,7 +52,9 @@ void kernel_thread()
 
     elf::modules::init();
     elf::modules::load(nullptr, "/usr/lib/modules/");
-    elf::modules::run_all();
+
+    drivers::generic::run_all();
+    drivers::acpi::run_all();
 
     log::infoln("Kernel initialisation complete");
 

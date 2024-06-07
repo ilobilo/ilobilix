@@ -430,7 +430,7 @@ namespace nvme
     }
 } // namespace nvme
 
-DRIVER(nvme, init, fini)
+GENERIC_DRIVER(nvme, init, fini)
 
 __init__ bool init()
 {

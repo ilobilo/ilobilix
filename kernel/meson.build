@@ -18,6 +18,7 @@ src = files(
     'drivers/pci/pci.cpp',
 
     'drivers/acpi.cpp',
+    'drivers/drivers.cpp',
     'drivers/dtb.cpp',
     'drivers/elf.cpp',
     'drivers/fd.cpp',

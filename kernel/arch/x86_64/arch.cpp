@@ -6,8 +6,6 @@
 
 #include <arch/x86_64/syscall/syscall.hpp>
 
-#include <arch/x86_64/drivers/ps2/ps2.hpp>
-
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/gdt.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
@@ -25,6 +23,8 @@
 
 namespace arch
 {
+    extern "C" uint16_t ps2_command_port = 0;
+
     [[noreturn]] void halt(bool ints)
     {
         if (ints == true)
@@ -114,11 +114,14 @@ namespace arch
         pause();
 
         // ps2 reset
-        uint8_t good = 0b10;
-        while (good & 0b10)
-            good = io::in<uint8_t>(0x64);
-        io::out<uint8_t>(0x64, 0xFE);
-        pause();
+        if (ps2_command_port != 0)
+        {
+            uint8_t good = 0b10;
+            while (good & 0b10)
+                good = io::in<uint8_t>(ps2_command_port);
+            io::out<uint8_t>(ps2_command_port, 0xFE);
+            pause();
+        }
 
         // Bochs and Qemu version < 2
         io::out<uint16_t>(0xB004, 0x2000);
@@ -151,7 +154,6 @@ namespace arch
 
     void init()
     {
-        ps2::init();
     }
 } // namespace arch
 

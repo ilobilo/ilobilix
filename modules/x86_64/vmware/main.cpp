@@ -276,7 +276,7 @@ static void runner()
     }
 }
 
-DRIVER(vmware_tools, init, fini)
+GENERIC_DRIVER(vmware_tools, init, fini)
 
 __init__ bool init()
 {

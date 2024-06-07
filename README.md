@@ -17,7 +17,7 @@ Make sure you have following programs installed:
 * qemu-system-x86_64
 * qemu-system-aarch64
 
-Note: you may need more tools to build the sysroot, such as flex, bison, automake, autoconf, texinfo, gmp, mpc, mpfr etc
+Note: you may need more packages to build the sysroot, such as ``flex bison automake autoconf autopoint gperf help2man texinfo libgmp-dev libmpc-dev libmpfr-dev`` etc
 
 On debian based systems, I recommend installing llvm, clang and lld from here: https://apt.llvm.org \
 If you are on a up-to-date Debian based system (Ubuntu, linux mint, Pop_os!, etc) you can install most of them with this command:\
@@ -40,7 +40,6 @@ Follow these steps to build and run the os:
 For example: \
 ``ln -s build-sysroot/system-root ../sysroot``
 * ``popd``
-
 3. Set up the build system:\
 ``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64)(-ccache).cross-file -Doptions=values``
 
