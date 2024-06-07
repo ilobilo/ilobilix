@@ -170,6 +170,7 @@ namespace ioapic
         for (const auto &entry : acpi::madt::ioapics)
             ioapics.emplace_back(entry.address, entry.gsi_base);
 
+        // TODO: everything is unmasked
         auto redirect_isa_irq = [](size_t i)
         {
             for (const auto &iso : acpi::madt::isos)
@@ -179,7 +180,7 @@ namespace ioapic
                     set(
                         iso.gsi, iso.source + 0x20,
                         delivery::fixed, destmode::physical,
-                        iso.flags | masked, smp_request.response->bsp_lapic_id
+                        iso.flags /* | masked */, smp_request.response->bsp_lapic_id
                     );
                     idt::handlers[iso.source + 0x20].reserve();
                     return;
@@ -189,7 +190,7 @@ namespace ioapic
             set(
                 i, i + 0x20,
                 delivery::fixed, destmode::physical,
-                masked, smp_request.response->bsp_lapic_id
+                /* masked */ 0, smp_request.response->bsp_lapic_id
             );
             idt::handlers[i + 0x20].reserve();
         };

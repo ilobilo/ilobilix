@@ -1,6 +1,6 @@
-From 04e4b60e09b57e713e4aedec6ceb8c76eb84bfb3 Mon Sep 17 00:00:00 2001
+From c85d60f9fad68ed3df34dceb09e82fe4c3736adb Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Fri, 10 Nov 2023 00:25:17 +0400
+Date: Sat, 8 Jun 2024 02:46:54 +0400
 Subject: [PATCH] Add ilobilix sysdeps
 
 ---
@@ -47,6 +47,7 @@ Subject: [PATCH] Add ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/stat.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/statfs.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/statvfs.h   |   1 +
+ sysdeps/ilobilix/include/abi-bits/statx.h     |   1 +
  .../ilobilix/include/abi-bits/suseconds_t.h   |   1 +
  sysdeps/ilobilix/include/abi-bits/termios.h   |   1 +
  sysdeps/ilobilix/include/abi-bits/time.h      |   1 +
@@ -63,7 +64,7 @@ Subject: [PATCH] Add ilobilix sysdeps
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
  sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
- 59 files changed, 1360 insertions(+)
+ 60 files changed, 1361 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
@@ -106,6 +107,7 @@ Subject: [PATCH] Add ilobilix sysdeps
  create mode 120000 sysdeps/ilobilix/include/abi-bits/stat.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/statfs.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/statvfs.h
+ create mode 120000 sysdeps/ilobilix/include/abi-bits/statx.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/suseconds_t.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/termios.h
  create mode 120000 sysdeps/ilobilix/include/abi-bits/time.h
@@ -124,26 +126,26 @@ Subject: [PATCH] Add ilobilix sysdeps
  create mode 100644 sysdeps/ilobilix/x86_64/thread_entry.S
 
 diff --git a/meson.build b/meson.build
-index 08c9de6..f9a7a9a 100644
+index 6db34214..ff340250 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -125,6 +125,13 @@ if host_machine.system() == 'linux'
+@@ -212,6 +212,13 @@ if host_machine.system() == 'linux'
  	internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
  	internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
  	subdir('sysdeps/linux')
 +elif host_machine.system() == 'ilobilix'
-+	rtdl_include_dirs += include_directories('sysdeps/ilobilix/include')
++	rtld_include_dirs += include_directories('sysdeps/ilobilix/include')
 +	libc_include_dirs += include_directories('sysdeps/ilobilix/include')
 +	# internal_conf.set10('MLIBC_MAP_DSO_SEGMENTS', true)
 +	# internal_conf.set10('MLIBC_MAP_FILE_WINDOWS', true)
 +	# internal_conf.set10('MLIBC_MMAP_ALLOCATE_DSO', true)
 +	subdir('sysdeps/ilobilix')
  elif host_machine.system() == 'aero'
- 	rtdl_include_dirs += include_directories('sysdeps/aero/include')
+ 	rtld_include_dirs += include_directories('sysdeps/aero/include')
  	libc_include_dirs += include_directories('sysdeps/aero/include')
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crt0.S b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 new file mode 100644
-index 0000000..91170a7
+index 00000000..91170a76
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 @@ -0,0 +1,9 @@
@@ -158,7 +160,7 @@ index 0000000..91170a7
 +
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crti.S b/sysdeps/ilobilix/aarch64/crt-src/crti.S
 new file mode 100644
-index 0000000..0f5ca0f
+index 00000000..0f5ca0f1
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crti.S
 @@ -0,0 +1,13 @@
@@ -177,7 +179,7 @@ index 0000000..0f5ca0f
 +
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crtn.S b/sysdeps/ilobilix/aarch64/crt-src/crtn.S
 new file mode 100644
-index 0000000..cd95321
+index 00000000..cd95321a
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crtn.S
 @@ -0,0 +1,9 @@
@@ -192,7 +194,7 @@ index 0000000..cd95321
 +
 diff --git a/sysdeps/ilobilix/aarch64/thread_entry.S b/sysdeps/ilobilix/aarch64/thread_entry.S
 new file mode 100644
-index 0000000..a47a048
+index 00000000..a47a0486
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/thread_entry.S
 @@ -0,0 +1,27 @@
@@ -225,7 +227,7 @@ index 0000000..a47a048
 +
 diff --git a/sysdeps/ilobilix/generic/entry.cpp b/sysdeps/ilobilix/generic/entry.cpp
 new file mode 100644
-index 0000000..62b1c3c
+index 00000000..62b1c3cb
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/entry.cpp
 @@ -0,0 +1,37 @@
@@ -268,7 +270,7 @@ index 0000000..62b1c3c
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 0000000..0a4ef4b
+index 00000000..d0b54657
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
 @@ -0,0 +1,829 @@
@@ -492,7 +494,7 @@ index 0000000..0a4ef4b
 +}
 +
 +// All remaining functions are disabled in ldso.
-+#ifndef MLIBC_BUILDING_RTDL
++#ifndef MLIBC_BUILDING_RTLD
 +
 +// int sys_kill(pid_t, int)
 +
@@ -1103,7 +1105,7 @@ index 0000000..0a4ef4b
 +} // namespace mlibc
 diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
 new file mode 100644
-index 0000000..5605e04
+index 00000000..5605e047
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/thread.cpp
 @@ -0,0 +1,60 @@
@@ -1169,7 +1171,7 @@ index 0000000..5605e04
 +} // namespace mlibc
 diff --git a/sysdeps/ilobilix/include/abi-bits/access.h b/sysdeps/ilobilix/include/abi-bits/access.h
 new file mode 120000
-index 0000000..cb83931
+index 00000000..cb839316
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/access.h
 @@ -0,0 +1 @@
@@ -1177,7 +1179,7 @@ index 0000000..cb83931
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/auxv.h b/sysdeps/ilobilix/include/abi-bits/auxv.h
 new file mode 120000
-index 0000000..c43f878
+index 00000000..c43f8786
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/auxv.h
 @@ -0,0 +1 @@
@@ -1185,7 +1187,7 @@ index 0000000..c43f878
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h b/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
 new file mode 120000
-index 0000000..0b0ec27
+index 00000000..0b0ec270
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/blkcnt_t.h
 @@ -0,0 +1 @@
@@ -1193,7 +1195,7 @@ index 0000000..0b0ec27
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/blksize_t.h b/sysdeps/ilobilix/include/abi-bits/blksize_t.h
 new file mode 120000
-index 0000000..7dc8d7c
+index 00000000..7dc8d7cf
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/blksize_t.h
 @@ -0,0 +1 @@
@@ -1201,7 +1203,7 @@ index 0000000..7dc8d7c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/clockid_t.h b/sysdeps/ilobilix/include/abi-bits/clockid_t.h
 new file mode 120000
-index 0000000..6a42da5
+index 00000000..6a42da56
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/clockid_t.h
 @@ -0,0 +1 @@
@@ -1209,7 +1211,7 @@ index 0000000..6a42da5
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/dev_t.h b/sysdeps/ilobilix/include/abi-bits/dev_t.h
 new file mode 120000
-index 0000000..bca881e
+index 00000000..bca881e9
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/dev_t.h
 @@ -0,0 +1 @@
@@ -1217,7 +1219,7 @@ index 0000000..bca881e
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/epoll.h b/sysdeps/ilobilix/include/abi-bits/epoll.h
 new file mode 120000
-index 0000000..eb4b76d
+index 00000000..eb4b76dc
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/epoll.h
 @@ -0,0 +1 @@
@@ -1225,7 +1227,7 @@ index 0000000..eb4b76d
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/errno.h b/sysdeps/ilobilix/include/abi-bits/errno.h
 new file mode 120000
-index 0000000..6e507de
+index 00000000..6e507def
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/errno.h
 @@ -0,0 +1 @@
@@ -1233,7 +1235,7 @@ index 0000000..6e507de
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/fcntl.h b/sysdeps/ilobilix/include/abi-bits/fcntl.h
 new file mode 120000
-index 0000000..463e2c9
+index 00000000..463e2c95
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/fcntl.h
 @@ -0,0 +1 @@
@@ -1241,7 +1243,7 @@ index 0000000..463e2c9
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h b/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
 new file mode 120000
-index 0000000..898dfb2
+index 00000000..898dfb2f
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/fsblkcnt_t.h
 @@ -0,0 +1 @@
@@ -1249,7 +1251,7 @@ index 0000000..898dfb2
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h b/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
 new file mode 120000
-index 0000000..791755c
+index 00000000..791755c9
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/fsfilcnt_t.h
 @@ -0,0 +1 @@
@@ -1257,7 +1259,7 @@ index 0000000..791755c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/gid_t.h b/sysdeps/ilobilix/include/abi-bits/gid_t.h
 new file mode 120000
-index 0000000..6a77218
+index 00000000..6a772180
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/gid_t.h
 @@ -0,0 +1 @@
@@ -1265,7 +1267,7 @@ index 0000000..6a77218
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/in.h b/sysdeps/ilobilix/include/abi-bits/in.h
 new file mode 120000
-index 0000000..418d1d5
+index 00000000..418d1d5c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/in.h
 @@ -0,0 +1 @@
@@ -1273,7 +1275,7 @@ index 0000000..418d1d5
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/ino_t.h b/sysdeps/ilobilix/include/abi-bits/ino_t.h
 new file mode 120000
-index 0000000..4c20aca
+index 00000000..4c20aca2
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/ino_t.h
 @@ -0,0 +1 @@
@@ -1281,7 +1283,7 @@ index 0000000..4c20aca
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/inotify.h b/sysdeps/ilobilix/include/abi-bits/inotify.h
 new file mode 120000
-index 0000000..b5cb282
+index 00000000..b5cb2823
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/inotify.h
 @@ -0,0 +1 @@
@@ -1289,7 +1291,7 @@ index 0000000..b5cb282
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/ioctls.h b/sysdeps/ilobilix/include/abi-bits/ioctls.h
 new file mode 120000
-index 0000000..595106b
+index 00000000..595106b6
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/ioctls.h
 @@ -0,0 +1 @@
@@ -1297,7 +1299,7 @@ index 0000000..595106b
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/limits.h b/sysdeps/ilobilix/include/abi-bits/limits.h
 new file mode 120000
-index 0000000..6c88db2
+index 00000000..6c88db2e
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/limits.h
 @@ -0,0 +1 @@
@@ -1305,7 +1307,7 @@ index 0000000..6c88db2
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/mode_t.h b/sysdeps/ilobilix/include/abi-bits/mode_t.h
 new file mode 120000
-index 0000000..5d78fdf
+index 00000000..5d78fdfc
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/mode_t.h
 @@ -0,0 +1 @@
@@ -1313,7 +1315,7 @@ index 0000000..5d78fdf
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/mqueue.h b/sysdeps/ilobilix/include/abi-bits/mqueue.h
 new file mode 120000
-index 0000000..fa87b07
+index 00000000..fa87b078
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/mqueue.h
 @@ -0,0 +1 @@
@@ -1321,7 +1323,7 @@ index 0000000..fa87b07
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/msg.h b/sysdeps/ilobilix/include/abi-bits/msg.h
 new file mode 120000
-index 0000000..f402b49
+index 00000000..f402b493
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/msg.h
 @@ -0,0 +1 @@
@@ -1329,7 +1331,7 @@ index 0000000..f402b49
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/nlink_t.h b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
 new file mode 120000
-index 0000000..bb3b625
+index 00000000..bb3b625c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/nlink_t.h
 @@ -0,0 +1 @@
@@ -1337,7 +1339,7 @@ index 0000000..bb3b625
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/packet.h b/sysdeps/ilobilix/include/abi-bits/packet.h
 new file mode 120000
-index 0000000..998ef1a
+index 00000000..998ef1ab
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/packet.h
 @@ -0,0 +1 @@
@@ -1345,7 +1347,7 @@ index 0000000..998ef1a
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/pid_t.h b/sysdeps/ilobilix/include/abi-bits/pid_t.h
 new file mode 120000
-index 0000000..baa90f6
+index 00000000..baa90f6a
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/pid_t.h
 @@ -0,0 +1 @@
@@ -1353,7 +1355,7 @@ index 0000000..baa90f6
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/poll.h b/sysdeps/ilobilix/include/abi-bits/poll.h
 new file mode 120000
-index 0000000..8ea6a0a
+index 00000000..8ea6a0a3
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/poll.h
 @@ -0,0 +1 @@
@@ -1361,7 +1363,7 @@ index 0000000..8ea6a0a
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/ptrace.h b/sysdeps/ilobilix/include/abi-bits/ptrace.h
 new file mode 120000
-index 0000000..b2517b2
+index 00000000..b2517b2c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/ptrace.h
 @@ -0,0 +1 @@
@@ -1369,7 +1371,7 @@ index 0000000..b2517b2
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/reboot.h b/sysdeps/ilobilix/include/abi-bits/reboot.h
 new file mode 120000
-index 0000000..77013a4
+index 00000000..77013a41
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/reboot.h
 @@ -0,0 +1 @@
@@ -1377,7 +1379,7 @@ index 0000000..77013a4
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/resource.h b/sysdeps/ilobilix/include/abi-bits/resource.h
 new file mode 120000
-index 0000000..88d7402
+index 00000000..88d74025
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/resource.h
 @@ -0,0 +1 @@
@@ -1385,7 +1387,7 @@ index 0000000..88d7402
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/seek-whence.h b/sysdeps/ilobilix/include/abi-bits/seek-whence.h
 new file mode 120000
-index 0000000..df7bccf
+index 00000000..df7bccf0
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/seek-whence.h
 @@ -0,0 +1 @@
@@ -1393,7 +1395,7 @@ index 0000000..df7bccf
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/shm.h b/sysdeps/ilobilix/include/abi-bits/shm.h
 new file mode 120000
-index 0000000..067d8c4
+index 00000000..067d8c4f
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/shm.h
 @@ -0,0 +1 @@
@@ -1401,7 +1403,7 @@ index 0000000..067d8c4
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/signal.h b/sysdeps/ilobilix/include/abi-bits/signal.h
 new file mode 120000
-index 0000000..4dcb0b7
+index 00000000..4dcb0b7c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/signal.h
 @@ -0,0 +1 @@
@@ -1409,7 +1411,7 @@ index 0000000..4dcb0b7
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/socket.h b/sysdeps/ilobilix/include/abi-bits/socket.h
 new file mode 120000
-index 0000000..f1dc016
+index 00000000..f1dc016e
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/socket.h
 @@ -0,0 +1 @@
@@ -1417,7 +1419,7 @@ index 0000000..f1dc016
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/socklen_t.h b/sysdeps/ilobilix/include/abi-bits/socklen_t.h
 new file mode 120000
-index 0000000..41f3b11
+index 00000000..41f3b11f
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/socklen_t.h
 @@ -0,0 +1 @@
@@ -1425,7 +1427,7 @@ index 0000000..41f3b11
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/stat.h b/sysdeps/ilobilix/include/abi-bits/stat.h
 new file mode 120000
-index 0000000..1f63b41
+index 00000000..1f63b41f
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/stat.h
 @@ -0,0 +1 @@
@@ -1433,7 +1435,7 @@ index 0000000..1f63b41
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/statfs.h b/sysdeps/ilobilix/include/abi-bits/statfs.h
 new file mode 120000
-index 0000000..e3d202f
+index 00000000..e3d202f5
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/statfs.h
 @@ -0,0 +1 @@
@@ -1441,15 +1443,23 @@ index 0000000..e3d202f
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/statvfs.h b/sysdeps/ilobilix/include/abi-bits/statvfs.h
 new file mode 120000
-index 0000000..1fc80c2
+index 00000000..1fc80c2a
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/statvfs.h
 @@ -0,0 +1 @@
 +../../../../abis/linux/statvfs.h
 \ No newline at end of file
+diff --git a/sysdeps/ilobilix/include/abi-bits/statx.h b/sysdeps/ilobilix/include/abi-bits/statx.h
+new file mode 120000
+index 00000000..8702a1d0
+--- /dev/null
++++ b/sysdeps/ilobilix/include/abi-bits/statx.h
+@@ -0,0 +1 @@
++../../../../abis/linux/statx.h
+\ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/suseconds_t.h b/sysdeps/ilobilix/include/abi-bits/suseconds_t.h
 new file mode 120000
-index 0000000..9ed6597
+index 00000000..9ed65977
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/suseconds_t.h
 @@ -0,0 +1 @@
@@ -1457,7 +1467,7 @@ index 0000000..9ed6597
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/termios.h b/sysdeps/ilobilix/include/abi-bits/termios.h
 new file mode 120000
-index 0000000..ee8f0b0
+index 00000000..ee8f0b09
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/termios.h
 @@ -0,0 +1 @@
@@ -1465,7 +1475,7 @@ index 0000000..ee8f0b0
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/time.h b/sysdeps/ilobilix/include/abi-bits/time.h
 new file mode 120000
-index 0000000..2a02625
+index 00000000..2a026257
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/time.h
 @@ -0,0 +1 @@
@@ -1473,7 +1483,7 @@ index 0000000..2a02625
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/uid_t.h b/sysdeps/ilobilix/include/abi-bits/uid_t.h
 new file mode 120000
-index 0000000..b306777
+index 00000000..b3067778
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/uid_t.h
 @@ -0,0 +1 @@
@@ -1481,7 +1491,7 @@ index 0000000..b306777
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/utsname.h b/sysdeps/ilobilix/include/abi-bits/utsname.h
 new file mode 120000
-index 0000000..b285754
+index 00000000..b2857547
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/utsname.h
 @@ -0,0 +1 @@
@@ -1489,7 +1499,7 @@ index 0000000..b285754
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/vm-flags.h b/sysdeps/ilobilix/include/abi-bits/vm-flags.h
 new file mode 120000
-index 0000000..bbe258c
+index 00000000..bbe258cf
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/vm-flags.h
 @@ -0,0 +1 @@
@@ -1497,7 +1507,7 @@ index 0000000..bbe258c
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/vt.h b/sysdeps/ilobilix/include/abi-bits/vt.h
 new file mode 120000
-index 0000000..5798a4a
+index 00000000..5798a4ac
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/vt.h
 @@ -0,0 +1 @@
@@ -1505,7 +1515,7 @@ index 0000000..5798a4a
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/wait.h b/sysdeps/ilobilix/include/abi-bits/wait.h
 new file mode 120000
-index 0000000..feb2840
+index 00000000..feb2840c
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/wait.h
 @@ -0,0 +1 @@
@@ -1513,7 +1523,7 @@ index 0000000..feb2840
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/abi-bits/xattr.h b/sysdeps/ilobilix/include/abi-bits/xattr.h
 new file mode 120000
-index 0000000..66412d7
+index 00000000..66412d70
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/abi-bits/xattr.h
 @@ -0,0 +1 @@
@@ -1521,7 +1531,7 @@ index 0000000..66412d7
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
 new file mode 100644
-index 0000000..6efc1db
+index 00000000..6efc1dbd
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
 @@ -0,0 +1,167 @@
@@ -1694,7 +1704,7 @@ index 0000000..6efc1db
 +#endif
 diff --git a/sysdeps/ilobilix/include/mlibc/thread-entry.hpp b/sysdeps/ilobilix/include/mlibc/thread-entry.hpp
 new file mode 100644
-index 0000000..a20cab5
+index 00000000..a20cab58
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/mlibc/thread-entry.hpp
 @@ -0,0 +1,12 @@
@@ -1712,12 +1722,12 @@ index 0000000..a20cab5
 +#endif // MLIBC_THREAD_ENTRY
 diff --git a/sysdeps/ilobilix/meson.build b/sysdeps/ilobilix/meson.build
 new file mode 100644
-index 0000000..626d1e3
+index 00000000..3e3d8cef
 --- /dev/null
 +++ b/sysdeps/ilobilix/meson.build
 @@ -0,0 +1,95 @@
 +
-+rtdl_dso_sources += files(
++rtld_dso_sources += files(
 +	'generic/sysdeps.cpp'
 +)
 +
@@ -1813,7 +1823,7 @@ index 0000000..626d1e3
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crt0.S b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
 new file mode 100644
-index 0000000..4a5cf86
+index 00000000..4a5cf860
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
 @@ -0,0 +1,8 @@
@@ -1827,7 +1837,7 @@ index 0000000..4a5cf86
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crti.S b/sysdeps/ilobilix/x86_64/crt-src/crti.S
 new file mode 100644
-index 0000000..911b078
+index 00000000..911b078d
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crti.S
 @@ -0,0 +1,11 @@
@@ -1844,7 +1854,7 @@ index 0000000..911b078
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crtn.S b/sysdeps/ilobilix/x86_64/crt-src/crtn.S
 new file mode 100644
-index 0000000..0187e50
+index 00000000..0187e50f
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crtn.S
 @@ -0,0 +1,9 @@
@@ -1859,7 +1869,7 @@ index 0000000..0187e50
 +
 diff --git a/sysdeps/ilobilix/x86_64/thread_entry.S b/sysdeps/ilobilix/x86_64/thread_entry.S
 new file mode 100644
-index 0000000..954c6dd
+index 00000000..954c6dd7
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/thread_entry.S
 @@ -0,0 +1,23 @@
@@ -1887,5 +1897,5 @@ index 0000000..954c6dd
 +.section .note.GNU-stack,"",%progbits
 +
 -- 
-2.39.2
+2.43.0
 

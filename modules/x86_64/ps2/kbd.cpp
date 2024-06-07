@@ -1,7 +1,5 @@
 // Copyright (C) 2022-2024  ilobilo
 
-#include <arch/x86_64/drivers/ps2/scancodes.hpp>
-#include <arch/x86_64/drivers/ps2/ps2.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
 
 #include <init/kernel.hpp>
@@ -13,10 +11,11 @@
 #include <drivers/term.hpp>
 #include <drivers/proc.hpp>
 
+#include "scancodes.hpp"
+#include "ps2.hpp"
+
 namespace ps2::kbd
 {
-    uint8_t vector = 0;
-
     // TODO: use different variables for each tty
     static union
     {
@@ -227,12 +226,12 @@ namespace ps2::kbd
         }
     }
 
-    void init()
+    void init(uint8_t irq)
     {
-        auto [handler, _vector] = idt::allocate_handler(idt::IRQ(1));
-        handler.set([](cpu::registers_t *regs) { ev.trigger(); });
+        auto [handler, vector] = idt::allocate_handler(idt::IRQ(irq));
+        handler.set([](cpu::registers_t *) { ev.trigger(); });
 
         proc::enqueue(new proc::thread(kernel_proc, kbd_worker, 0));
-        idt::unmask((vector = _vector) - 0x20);
+        idt::unmask(vector - 0x20);
     }
 } // namespace ps2::kbd

@@ -7,7 +7,6 @@
 #include <mm/vmm.hpp>
 #include <elf.h>
 
-#include <unordered_map>
 #include <string_view>
 #include <optional>
 #include <cstdint>
@@ -46,23 +45,16 @@ namespace elf
             size_t size;
             bool has_drivers;
         };
-        extern std::unordered_map<std::string_view, driver_t*> drivers;
         extern std::vector<module_t> modules;
 
-        std::optional<std::vector<driver_t*>> load(uintptr_t address, size_t size);
-        static inline std::optional<std::vector<driver_t*>> load(auto address, size_t size)
+        bool load(uintptr_t address, size_t size);
+        static inline bool load(auto address, size_t size)
         {
             return load(reinterpret_cast<uintptr_t>(address), size);
         }
 
-        std::optional<std::vector<driver_t*>> load(vfs::node_t *node);
-        std::optional<std::vector<driver_t*>> load(vfs::node_t *parent, path_view_t directory);
-
-        bool run(driver_t *drv, bool deps = true);
-        void run_all(bool deps = true);
-
-        void destroy(driver_t *entry);
-        void destroy_all();
+        bool load(vfs::node_t *node);
+        bool load(vfs::node_t *parent, path_view_t directory);
 
         void init();
     } // namespace modules

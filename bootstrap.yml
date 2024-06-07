@@ -655,10 +655,10 @@ packages:
     architecture: '@OPTION:arch@'
     source:
       subdir: 'sources'
-      url: 'https://zlib.net/zlib-1.3.tar.gz'
+      url: 'https://zlib.net/zlib-1.3.1.tar.gz'
       format: 'tar.gz'
-      extract_path: 'zlib-1.3'
-      version: '1.3'
+      extract_path: 'zlib-1.3.1'
+      version: '1.3.1'
       patch-path-strip: 1
       tools_required:
         - host-autoconf-v2.69

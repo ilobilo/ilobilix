@@ -269,7 +269,7 @@ namespace e1000
 
         this->link_up();
 
-        log::infoln("E1000: Initialisation complete. MAC address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        log::infoln("E1000: MAC address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
             this->mac[0], this->mac[1], this->mac[2], this->mac[3], this->mac[4], this->mac[5]);
 
         return expected_void();
@@ -284,7 +284,7 @@ namespace e1000
     }
 } // namespace e1000
 
-DRIVER(e1000, init, fini)
+GENERIC_DRIVER(e1000, init, fini)
 
 __init__ bool init()
 {

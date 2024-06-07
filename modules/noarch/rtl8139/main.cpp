@@ -246,7 +246,7 @@ namespace rtl8139
         this->write(ack);
         this->dev->command(pci::CMD_INT_DIS, false);
 
-        log::infoln("RTL8139: Initialisation complete. MAC address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        log::infoln("RTL8139: MAC address: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
             this->mac[0], this->mac[1], this->mac[2], this->mac[3], this->mac[4], this->mac[5]);
 
         return expected_void();
@@ -258,7 +258,7 @@ namespace rtl8139
     }
 } // namespace rtl8139
 
-DRIVER(rtl8139, init, fini)
+GENERIC_DRIVER(rtl8139, init, fini)
 
 __init__ bool init()
 {

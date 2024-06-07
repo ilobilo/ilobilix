@@ -38,7 +38,7 @@ inline constexpr auto align_down(Type1 n, Type2 a)
     {
         return (n & ~(a - 1));
     };
-    return align_down_internal(std::make_unsigned_t<Type1>(n), std::make_unsigned_t<Type2>(a));
+    return align_down_internal(uint64_t(n), uint64_t(a));
 }
 
 inline constexpr auto align_up(std::integral auto n, std::integral auto a)
