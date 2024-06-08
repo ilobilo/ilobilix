@@ -13,13 +13,10 @@ namespace e1000
 {
     void Controller::irq_handler()
     {
-        this->write(spec::registers::imask, 0x01);
-
         auto cause = this->read(spec::registers::icause);
-        if ((cause & 0x80) != cause)
-            return;
 
         // TODO
+        if (cause & 0x01) { /* Transmit OK */ }
         if (cause & 0x04)
             this->link_up();
         else if (cause & 0x80)
@@ -249,21 +246,22 @@ namespace e1000
         if (this->dev->register_irq(smp::bsp_id, [&] { this->irq_handler(); }) == false)
             return std::unexpected("Could not install interrupt handler");
 
-        this->write(spec::registers::imask,
+        this->write(spec::registers::imaskset,
             spec::intflags::txdw   |
-            spec::intflags::txqe   |
+            // spec::intflags::txqe   |
             spec::intflags::lsc    |
-            spec::intflags::rxdmt0 |
-            spec::intflags::dsw    |
-            spec::intflags::rxo    |
+            // spec::intflags::rxdmt0 |
+            // spec::intflags::dsw    |
+            // spec::intflags::rxo    |
             spec::intflags::rxt0   |
-            spec::intflags::mdac   |
-            spec::intflags::phyint |
-            spec::intflags::lsecpn |
-            spec::intflags::txdl   |
-            spec::intflags::srpd   |
-            spec::intflags::ack    |
-            spec::intflags::eccer
+            // spec::intflags::mdac   |
+            // spec::intflags::phyint |
+            // spec::intflags::lsecpn |
+            // spec::intflags::txdl   |
+            // spec::intflags::srpd   |
+            // spec::intflags::ack    |
+            // spec::intflags::eccer
+            0
         );
         this->read(spec::registers::icause);
 
@@ -288,6 +286,9 @@ GENERIC_DRIVER(e1000, init, fini)
 
 __init__ bool init()
 {
+    // TODO: Fix interrupt spam
+    return false;
+
     bool at_least_one = false;
     for (const auto dev : pci::get_devices())
     {

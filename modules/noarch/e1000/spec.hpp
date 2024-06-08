@@ -16,7 +16,8 @@ namespace e1000::spec
         eprm = 0x0014,
 
         icause = 0x00C0,
-        imask = 0x00D0,
+        imaskset = 0x00D0,
+        imaskclr = 0x00D8,
 
         rctrl = 0x0100,
         tctrl = 0x0400,

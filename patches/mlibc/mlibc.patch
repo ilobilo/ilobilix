@@ -1,6 +1,6 @@
-From c85d60f9fad68ed3df34dceb09e82fe4c3736adb Mon Sep 17 00:00:00 2001
+From 20713d1ffce503ee588b1861d8fbfb43d4afa2a7 Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Sat, 8 Jun 2024 02:46:54 +0400
+Date: Sun, 9 Jun 2024 01:04:04 +0400
 Subject: [PATCH] Add ilobilix sysdeps
 
 ---
@@ -9,8 +9,9 @@ Subject: [PATCH] Add ilobilix sysdeps
  sysdeps/ilobilix/aarch64/crt-src/crti.S       |  13 +
  sysdeps/ilobilix/aarch64/crt-src/crtn.S       |   9 +
  sysdeps/ilobilix/aarch64/thread_entry.S       |  27 +
+ sysdeps/ilobilix/generic/do_syscall.hpp       |  58 ++
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
- sysdeps/ilobilix/generic/sysdeps.cpp          | 829 ++++++++++++++++++
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 739 ++++++++++++++++++
  sysdeps/ilobilix/generic/thread.cpp           |  60 ++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
@@ -59,16 +60,17 @@ Subject: [PATCH] Add ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
  sysdeps/ilobilix/include/ilobilix/syscall.h   | 167 ++++
  .../ilobilix/include/mlibc/thread-entry.hpp   |  12 +
- sysdeps/ilobilix/meson.build                  |  95 ++
+ sysdeps/ilobilix/meson.build                  |  99 +++
  sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
  sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
- 60 files changed, 1361 insertions(+)
+ 61 files changed, 1333 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
  create mode 100644 sysdeps/ilobilix/aarch64/thread_entry.S
+ create mode 100644 sysdeps/ilobilix/generic/do_syscall.hpp
  create mode 100644 sysdeps/ilobilix/generic/entry.cpp
  create mode 100644 sysdeps/ilobilix/generic/sysdeps.cpp
  create mode 100644 sysdeps/ilobilix/generic/thread.cpp
@@ -145,17 +147,17 @@ index 6db34214..ff340250 100644
  	libc_include_dirs += include_directories('sysdeps/aero/include')
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crt0.S b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 new file mode 100644
-index 00000000..91170a76
+index 00000000..65506129
 --- /dev/null
 +++ b/sysdeps/ilobilix/aarch64/crt-src/crt0.S
 @@ -0,0 +1,9 @@
 +.section .text
 +.global _start
 +_start:
-+	adrp x0, main
-+	add x0, x0, :lo12:main
++	mov x0, sp
++	adrp x1, main
++	add x1, x1, :lo12:main
 +	bl __mlibc_entry
-+
 +.section .note.GNU-stack,"",%progbits
 +
 diff --git a/sysdeps/ilobilix/aarch64/crt-src/crti.S b/sysdeps/ilobilix/aarch64/crt-src/crti.S
@@ -225,6 +227,71 @@ index 00000000..a47a0486
 +	ret
 +.section .note.GNU-stack,"",%progbits
 +
+diff --git a/sysdeps/ilobilix/generic/do_syscall.hpp b/sysdeps/ilobilix/generic/do_syscall.hpp
+new file mode 100644
+index 00000000..17e17407
+--- /dev/null
++++ b/sysdeps/ilobilix/generic/do_syscall.hpp
+@@ -0,0 +1,58 @@
++#ifndef _DO_SYSCALL_H
++#define _DO_SYSCALL_H
++
++#include <ilobilix/syscall.h>
++
++namespace mlibc
++{
++    inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6)
++    {
++        return __syscall(n, a1, a2, a3, a4, a5, a6);
++    }
++
++    inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
++    {
++        return __syscall(n, a1, a2, a3, a4, a5);
++    }
++
++    inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
++    {
++        return __syscall(n, a1, a2, a3, a4);
++    }
++
++    inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3)
++    {
++        return __syscall(n, a1, a2, a3);
++    }
++
++    inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2)
++    {
++        return __syscall(n, a1, a2);
++    }
++
++    inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1)
++    {
++        return __syscall(n, a1);
++    }
++
++    inline uintptr_t __do_syscall(uintptr_t n)
++    {
++        return __syscall(n);
++    }
++
++    template<typename ...Args>
++    inline uintptr_t do_syscall(Args &&...args)
++    {
++        return __do_syscall(uintptr_t(args)...);
++    }
++
++    inline int syscall_error(intptr_t ret)
++    {
++        auto v = static_cast<intptr_t>(ret);
++        if(static_cast<uintptr_t>(v) > -4096UL)
++            return -v;
++        return 0;
++    }
++}
++
++#endif // _DO_SYSCALL_H
+\ No newline at end of file
 diff --git a/sysdeps/ilobilix/generic/entry.cpp b/sysdeps/ilobilix/generic/entry.cpp
 new file mode 100644
 index 00000000..62b1c3cb
@@ -270,839 +337,750 @@ index 00000000..62b1c3cb
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 00000000..d0b54657
+index 00000000..d43275d7
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
-@@ -0,0 +1,829 @@
-+#include <bits/ensure.h>
-+#include <mlibc/allocator.hpp>
-+#include <mlibc/debug.hpp>
-+#include <mlibc/all-sysdeps.hpp>
+@@ -0,0 +1,739 @@
++#include <mlibc/ansi-sysdeps.hpp>
++#include <mlibc/posix-sysdeps.hpp>
++#include <mlibc/linux-sysdeps.hpp>
++#include <mlibc/glibc-sysdeps.hpp>
++#include <mlibc/bsd-sysdeps.hpp>
++#include <mlibc/rtld-sysdeps.hpp>
++
++#include <mlibc/internal-sysdeps.hpp>
++
 +#include <mlibc/thread-entry.hpp>
++#include <mlibc/debug.hpp>
++#include <bits/ensure.h>
++
++#include "do_syscall.hpp"
++
++#include <stdint.h>
++#include <stddef.h>
++#include <string.h>
++#include <alloca.h>
 +#include <errno.h>
-+#include <dirent.h>
-+#include <fcntl.h>
-+#include <limits.h>
-+#include <asm/ioctls.h>
++
++#include <net/if.h>
++#include <sys/ioctl.h>
++#include <sys/ipc.h>
++#include <sys/user.h>
++#include <sys/utsname.h>
++#include <sys/stat.h>
++#include <sys/sysinfo.h>
++#include <unistd.h>
++#include <stdio.h>
 +#include <stdlib.h>
-+#include <abi-bits/fcntl.h>
-+#include <ilobilix/syscall.h>
++#include <sched.h>
++#include <fcntl.h>
++#include <pthread.h>
++
++#ifdef __INTELLISENSE__
++typedef __SIZE_TYPE__ size_t;
++typedef long int ssize_t;
++
++struct timespec
++{
++    time_t tv_sec;
++    long tv_nsec;
++};
++#endif
 +
 +#define STUB_ONLY(name)                               \
 +{                                                     \
-+	sys_libc_log("mlibc: sys_" #name "() is a stub"); \
-+	return 0;                                         \
++    sys_libc_log("mlibc: " #name "() is a stub"); \
++    return 0;                                         \
++}
++#define STUB_ONLY_VAL(name, ...)                      \
++{                                                     \
++    sys_libc_log("mlibc: " #name "() is a stub"); \
 +}
 +
-+namespace mlibc {
-+
-+inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5, uintptr_t a6)
++namespace mlibc
 +{
-+	return __syscall(n, a1, a2, a3, a4, a5, a6);
-+}
++    void sys_libc_log(const char *_message)
++    {
++        auto len = strlen(_message);
++        char *message = static_cast<char*>(alloca(len + 1));
 +
-+inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, uintptr_t a5)
-+{
-+	return __syscall(n, a1, a2, a3, a4, a5);
-+}
++        memcpy(message, _message, len);
++        message[len] = '\n';
 +
-+inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4)
-+{
-+	return __syscall(n, a1, a2, a3, a4);
-+}
++        do_syscall(SYS_write, 2, message, len + 1);
++    }
 +
-+inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2, uintptr_t a3)
-+{
-+	return __syscall(n, a1, a2, a3);
-+}
++    [[noreturn]] void sys_libc_panic()
++    {
++        sys_libc_log("\nMLIBC PANIC\n");
++        sys_exit(1);
++        __builtin_unreachable();
++    }
 +
-+inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1, uintptr_t a2)
-+{
-+	return __syscall(n, a1, a2);
-+}
-+
-+inline uintptr_t __do_syscall(uintptr_t n, uintptr_t a1)
-+{
-+	return __syscall(n, a1);
-+}
-+
-+inline uintptr_t __do_syscall(uintptr_t n)
-+{
-+	return __syscall(n);
-+}
-+
-+// Perhaps move do_syscall in syscall.h
-+
-+template<typename ...Args>
-+requires (sizeof...(Args) > 0 && sizeof...(Args) <= 7)
-+inline uintptr_t do_syscall(Args &&...args)
-+{
-+	return __do_syscall(uintptr_t(args)...);
-+}
-+
-+inline int syscall_error(intptr_t ret)
-+{
-+	auto v = static_cast<intptr_t>(ret);
-+	if(static_cast<uintptr_t>(v) > -4096UL)
-+		return -v;
-+	return 0;
-+}
-+
-+// void sys_libc_log(const char *message)
-+// {
-+// 	size_t n = 0;
-+// 	while(message[n])
-+// 		n++;
-+// 	do_syscall(SYS_write, 2, message, n);
-+// 	char lf = '\n';
-+// 	do_syscall(SYS_write, 2, &lf, 1);
-+// }
-+
-+void sys_libc_log(const char *_message)
-+{
-+	auto len = strlen(_message);
-+	char *message = static_cast<char*>(alloca(len + 1));
-+
-+	memcpy(message, _message, len);
-+	message[len] = '\n';
-+
-+	do_syscall(SYS_write, 2, message, len + 1);
-+}
-+
-+void sys_libc_panic()
-+{
-+	sys_libc_log("\nMLIBC PANIC\n");
-+	sys_exit(1);
-+	__builtin_unreachable();
-+}
-+
-+void sys_exit(int status)
-+{
-+	do_syscall(SYS_exit, status);
-+	__builtin_unreachable();
-+}
-+
-+int sys_tcb_set(void *pointer)
-+{
++    int sys_tcb_set(void *pointer)
++    {
 +#if defined(__x86_64__)
-+	do_syscall(SYS_arch_prctl, 0x1002 /* ARCH_SET_FS */, pointer);
++        do_syscall(SYS_arch_prctl, 0x1002 /* ARCH_SET_FS */, pointer);
 +#elif defined(__aarch64__)
-+	uintptr_t thread_data = reinterpret_cast<uintptr_t>(pointer) + sizeof(Tcb) - 0x10;
-+	asm volatile ("msr tpidr_el0, %0" :: "r"(thread_data));
++        uintptr_t thread_data = reinterpret_cast<uintptr_t>(pointer) + sizeof(Tcb) - 0x10;
++        asm volatile ("msr tpidr_el0, %0" :: "r"(thread_data));
 +#else
-+#	error "Missing architecture specific code."
++#  error "Missing architecture specific code."
 +#endif
-+	return 0;
-+}
++        return 0;
++    }
 +
-+int sys_futex_wait(int *pointer, int expected, const struct timespec *time) STUB_ONLY(futex_wait)
-+// {
-+// 	return do_syscall(SYS_futex_wait, pointer, expected, time);
-+// }
++    int sys_anon_allocate(size_t size, void **pointer)
++    {
++	    return sys_vm_map(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0, pointer);
++    }
++    int sys_anon_free(void *pointer, size_t size)
++    {
++        return sys_vm_unmap(pointer, size);
++    }
 +
-+int sys_futex_wake(int *pointer) STUB_ONLY(futex_wake)
-+// {
-+// 	auto ret = do_syscall(SYS_futex_wake, pointer);
++    // int sys_fadvise(int fd, off_t offset, off_t length, int advice) STUB_ONLY(sys_fadvise)
 +
-+// 	if (auto e = syscall_error(ret); e)
-+// 		return e;
++    int sys_open(const char *path, int flags, mode_t mode, int *fd)
++    {
++        return sys_openat(AT_FDCWD, path, flags, mode, fd);
++    }
 +
-+// 	int num_woken = ret;
++    int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd)
++    {
++        auto ret = do_syscall(SYS_openat, dirfd, path, flags, mode);
++        if (auto e = syscall_error(ret); e)
++            return e;
 +
-+// 	__ensure(num_woken >= 0 && num_woken <= 1);
-+// 	return num_woken;
-+// }
++        *fd = int(ret);
++        return 0;
++    }
 +
-+int sys_openat(int dirfd, const char *path, int flags, mode_t mode, int *fd)
-+{
-+	auto ret = do_syscall(SYS_openat, dirfd, path, flags, mode);
++    int sys_close(int fd)
++    {
++        auto ret = do_syscall(SYS_close, fd);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
 +
-+	if (auto e = syscall_error(ret); e)
-+		return e;
++    int sys_dup2(int fd, int flags, int newfd)
++    {
++        auto ret = do_syscall(SYS_dup3, fd, newfd, flags);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
 +
-+	*fd = int(ret);
-+	return 0;
-+}
++    int sys_read(int fd, void *buffer, size_t size, ssize_t *bytes_read)
++    {
++        auto ret = do_syscall(SYS_read, fd, buffer, size);
++        if (auto e = syscall_error(ret); e)
++            return e;
 +
-+int sys_open(const char *path, int flags, mode_t mode, int *fd)
-+{
-+	return sys_openat(AT_FDCWD, path, flags, mode, fd);
-+}
++        *bytes_read = ssize_t(ret);
++        return 0;
++    }
 +
-+int sys_close(int fd)
-+{
-+	auto ret = do_syscall(SYS_close, fd);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
++    // int sys_readv(int fd, const iovec *iovs, int iovc, ssize_t *bytes_read) STUB_ONLY(sys_readv)
 +
-+int sys_seek(int fd, off_t offset, int whence, off_t *new_offset)
-+{
-+	auto ret = do_syscall(SYS_lseek, fd, offset, whence);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
++    int sys_write(int fd, const void *buffer, size_t size, ssize_t *bytes_written)
++    {
++        auto ret = do_syscall(SYS_write, fd, buffer, size);
++        if (auto e = syscall_error(ret); e)
++            return e;
 +
-+	*new_offset = off_t(ret);
-+	return 0;
-+}
++        *bytes_written = ssize_t(ret);
++        return 0;
++    }
 +
-+int sys_read(int fd, void *buf, size_t count, ssize_t *bytes_read)
-+{
-+	auto ret = do_syscall(SYS_read, fd, buf, count);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
++    int sys_seek(int fd, off_t offset, int whence, off_t *new_offset)
++    {
++        auto ret = do_syscall(SYS_lseek, fd, offset, whence);
++        if (auto e = syscall_error(ret); e)
++            return e;
 +
-+	*bytes_read = ssize_t(ret);
-+	return 0;
-+}
++        *new_offset = off_t(ret);
++        return 0;
++    }
 +
-+int sys_vm_map(void *hint, size_t size, int prot, int flags, int fd, off_t offset, void **window)
-+{
-+	auto ret = do_syscall(SYS_mmap, hint, size, prot, flags, fd, offset);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
++    int sys_chmod(const char *pathname, mode_t mode)
++    {
++        return sys_fchmodat(AT_FDCWD, pathname, mode, 0);
++    }
 +
-+	*window = (void*)ret;
-+	return 0;
-+}
++    int sys_fchmod(int fd, mode_t mode)
++    {
++        return sys_fchmodat(fd, "", mode, AT_EMPTY_PATH);
++    }
 +
-+int sys_vm_unmap(void *pointer, size_t size)
-+{
-+	auto ret = do_syscall(SYS_munmap, pointer, size);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
++    int sys_fchmodat(int fd, const char *pathname, mode_t mode, int flags)
++    {
++        auto ret = do_syscall(SYS_fchmodat, fd, pathname, mode, flags);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
 +
-+int sys_vm_protect(void *pointer, size_t size, int prot)
-+{
-+	auto ret = do_syscall(SYS_mprotect, pointer, size, prot);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
++    // int sys_fchownat(int dirfd, const char *pathname, uid_t owner, gid_t group, int flags) STUB_ONLY(sys_fchownat)
++    // int sys_utimensat(int dirfd, const char *pathname, const timespec times[2], int flags) STUB_ONLY(sys_utimensat)
 +
-+int sys_anon_allocate(size_t size, void **pointer)
-+{
-+	return sys_vm_map(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0, pointer);
-+}
++    int sys_vm_map(void *hint, size_t size, int prot, int flags, int fd, off_t offset, void **window)
++    {
++        auto ret = do_syscall(SYS_mmap, hint, size, prot, flags, fd, offset);
++        if (auto e = syscall_error(ret); e)
++            return e;
 +
-+int sys_anon_free(void *pointer, size_t size)
-+{
-+	return sys_vm_unmap(pointer, size);
-+}
++        *window = (void*)ret;
++        return 0;
++    }
 +
-+// All remaining functions are disabled in ldso.
++    int sys_vm_unmap(void *pointer, size_t size)
++    {
++        auto ret = do_syscall(SYS_munmap, pointer, size);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    // int sys_brk(void **out) STUB_ONLY(sys_brk)
++
++    // int sys_futex_tid() STUB_ONLY(sys_futex_tid)
++    int sys_futex_wait(int *pointer, int expected, const timespec *time) STUB_ONLY(sys_futex_wait)
++    int sys_futex_wake(int *pointer) STUB_ONLY(sys_futex_wake)
++
++    // int sys_sigsuspend(const sigset_t *set) STUB_ONLY(sys_sigsuspend)
++    // int sys_sigaltstack(const stack_t *ss, stack_t *oss) STUB_ONLY(sys_sigaltstack)
++
++    int sys_mkdir(const char *path, mode_t mode)
++    {
++        return sys_mkdirat(AT_FDCWD, path, mode);
++    }
++
++    int sys_mkdirat(int dirfd, const char *path, mode_t mode)
++    {
++        auto ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    int sys_mknodat(int dirfd, const char *path, int mode, int dev)
++    {
++        auto ret = do_syscall(SYS_mknodat, dirfd, path, mode, dev);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    int sys_mkfifoat(int dirfd, const char *path, mode_t mode)
++    {
++        return sys_mknodat(dirfd, path, mode | S_IFIFO, 0);
++    }
++
++    // int sys_symlink(const char *target_path, const char *link_path) STUB_ONLY(sys_symlink)
++    // int sys_symlinkat(const char *target_path, int dirfd, const char *link_path) STUB_ONLY(sys_symlinkat)
++
++    int sys_umask(mode_t mode, mode_t *old)
++    {
++        auto ret = do_syscall(SYS_umask, mode);
++        *old = mode_t(ret);
++        return 0;
++    }
++
++    int sys_chdir(const char *path)
++    {
++        auto ret = do_syscall(SYS_chdir, path);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    int sys_fchdir(int fd)
++    {
++        auto ret = do_syscall(SYS_fchdir, fd);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    // int sys_rename(const char *old_path, const char *new_path) STUB_ONLY(sys_rename)
++    // int sys_renameat(int old_dirfd, const char *old_path, int new_dirfd, const char *new_path) STUB_ONLY(sys_renameat)
++
++    // int sys_rmdir(const char *path) STUB_ONLY(sys_rmdir)
++    // int sys_ftruncate(int fd, size_t size) STUB_ONLY(sys_ftruncate)
++
++    int sys_readlink(const char *path, void *buf, size_t bufsiz, ssize_t *len)
++    {
++        auto ret = do_syscall(SYS_readlinkat, AT_FDCWD, path, buf, bufsiz);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *len = ssize_t(ret);
++        return 0;
++    }
++
++    // int sys_getrlimit(int resource, rlimit *limit) STUB_ONLY(sys_getrlimit)
++    // int sys_setrlimit(int resource, const rlimit *limit) STUB_ONLY(sys_setrlimit)
++
++    pid_t sys_getppid()
++    {
++        return pid_t(do_syscall(SYS_getppid));
++    }
++
++    int sys_getpgid(pid_t pid, pid_t *out) STUB_ONLY(sys_getpgid)
++    int sys_setpgid(pid_t pid, pid_t pgid) STUB_ONLY(sys_setpgid)
++
++    int sys_getsid(pid_t pid, pid_t *sid) STUB_ONLY(sys_getsid)
++    int sys_setsid(pid_t *sid) STUB_ONLY(sys_setsid)
++
++    int sys_setuid(uid_t uid) STUB_ONLY(sys_setuid)
++    int sys_setgid(gid_t gid) STUB_ONLY(sys_setgid)
++
++    // int sys_getgroups(size_t size, const gid_t *list, int *retval) STUB_ONLY(sys_getgroups)
++
++    int sys_dup(int fd, int flags, int *newfd)
++    {
++        auto ret = do_syscall(SYS_dup, fd);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *newfd = int(ret);
++        return 0;
++    }
++
++    // void sys_sync() STUB_ONLY_VAL(sys_sync)
++    // int sys_fsync(int fd) STUB_ONLY(sys_fsync)
++    // int sys_fdatasync(int fd) STUB_ONLY(sys_fdatasync)
++
++    // int sys_getrandom(void *buffer, size_t length, int flags, ssize_t *bytes_written) STUB_ONLY(sys_getrandom)
++    // int sys_getentropy(void *buffer, size_t length) STUB_ONLY(sys_getentropy)
++
++    // int sys_setxattr(const char *path, const char *name, const void *val, size_t size, int flags) STUB_ONLY(sys_setxattr)
++    // int sys_lsetxattr(const char *path, const char *name, const void *val, size_t size, int flags) STUB_ONLY(sys_lsetxattr)
++    // int sys_fsetxattr(int fd, const char *name, const void *val, size_t size, int flags) STUB_ONLY(sys_fsetxattr)
++    // int sys_getxattr(const char *path, const char *name, void *val, size_t size, ssize_t *nread) STUB_ONLY(sys_getxattr)
++    // int sys_lgetxattr(const char *path, const char *name, void *val, size_t size, ssize_t *nread) STUB_ONLY(sys_lgetxattr)
++    // int sys_fgetxattr(int fd, const char *name, void *val, size_t size, ssize_t *nread) STUB_ONLY(sys_fgetxattr)
++    // int sys_removexattr(const char *path, const char *name) STUB_ONLY(sys_removexattr)
++    // int sys_lremovexattr(const char *path, const char *name) STUB_ONLY(sys_lremovexattr)
++    // int sys_fremovexattr(int fd, const char *name) STUB_ONLY(sys_fremovexattr)
++    // int sys_listxattr(const char *path, char *list, size_t size, ssize_t *nread) STUB_ONLY(sys_listxattr)
++    // int sys_llistxattr(const char *path, char *list, size_t size, ssize_t *nread) STUB_ONLY(sys_llistxattr)
++    // int sys_flistxattr(int fd, char *list, size_t size, ssize_t *nread) STUB_ONLY(sys_flistxattr)
++
++    // int sys_sigtimedwait(const sigset_t *set, siginfo_t *info, const timespec *timeout, int *out_signal) STUB_ONLY(sys_sigtimedwait)
++    // int sys_personality(unsigned long persona, int *out) STUB_ONLY(sys_personality)
++    // int sys_ioperm(unsigned long int from, unsigned long int num, int turn_on) STUB_ONLY(sys_ioperm)
++    // int sys_iopl(int level) STUB_ONLY(sys_iopl)
++
 +#ifndef MLIBC_BUILDING_RTLD
 +
-+// int sys_kill(pid_t, int)
++    int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY(sys_clock_get)
++    // int sys_clock_getres(int clock, time_t *secs, long *nanos) STUB_ONLY(sys_clock_getres)
 +
-+int sys_fork(pid_t *child)
-+{
++    int sys_stat(fsfd_target fsfdt, int fd, const char *path, int flags, struct stat *statbuf)
++    {
++        uintptr_t ret = 0;
++        switch (fsfdt)
++        {
++            case fsfd_target::fd:
++                ret = do_syscall(SYS_fstatat, fd, "", statbuf, flags | AT_EMPTY_PATH);
++                break;
++            case fsfd_target::path:
++                ret = do_syscall(SYS_fstatat, AT_FDCWD, path, statbuf, flags);
++                break;
++            case fsfd_target::fd_path:
++                ret = do_syscall(SYS_fstatat, fd, path, statbuf, flags);
++                break;
++            default:
++                __ensure(!"sys_stat: Invalid fsfdt");
++                __builtin_unreachable();
++        }
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    // int sys_statx(int dirfd, const char *path, int flags, unsigned int mask, struct statx *statxbuf) STUB_ONLY(sys_statx)
++    // int sys_statfs(const char *path, struct statfs *buf) STUB_ONLY(sys_statfs)
++    // int sys_fstatfs(int fd, struct statfs *buf) STUB_ONLY(sys_fstatfs)
++
++    int sys_sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) STUB_ONLY(sys_sigaction)
++    int sys_sigprocmask(int how, const sigset_t *set, sigset_t *old) STUB_ONLY(sys_sigprocmask)
++
++    // int sys_socket(int domain, int type, int protocol, int *fd) STUB_ONLY(sys_socket)
++    // int sys_msg_send(int sockfd, const msghdr *msg, int flags, ssize_t *length) STUB_ONLY(sys_msg_send)
++    // ssize_t sys_sendto(int fd, const void *buffer, size_t size, int flags, const sockaddr *sock_addr, socklen_t addr_length, ssize_t *length) STUB_ONLY(sys_sendto)
++    // ssize_t sys_recvfrom(int fd, void *buffer, size_t size, int flags, sockaddr *sock_addr, socklen_t *addr_length, ssize_t *length) STUB_ONLY(sys_recvfrom)
++    // int sys_msg_recv(int sockfd, msghdr *msg, int flags, ssize_t *length) STUB_ONLY(sys_msg_recv)
++
++    int sys_fcntl(int fd, int cmd, va_list args, int *result)
++    {
++        auto ret = do_syscall(SYS_fcntl, fd, cmd, va_arg(args, uint64_t));
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *result = int(ret);
++        return 0;
++    }
++
++    int sys_getcwd(char *buf, size_t size)
++    {
++        auto ret = do_syscall(SYS_getcwd, buf, size);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    int sys_unlinkat(int dfd, const char *path, int flags)
++    {
++        auto ret = do_syscall(SYS_unlinkat, dfd, path, flags);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    // int sys_sleep(time_t *secs, long *nanos) STUB_ONLY(sys_sleep)
++
++    int sys_isatty(int fd)
++    {
++        struct winsize ws;
++        int ret;
++
++        if (!sys_ioctl(fd, TIOCGWINSZ, &ws, &ret))
++            return 0;
++
++        return ENOTTY;
++    }
++
++    int sys_ioctl(int fd, unsigned long request, void *arg, int *result)
++    {
++        auto ret = do_syscall(SYS_ioctl, fd, request, arg);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *result = int(ret);
++        return 0;
++    }
++
++    // int sys_connect(int sockfd, const sockaddr *addr, socklen_t addrlen) STUB_ONLY(sys_connect)
++    int sys_pselect(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const timespec *timeout, const sigset_t *sigmask, int *num_events) STUB_ONLY(sys_pselect)
++
++    // int sys_pipe(int *fds, int flags) STUB_ONLY(sys_pipe)
++
++    int sys_fork(pid_t *child)
++    {
 +#if defined(__x86_64__)
-+	// internally sys_fork uses sys_clone
-+	auto ret = do_syscall(SYS_fork);
++        // internally sys_fork uses sys_clone
++        auto ret = do_syscall(SYS_fork);
 +#elif defined(__aarch64__)
-+	auto ret = do_syscall(SYS_clone, SIGCHLD, 0);
++        auto ret = do_syscall(SYS_clone, SIGCHLD, 0);
 +#else
-+#	error "Missing architecture specific code."
++#  error "Missing architecture specific code."
 +#endif
-+	if (int e = syscall_error(ret); e)
-+		return e;
-+	*child = int(ret);
-+	return 0;
-+}
++        if (auto e = syscall_error(ret); e)
++            return e;
 +
-+int sys_clone(void *tcb, pid_t *pid_out, void *stack)
-+{
-+	unsigned long flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND
-+		| CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS | CLONE_SETTLS
-+		| CLONE_PARENT_SETTID;
++        *child = pid_t(ret);
++        return 0;
++    }
++
++    // void sys_yield() STUB_ONLY_VAL(sys_yield)
++
++    int sys_clone(void *tcb, pid_t *pid_out, void *stack)
++    {
++        unsigned long flags = CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND
++            | CLONE_THREAD | CLONE_SYSVSEM | CLONE_SETTLS | CLONE_SETTLS
++            | CLONE_PARENT_SETTID;
 +
 +#if defined(__aarch64__)
-+	// TP should point to the address 16 bytes before the end of the TCB.
-+	// TODO: We should change the sysdep so that we don't need to do this.
-+	auto tp = reinterpret_cast<char *>(tcb) + sizeof(Tcb) - 0x10;
-+	tcb = reinterpret_cast<void *>(tp);
++        // TP should point to the address 16 bytes before the end of the TCB.
++        // TODO: We should change the sysdep so that we don't need to do this.
++        auto tp = reinterpret_cast<char *>(tcb) + sizeof(Tcb) - 0x10;
++        tcb = reinterpret_cast<void *>(tp);
 +#endif
 +
-+	auto ret = __mlibc_spawn_thread(flags, stack, pid_out, NULL, tcb);
-+	if (ret < 0)
-+		return ret;
-+    return 0;
-+}
-+
-+int sys_tcgetattr(int fd, struct termios *attr)
-+{
-+	int ret;
-+	if (int r = sys_ioctl(fd, TCGETS, attr, &ret) != 0)
-+		return r;
-+
-+	return 0;
-+}
-+
-+int sys_tcsetattr(int fd, int optional_action, const struct termios *attr)
-+{
-+	int ret;
-+	switch (optional_action)
-+	{
-+		case TCSANOW:
-+			optional_action = TCSETS;
-+			break;
-+		case TCSADRAIN:
-+			optional_action = TCSETSW;
-+			break;
-+		case TCSAFLUSH:
-+			optional_action = TCSETSF;
-+			break;
-+		default:
-+			__ensure(!"Unsupported tcsetattr");
-+	}
-+
-+	if (int r = sys_ioctl(fd, optional_action, (void *)attr, &ret) != 0)
-+		return r;
-+
-+	return 0;
-+}
-+
-+// int sys_timerfd_create(int, int *)
-+
-+int sys_ioctl(int fd, unsigned long request, void *arg, int *result)
-+{
-+	auto ret = do_syscall(SYS_ioctl, fd, request, arg);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	*result = int(ret);
-+	return 0;
-+}
-+
-+int sys_isatty(int fd)
-+{
-+	struct winsize ws;
-+	int ret;
-+
-+	if (!sys_ioctl(fd, TIOCGWINSZ, &ws, &ret))
-+		return 0;
-+
-+	return ENOTTY;
-+}
-+
-+gid_t sys_getgid() STUB_ONLY(getgid)
-+gid_t sys_getegid() STUB_ONLY(getegid)
-+uid_t sys_getuid() STUB_ONLY(getuid)
-+uid_t sys_geteuid() STUB_ONLY(geteuid)
-+pid_t sys_getpid()
-+{
-+	return pid_t(do_syscall(SYS_getpid));
-+}
-+pid_t sys_gettid() STUB_ONLY(gettid)
-+pid_t sys_getppid()
-+{
-+	return pid_t(do_syscall(SYS_getppid));
-+}
-+pid_t sys_getpgid(pid_t pid, pid_t *pgid) STUB_ONLY(getpgid)
-+pid_t sys_getsid(pid_t pid, pid_t *sid) STUB_ONLY(getsid)
-+
-+int sys_setpgid(pid_t pid, pid_t pgid) STUB_ONLY(setpgid)
-+int sys_setuid(uid_t uid) STUB_ONLY(setuid)
-+int sys_seteuid(uid_t euid) STUB_ONLY(seteuid)
-+int sys_setgid(gid_t gid) STUB_ONLY(setgid)
-+int sys_setegid(gid_t egid) STUB_ONLY(setegid)
-+
-+// TODO
-+int sys_ttyname(int, char *, size_t)
-+{
-+	return ENOSYS;
-+}
-+
-+int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY(clock_get)
-+// {
-+// 	struct timespec buf;
-+// 	auto ret = do_syscall(SYS_getclock, clock, &buf);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+
-+// 	*secs = buf.tv_sec;
-+// 	*nanos = buf.tv_nsec;
-+// 	return 0;
-+// }
-+
-+int sys_getcwd(char *buffer, size_t size)
-+{
-+	auto ret = do_syscall(SYS_getcwd, buffer, size);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	return 0;
-+}
-+
-+int sys_stat(fsfd_target fsfdt, int fd, const char *path, int flags, struct stat *statbuf)
-+{
-+	uintptr_t ret = 0;
-+	switch (fsfdt)
-+	{
-+		case fsfd_target::fd:
-+			ret = do_syscall(SYS_fstatat, fd, "", statbuf, flags | AT_EMPTY_PATH);
-+			break;
-+		case fsfd_target::path:
-+			ret = do_syscall(SYS_fstatat, AT_FDCWD, path, statbuf, flags);
-+			break;
-+		case fsfd_target::fd_path:
-+			ret = do_syscall(SYS_fstatat, fd, path, statbuf, flags);
-+			break;
-+		default:
-+			__ensure(!"sys_stat: Invalid fsfdt");
-+			__builtin_unreachable();
-+	}
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_faccessat(int dirfd, const char *pathname, int mode, int flags)
-+{
-+	(void)flags;
-+	struct stat buf;
-+	if (int r = sys_stat(fsfd_target::fd_path, dirfd, pathname, mode & AT_SYMLINK_FOLLOW, &buf))
-+		return r;
-+
-+	return 0;
-+}
-+
-+int sys_access(const char *path, int mode)
-+{
-+	return sys_faccessat(AT_FDCWD, path, mode, 0);
-+}
-+
-+int sys_open_dir(const char *path, int *handle)
-+{
-+	return sys_openat(AT_FDCWD, path, O_DIRECTORY, 0, handle);
-+}
-+
-+int sys_read_entries(int handle, void *buffer, size_t max_size, size_t *bytes_read)
-+{
-+	auto ret = do_syscall(SYS_getdents64, handle, buffer, max_size);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	*bytes_read = int(ret);
-+	return 0;
-+}
-+
-+// int sys_pipe(int *fds, int flags)
-+// {
-+// 	auto ret = do_syscall(SYS_pipe, fds, flags);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return 0;
-+// }
-+
-+int sys_chdir(const char *path)
-+{
-+	auto ret = do_syscall(SYS_chdir, path);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_fchdir(int fd)
-+{
-+	auto ret = do_syscall(SYS_chdir, fd);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_mkdir(const char *path, mode_t mode)
-+{
-+	auto ret = do_syscall(SYS_mkdirat, AT_FDCWD, path, mode);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_mkdirat(int dirfd, const char *path, mode_t mode)
-+{
-+	auto ret = do_syscall(SYS_mkdirat, dirfd, path, mode);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_mknodat(int dirfd, const char *path, int mode, int dev)
-+{
-+	auto ret = do_syscall(SYS_mknodat, dirfd, path, mode, dev);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_write(int fd, const void *buf, size_t count, ssize_t *bytes_written)
-+{
-+	auto ret = do_syscall(SYS_write, fd, buf, count);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	*bytes_written = ssize_t(ret);
-+	return 0;
-+}
-+
-+int sys_readlink(const char *path, void *data, size_t max_size, ssize_t *length)
-+{
-+	auto ret = do_syscall(SYS_readlinkat, AT_FDCWD, path, data, max_size);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	*length = ssize_t(ret);
-+	return 0;
-+}
-+
-+int sys_link(const char *old_path, const char *new_path)
-+{
-+	return sys_linkat(AT_FDCWD, old_path, AT_FDCWD, new_path, 0);
-+}
-+
-+int sys_linkat(int olddirfd, const char *old_path, int newdirfd, const char *new_path, int flags)
-+{
-+	auto ret = do_syscall(SYS_linkat, olddirfd, old_path, newdirfd, new_path, flags);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	return 0;
-+}
-+
-+int sys_unlinkat(int fd, const char *path, int flags)
-+{
-+	auto ret = do_syscall(SYS_unlinkat, fd, path, flags);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	return 0;
-+}
-+
-+int sys_fchmodat(int fd, const char *pathname, mode_t mode, int flags)
-+{
-+	auto ret = do_syscall(SYS_fchmodat, fd, pathname, mode, flags);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+
-+	return 0;
-+}
-+
-+int sys_fchmod(int fd, mode_t mode)
-+{
-+	return sys_fchmodat(fd, "", mode, AT_EMPTY_PATH);
-+}
-+
-+int sys_chmod(const char *pathname, mode_t mode)
-+{
-+	return sys_fchmodat(AT_FDCWD, pathname, mode, 0);
-+}
-+
-+int sys_pselect(int nfds, fd_set *readfds, fd_set *writefds,
-+                fd_set *exceptfds, const struct timespec *timeout, const sigset_t *sigmask, int *num_events) STUB_ONLY(pselect)
-+
-+// int sys_rmdir(const char *pathname)
-+// {
-+// 	auto ret = do_syscall(SYS_rmdir, pathname);
-+//  if (auto e = syscall_error(ret); e)
-+//		return e;
-+
-+// 	return 0;
-+// }
-+
-+// int sys_socket(int domain, int type_and_flags, int proto, int *fd)
-+// {
-+// 	auto ret = do_syscall(SYS_socket, domain, type_and_flags, proto);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	*fd = int(ret);
-+// 	return 0;
-+// }
-+
-+// int sys_socketpair(int, int, int, int *)
-+
-+// int sys_bind(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
-+// {
-+// 	auto ret = do_syscall(SYS_bind, fd, addr_ptr, addr_length);
-+//  if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return 0;
-+// }
-+
-+// int sys_connect(int fd, const struct sockaddr *addr_ptr, socklen_t addr_length)
-+// {
-+// 	auto ret = do_syscall(SYS_connect, fd, addr_ptr, addr_length);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return 0;
-+// }
-+
-+// int sys_accept(int fd, int *newfd, struct sockaddr *addr_ptr, socklen_t *addr_length)
-+// {
-+// 	auto ret = do_syscall(SYS_accept, fd, addr_ptr, addr_length);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	*newfd = int(ret);
-+// 	return 0;
-+// }
-+
-+int sys_getsockopt(int fd, int layer, int number, void *__restrict buffer, socklen_t *__restrict size)
-+{
-+	(void)fd;
-+	(void)size;
-+	if (layer == SOL_SOCKET && number == SO_PEERCRED)
-+	{
-+		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_PEERCRED is unimplemented" << frg::endlog;
-+		*(int*)buffer = 0;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_SNDBUF)
-+	{
-+		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_SNDBUF is unimplemented" << frg::endlog;
-+		*(int*)buffer = 4096;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_TYPE)
-+	{
-+		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_TYPE is unimplemented, hardcoding SOCK_STREAM" << frg::endlog;
-+		*(int*)buffer = SOCK_STREAM;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_ERROR)
-+	{
-+		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_ERROR is unimplemented, hardcoding 0" << frg::endlog;
-+		*(int*)buffer = 0;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_KEEPALIVE)
-+	{
-+		mlibc::infoLogger() << "mlibc: getsockopt() call with SOL_SOCKET and SO_KEEPALIVE is unimplemented, hardcoding 0" << frg::endlog;
-+		*(int*)buffer = 0;
-+		return 0;
-+	}
-+	else mlibc::panicLogger() << "mlibc: Unexpected getsockopt() call, layer: " << layer << " number: " << number << frg::endlog;
-+
-+	return 0;
-+}
-+
-+int sys_setsockopt(int fd, int layer, int number, const void *buffer, socklen_t size)
-+{
-+	(void)fd;
-+	(void)buffer;
-+	(void)size;
-+	if (layer == SOL_SOCKET && number == SO_PASSCRED)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt(SO_PASSCRED) is not implemented correctly" << frg::endlog;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_ATTACH_FILTER)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt(SO_ATTACH_FILTER) is not implemented correctly" << frg::endlog;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_RCVBUFFORCE)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt(SO_RCVBUFFORCE) is not implemented correctly" << frg::endlog;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_SNDBUF)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt() call with SOL_SOCKET and SO_SNDBUF is unimplemented" << frg::endlog;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_KEEPALIVE)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt() call with SOL_SOCKET and SO_KEEPALIVE is unimplemented" << frg::endlog;
-+		return 0;
-+	}
-+	else if (layer == SOL_SOCKET && number == SO_REUSEADDR)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt() call with SOL_SOCKET and SO_REUSEADDR is unimplemented" << frg::endlog;
-+		return 0;
-+	}
-+	else if (layer == AF_NETLINK && number == SO_ACCEPTCONN)
-+	{
-+		mlibc::infoLogger() << "mlibc: setsockopt() call with AF_NETLINK and SO_ACCEPTCONN is unimplemented" << frg::endlog;
-+		return 0;
-+	}
-+	else
-+	{
-+		mlibc::panicLogger() << "mlibc: Unexpected setsockopt() call, layer: " << layer << " number: " << number << frg::endlog;
-+		sys_libc_panic();
-+	}
-+}
-+
-+// int sys_msg_recv(int sockfd, struct msghdr *hdr, int flags, ssize_t *length)
-+// {
-+// 	auto ret = do_syscall(SYS_recvmsg, sockfd, hdr, flags);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	*length = ssize_t(ret);
-+// 	return 0;
-+// }
-+
-+// int sys_peername(int fd, struct sockaddr *addr_ptr, socklen_t max_addr_length, socklen_t *actual_length)
-+// {
-+// 	auto ret = do_syscall(SYS_getpeername, fd, addr_ptr, &max_addr_length);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	*actual_length = max_addr_length;
-+// 	return 0;
-+// }
-+
-+// int sys_listen(int fd, int backlog)
-+// {
-+// 	auto ret = do_syscall(SYS_listen, fd, backlog);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	return 0;
-+// }
-+
-+// int sys_inotify_create(int, int *)
-+
-+int sys_execve(const char *path, char *const argv[], char *const envp[])
-+{
-+	auto ret = do_syscall(SYS_execve, path, argv, envp);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_fcntl(int fd, int request, va_list args, int *result)
-+{
-+	auto ret = do_syscall(SYS_fcntl, fd, request, va_arg(args, uint64_t));
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	*result = int(ret);
-+	return 0;
-+}
-+
-+int sys_dup(int fd, int flags, int *newfd)
-+{
-+	(void)flags;
-+	auto ret = do_syscall(SYS_dup, fd);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	*newfd = int(ret);
-+	return 0;
-+}
-+
-+int sys_dup2(int fd, int flags, int newfd)
-+{
-+	auto ret = do_syscall(SYS_dup3, fd, newfd, flags);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_sigprocmask(int, const sigset_t *__restrict, sigset_t *__restrict)
-+{
-+	mlibc::infoLogger() << "mlibc: sys_sigprocmask() is a stub" << frg::endlog;
-+	return 0;
-+}
-+
-+int sys_sigaction(int, const struct sigaction *, struct sigaction *)
-+{
-+	mlibc::infoLogger() << "mlibc: sys_sigaction() is a stub" << frg::endlog;
-+	return 0;
-+}
-+
-+// int sys_signalfd_create(sigset_t, int, int *)
-+
-+int sys_waitpid(pid_t pid, int *status, int flags, struct rusage *ru, pid_t *ret_pid)
-+{
-+	if (ru != NULL)
-+	{
-+		mlibc::infoLogger() << "mlibc: struct rusage in sys_waitpid is unsupported" << frg::endlog;
-+		return ENOSYS;
-+	}
-+
-+	auto ret = do_syscall(SYS_wait4, pid, status, flags, ru);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	*ret_pid = int(ret);
-+	return 0;
-+}
-+
-+// int sys_getgroups(size_t, const gid_t *, int *)
-+
-+// int sys_mount(const char *, const char *, const char *, unsigned long, const void *)
-+
-+// int sys_umount2(const char *, int)
-+
-+int sys_gethostname(char *buffer, size_t bufsize)
-+{
-+	struct utsname utsname;
-+	if (int err = sys_uname(&utsname))
-+		return err;
-+	if (strlen(utsname.nodename) >= bufsize)
-+		return ENAMETOOLONG;
-+	strncpy(buffer, utsname.nodename, bufsize);
-+	return 0;
-+}
-+
-+// int sys_sethostname(const char *, size_t)
-+
-+// int sys_sleep(time_t *secs, long *nanos)
-+// {
-+// 	struct timespec time = { .tv_sec = *secs, .tv_nsec = *nanos };
-+// 	struct timespec rem = { .tv_sec = 0, .tv_nsec = 0 };
-+// 	auto ret = do_syscall(SYS_sleep, &time, &rem);
-+// 	if (auto e = syscall_error(ret); e)
-+//		return e;
-+// 	*secs = rem.tv_sec;
-+// 	*nanos = rem.tv_nsec;
-+// 	return 0;
-+// }
-+
-+int sys_getitimer(int, struct itimerval *)
-+{
-+	mlibc::infoLogger() << "mlibc: sys_getitimer() is unimplemented" << frg::endlog;
-+	return ENOSYS;
-+}
-+
-+int sys_setitimer(int, const struct itimerval *, struct itimerval *)
-+{
-+	mlibc::infoLogger() << "mlibc: sys_setitimer() is unimplemented" << frg::endlog;
-+	return ENOSYS;
-+}
-+
-+int sys_umask(mode_t mode, mode_t *old)
-+{
-+	auto ret = do_syscall(SYS_umask, mode);
-+	*old = mode_t(ret);
-+	return 0;
-+}
-+
-+int sys_uname(struct utsname *buf)
-+{
-+	auto ret = do_syscall(SYS_uname, buf);
-+	if (auto e = syscall_error(ret); e)
-+		return e;
-+	return 0;
-+}
-+
-+int sys_fsync(int)
-+{
-+	mlibc::infoLogger() << "sys_fsync is a stub" << frg::endlog;
-+	return 0;
-+}
-+
-+
-+int sys_getrlimit(int resource, struct rlimit *limit) STUB_ONLY(getrlimit)
-+// {
-+// 	auto ret = do_syscall(SYS_getrlimit, resource, limit);
-+// 	if (auto e = syscall_error(ret); e)
-+// 		return e;
-+// 	return 0;
-+// }
++        auto ret = __mlibc_spawn_thread(flags, stack, pid_out, nullptr, tcb);
++        if (ret < 0)
++            return ret;
++        return 0;
++    }
++
++    int sys_execve(const char *path, char *const argv[], char *const envp[])
++    {
++        auto ret = do_syscall(SYS_execve, path, argv, envp);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    int sys_waitpid(pid_t pid, int *status, int flags, rusage *ru, pid_t *ret_pid)
++    {
++        if (ru != nullptr)
++        {
++            sys_libc_log("mlibc: struct rusage in sys_waitpid is unsupported");
++            return ENOSYS;
++        }
++
++        auto ret = do_syscall(SYS_wait4, pid, status, flags, ru);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *ret_pid = pid_t(ret);
++        return 0;
++    }
++
++    // int sys_setresuid(uid_t ruid, uid_t euid, uid_t suid) STUB_ONLY(sys_setresuid)
++    // int sys_setresgid(gid_t rgid, gid_t egid, gid_t sgid) STUB_ONLY(sys_setresgid)
++    // int sys_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid) STUB_ONLY(sys_getresuid)
++    // int sys_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid) STUB_ONLY(sys_getresgid)
++    // int sys_setreuid(uid_t ruid, uid_t euid) STUB_ONLY(sys_setreuid)
++    // int sys_setregid(gid_t rgid, gid_t egid) STUB_ONLY(sys_setregid)
++
++    // int sys_sysinfo(struct sysinfo *info) STUB_ONLY(sys_sysinfo)
++
++    // int sys_before_cancellable_syscall(ucontext_t *uct) STUB_ONLY(sys_before_cancellable_syscall)
++    // int sys_tgkill(int tgid, int tid, int sig) STUB_ONLY(sys_tgkill)
++
++    int sys_tcgetattr(int fd, termios *attr)
++    {
++        int res;
++        return sys_ioctl(fd, TCGETS, attr, &res);
++    }
++
++    int sys_tcsetattr(int fd, int optional_action, const termios *attr)
++    {
++        int ret;
++        switch (optional_action)
++        {
++            case TCSANOW:
++                optional_action = TCSETS;
++                break;
++            case TCSADRAIN:
++                optional_action = TCSETSW;
++                break;
++            case TCSAFLUSH:
++                optional_action = TCSETSF;
++                break;
++            default:
++                __ensure(!"Unsupported tcsetattr");
++        }
++
++        return sys_ioctl(fd, optional_action, (void *)attr, &ret);
++    }
++
++    // int sys_tcflush(int fd, int queue) STUB_ONLY(sys_tcflush)
++    // int sys_tcdrain(int fd) STUB_ONLY(sys_tcdrain)
++    // int sys_tcflow(int fd, int action) STUB_ONLY(sys_tcflow)
++
++    int sys_access(const char *path, int mode)
++    {
++        return sys_faccessat(AT_FDCWD, path, mode, 0);
++    }
++
++    int sys_faccessat(int dirfd, const char *pathname, int mode, int flags)
++    {
++        // TODO
++        struct stat buf;
++        if (int r = sys_stat(fsfd_target::fd_path, dirfd, pathname, mode & AT_SYMLINK_FOLLOW, &buf))
++            return r;
++
++        return 0;
++    }
++
++    // int sys_accept(int fd, int *newfd, sockaddr *addr_ptr, socklen_t *addr_length, int flags) STUB_ONLY(sys_accept)
++    // int sys_bind(int fd, const sockaddr *addr_ptr, socklen_t addr_length) STUB_ONLY(sys_bind)
++
++    // int sys_sockname(int fd, sockaddr *addr_ptr, socklen_t max_addr_length, socklen_t *actual_length) STUB_ONLY(sys_sockname)
++    // int sys_peername(int fd, sockaddr *addr_ptr, socklen_t max_addr_length, socklen_t *actual_length) STUB_ONLY(sys_peername)
++    // int sys_listen(int fd, int backlog) STUB_ONLY(sys_listen)
++
++    // int sys_getpriority(int which, id_t who, int *value) STUB_ONLY(sys_getpriority)
++    // int sys_setpriority(int which, id_t who, int prio) STUB_ONLY(sys_setpriority)
++
++    // int sys_getitimer(int which, struct itimerval *curr_value) STUB_ONLY_VAL(sys_gettimer, EINVAL)
++    // int sys_setitimer(int which, const itimerval *new_value, itimerval *old_value) STUB_ONLY_VAL(sys_setitimer, EINVAL)
++
++    // int sys_timer_create(clockid_t clk, sigevent *evp, timer_t *res) STUB_ONLY(sys_timer_create)
++    // int sys_timer_settime(timer_t t, int flags, const itimerspec *val, itimerspec *old) STUB_ONLY(sys_timer_settime)
++    // int sys_timer_delete(timer_t t) STUB_ONLY(sys_timer_delete)
 +
++    // int sys_ptrace(long req, pid_t pid, void *addr, void *data, long *out) STUB_ONLY(sys_ptrace)
++
++    int sys_open_dir(const char *path, int *fd)
++    {
++        return sys_openat(AT_FDCWD, path, O_DIRECTORY, 0, fd);
++    }
++
++    int sys_read_entries(int handle, void *buffer, size_t max_size, size_t *bytes_read)
++    {
++        auto ret = do_syscall(SYS_getdents64, handle, buffer, max_size);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *bytes_read = int(ret);
++        return 0;
++    }
++
++    // int sys_prctl(int op, va_list ap, int *out) STUB_ONLY(sys_prctl)
++
++    int sys_uname(utsname *buf)
++    {
++        auto ret = do_syscall(SYS_uname, buf);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    int sys_gethostname(char *buf, size_t bufsize)
++    {
++        struct utsname uname_buf;
++        if (auto e = sys_uname(&uname_buf); e)
++            return e;
++
++        auto node_len = strlen(uname_buf.nodename);
++        if (node_len >= bufsize)
++            return ENAMETOOLONG;
++
++        memcpy(buf, uname_buf.nodename, node_len);
++        buf[node_len] = '\0';
++        return 0;
++    }
++
++    // int sys_pread(int fd, void *buf, size_t n, off_t off, ssize_t *bytes_read) STUB_ONLY(sys_pread)
++    // int sys_pwrite(int fd, const void *buf, size_t n, off_t off, ssize_t *bytes_written) STUB_ONLY(sys_pwrite)
++
++    // int sys_poll(pollfd *fds, nfds_t count, int timeout, int *num_events) STUB_ONLY(sys_poll)
++    // int sys_getrusage(int scope, rusage *usage) STUB_ONLY(sys_getrusage)
++
++    // int sys_madvise(void *addr, size_t length, int advice) STUB_ONLY(sys_madvise)
++    // int sys_msync(void *addr, size_t length, int flags) STUB_ONLY(sys_msync)
++
++    // int sys_swapon(const char *path, int flags) STUB_ONLY(sys_swapon)
++    // int sys_swapoff(const char *path) STUB_ONLY(sys_swapoff)
++
++    // int sys_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask) STUB_ONLY(sys_getaffinity)
++
++    // int sys_mount(const char *source, const char *target, const char *fstype, unsigned long flags, const void *data) STUB_ONLY(sys_mount)
++    // int sys_umount2(const char *target, int flags) STUB_ONLY(sys_umount2)
++
++    // int sys_sethostname(const char *buffer, size_t bufsize) STUB_ONLY(sys_sethostname)
++
++    // int sys_epoll_create(int flags, int *fd) STUB_ONLY(sys_epoll_create)
++    // int sys_epoll_ctl(int epfd, int mode, int fd, epoll_event *ev) STUB_ONLY(sys_epoll_ctl)
++    // int sys_epoll_pwait(int epfd, epoll_event *ev, int n, int timeout, const sigset_t *sigmask, int *raised) STUB_ONLY(sys_epoll_pwait)
++
++    // int sys_eventfd_create(unsigned int initval, int flags, int *fd) STUB_ONLY(sys_eventfd_create)
++    // int sys_signalfd_create(const sigset_t *masks, int flags, int *fd) STUB_ONLY(sys_signalfd_create)
++    // int sys_timerfd_create(int clockid, int flags, int *fd) STUB_ONLY(sys_timerfd_create)
++    // int sys_timerfd_settime(int fd, int flags, const itimerspec *value, itimerspec *oldvalue) STUB_ONLY(sys_timerfd_settime)
++    // int sys_inotify_create(int flags, int *fd) STUB_ONLY(sys_inotify_create)
++
++    // int sys_init_module(void *module, unsigned long length, const char *args) STUB_ONLY(sys_init_module)
++    // int sys_delete_module(const char *name, unsigned flags) STUB_ONLY(sys_delete_module)
++
++    // int sys_klogctl(int type, char *bufp, int len, int *out) STUB_ONLY(sys_klogctl)
++    // int sys_getcpu(int *cpu) STUB_ONLY(sys_getcpu)
++
++    // int sys_socketpair(int domain, int type_and_flags, int proto, int *fds) STUB_ONLY(sys_socketpair)
++    int sys_getsockopt(int fd, int layer, int number, void *buffer, socklen_t *size) STUB_ONLY(sys_getsockopt)
++    int sys_setsockopt(int fd, int layer, int number, const void *buffer, socklen_t size) STUB_ONLY(sys_setsockopt)
++
++    // int sys_inotify_add_watch(int ifd, const char *path, uint32_t mask, int *wd) STUB_ONLY(sys_inotify_add_watch)
++    // int sys_inotify_rm_watch(int ifd, int wd) STUB_ONLY(sys_inotify_rm_watch)
++
++    int sys_ttyname(int fd, char *buf, size_t size)
++    {
++        return ENOSYS;
++    }
++
++    // int sys_pause() STUB_ONLY(sys_pause)
++    // int sys_mlockall(int flags) STUB_ONLY(sys_mlockall)
++
++    // int sys_get_min_priority(int policy, int *out) STUB_ONLY(sys_get_min_priority)
++
++    // int sys_getschedparam(void *tcb, int *policy, sched_param *param) STUB_ONLY(sys_getschedparam)
++    // int sys_setschedparam(void *tcb, int policy, const sched_param *param) STUB_ONLY(sys_setschedparam)
++    // int sys_if_indextoname(unsigned int index, char *name) STUB_ONLY(sys_if_indextoname)
++    // int sys_if_nametoindex(const char *name, unsigned int *ret) STUB_ONLY(sys_if_nametoindex)
++
++    // int sys_ptsname(int fd, char *buffer, size_t length) STUB_ONLY(sys_ptsname)
++    // int sys_unlockpt(int fd) STUB_ONLY(sys_unlockpt)
++
++    // int sys_thread_setname(void *tcb, const char *name) STUB_ONLY(sys_thread_setname)
++    // int sys_thread_getname(void *tcb, char *name, size_t size) STUB_ONLY(sys_thread_getname)
++
++    // int sys_mlock(const void *addr, size_t length) STUB_ONLY(sys_mlock)
++    // int sys_munlock(const void *addr, size_t length) STUB_ONLY(sys_munlock)
++    // int sys_munlockall(void) STUB_ONLY(sys_munlockall)
++    // int sys_mincore(void *addr, size_t length, unsigned char *vec) STUB_ONLY(sys_mincore)
++    // int sys_memfd_create(const char *name, int flags, int *fd) STUB_ONLY(sys_memfd_create)
++
++    // int sys_fallocate(int fd, off_t offset, size_t size) STUB_ONLY(sys_fallocate)
++    // int sys_flock(int fd, int options) STUB_ONLY(sys_flock)
++
++    // int sys_seteuid(uid_t euid) STUB_ONLY(sys_seteuid)
++    // int sys_vm_remap(void *pointer, size_t size, size_t new_size, void **window) STUB_ONLY(sys_vm_remap)
++
++    int sys_linkat(int olddirfd, const char *old_path, int newdirfd, const char *new_path, int flags)
++    {
++        auto ret = do_syscall(SYS_linkat, olddirfd, old_path, newdirfd, new_path, flags);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        return 0;
++    }
++
++    int sys_link(const char *old_path, const char *new_path)
++    {
++        return sys_linkat(AT_FDCWD, old_path, AT_FDCWD, new_path, 0);
++    }
++
++    // int sys_statvfs(const char *path, struct statvfs *out) STUB_ONLY(sys_statvfs)
++    // int sys_fstatvfs(int fd, struct statvfs *out) STUB_ONLY(sys_fstatvfs)
++    // int sys_sysconf(int num, long *ret) STUB_ONLY(sys_sysconf)
++    // int sys_semget(key_t key, int n, int fl, int *id) STUB_ONLY(sys_semget)
++    // int sys_semctl(int semid, int semnum, int cmd, void *semun, int *out) STUB_ONLY(sys_semctl)
++    // int sys_waitid(idtype_t idtype, id_t id, siginfo_t *info, int options) STUB_ONLY(sys_waitid)
++
++    // int sys_shutdown(int sockfd, int how) STUB_ONLY(sys_shutdown)
++    // int sys_reboot(int cmd) STUB_ONLY(sys_reboot)
++    // int sys_getifaddrs(ifaddrs **out) STUB_ONLY(sys_getifaddrs)
++    // int sys_times(tms *tms, clock_t *out) STUB_ONLY(sys_times)
++
++    pid_t sys_getpid()
++    {
++        return pid_t(do_syscall(SYS_getpid));
++    }
++
++    pid_t sys_gettid() STUB_ONLY(sys_gettid)
++    uid_t sys_getuid() STUB_ONLY(sys_getuid)
++    uid_t sys_geteuid() STUB_ONLY(sys_geteuid)
++    gid_t sys_getgid() STUB_ONLY(sys_getgid)
++    gid_t sys_getegid() STUB_ONLY(sys_getegid)
++
++    int sys_kill(int pid, int sig) STUB_ONLY(sys_kill)
++
++    int sys_vm_protect(void *pointer, size_t size, int prot)
++    {
++        auto ret = do_syscall(SYS_mprotect, pointer, size, prot);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
++
++    // void sys_thread_exit() STUB_ONLY_VAL(sys_thread_exit)
 +#endif
++
++    void sys_exit(int status)
++    {
++        do_syscall(SYS_exit, status);
++        __builtin_unreachable();
++    }
 +
 +} // namespace mlibc
+\ No newline at end of file
 diff --git a/sysdeps/ilobilix/generic/thread.cpp b/sysdeps/ilobilix/generic/thread.cpp
 new file mode 100644
 index 00000000..5605e047
@@ -1722,117 +1700,121 @@ index 00000000..a20cab58
 +#endif // MLIBC_THREAD_ENTRY
 diff --git a/sysdeps/ilobilix/meson.build b/sysdeps/ilobilix/meson.build
 new file mode 100644
-index 00000000..3e3d8cef
+index 00000000..5d996242
 --- /dev/null
 +++ b/sysdeps/ilobilix/meson.build
-@@ -0,0 +1,95 @@
+@@ -0,0 +1,99 @@
 +
 +rtld_dso_sources += files(
-+	'generic/sysdeps.cpp'
++    'generic/sysdeps.cpp'
 +)
 +
 +libc_sources += files(
-+	'generic/entry.cpp',
-+	'generic/sysdeps.cpp',
-+	'generic/thread.cpp',
-+	host_machine.cpu_family() / 'thread_entry.S'
++    'generic/entry.cpp',
++    'generic/sysdeps.cpp',
++    'generic/thread.cpp',
++    host_machine.cpu_family() / 'thread_entry.S'
 +)
 +
 +if not no_headers
-+	install_headers(
-+		'include/abi-bits/auxv.h',
-+		'include/abi-bits/seek-whence.h',
-+		'include/abi-bits/vm-flags.h',
-+		'include/abi-bits/errno.h',
-+		'include/abi-bits/fcntl.h',
-+		'include/abi-bits/in.h',
-+		'include/abi-bits/stat.h',
-+		'include/abi-bits/signal.h',
-+		'include/abi-bits/reboot.h',
-+		'include/abi-bits/resource.h',
-+		'include/abi-bits/socket.h',
-+		'include/abi-bits/termios.h',
-+		'include/abi-bits/time.h',
-+		'include/abi-bits/blkcnt_t.h',
-+		'include/abi-bits/blksize_t.h',
-+		'include/abi-bits/dev_t.h',
-+		'include/abi-bits/gid_t.h',
-+		'include/abi-bits/ino_t.h',
-+		'include/abi-bits/mode_t.h',
-+		'include/abi-bits/nlink_t.h',
-+		'include/abi-bits/pid_t.h',
-+		'include/abi-bits/uid_t.h',
-+		'include/abi-bits/access.h',
-+		'include/abi-bits/wait.h',
-+		'include/abi-bits/limits.h',
-+		'include/abi-bits/utsname.h',
-+		'include/abi-bits/vt.h',
-+		'include/abi-bits/ptrace.h',
-+		'include/abi-bits/poll.h',
-+		'include/abi-bits/epoll.h',
-+		'include/abi-bits/packet.h',
-+		'include/abi-bits/inotify.h',
-+		'include/abi-bits/clockid_t.h',
-+		'include/abi-bits/shm.h',
-+		'include/abi-bits/mqueue.h',
-+		'include/abi-bits/suseconds_t.h',
-+		'include/abi-bits/fsfilcnt_t.h',
-+		'include/abi-bits/fsblkcnt_t.h',
-+		'include/abi-bits/socklen_t.h',
-+		'include/abi-bits/statfs.h',
-+		'include/abi-bits/statvfs.h',
-+		'include/abi-bits/ioctls.h',
-+		'include/abi-bits/xattr.h',
-+		subdir: 'abi-bits'
-+	)
++    install_headers(
++        'include/abi-bits/auxv.h',
++        'include/abi-bits/seek-whence.h',
++        'include/abi-bits/vm-flags.h',
++        'include/abi-bits/errno.h',
++        'include/abi-bits/fcntl.h',
++        'include/abi-bits/in.h',
++        'include/abi-bits/stat.h',
++        'include/abi-bits/statx.h',
++        'include/abi-bits/signal.h',
++        'include/abi-bits/reboot.h',
++        'include/abi-bits/resource.h',
++        'include/abi-bits/socket.h',
++        'include/abi-bits/termios.h',
++        'include/abi-bits/time.h',
++        'include/abi-bits/blkcnt_t.h',
++        'include/abi-bits/blksize_t.h',
++        'include/abi-bits/dev_t.h',
++        'include/abi-bits/gid_t.h',
++        'include/abi-bits/ino_t.h',
++        'include/abi-bits/mode_t.h',
++        'include/abi-bits/nlink_t.h',
++        'include/abi-bits/pid_t.h',
++        'include/abi-bits/uid_t.h',
++        'include/abi-bits/access.h',
++        'include/abi-bits/wait.h',
++        'include/abi-bits/limits.h',
++        'include/abi-bits/utsname.h',
++        'include/abi-bits/ptrace.h',
++        'include/abi-bits/vt.h',
++        'include/abi-bits/ptrace.h',
++        'include/abi-bits/poll.h',
++        'include/abi-bits/epoll.h',
++        'include/abi-bits/packet.h',
++        'include/abi-bits/inotify.h',
++        'include/abi-bits/clockid_t.h',
++        'include/abi-bits/shm.h',
++        'include/abi-bits/mqueue.h',
++        'include/abi-bits/suseconds_t.h',
++        'include/abi-bits/fsfilcnt_t.h',
++        'include/abi-bits/fsblkcnt_t.h',
++        'include/abi-bits/socklen_t.h',
++        'include/abi-bits/statfs.h',
++        'include/abi-bits/statvfs.h',
++        'include/abi-bits/ioctls.h',
++        'include/abi-bits/xattr.h',
++        'include/abi-bits/msg.h',
++        subdir: 'abi-bits',
++        follow_symlinks: true
++    )
 +
-+	install_headers(
-+		'include/ilobilix/syscall.h',
-+		subdir: 'ilobilix',
-+	)
++    install_headers(
++        'include/ilobilix/syscall.h',
++        subdir: 'ilobilix',
++    )
 +endif
 +
 +if not headers_only
-+	crt = custom_target('crt0',
-+		build_by_default: true,
-+		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
-+		input: host_machine.cpu_family() / 'crt-src/crt0.S',
-+		output: 'crt0.o',
-+		install: true,
-+		install_dir: get_option('libdir')
-+	)
++    crt = custom_target('crt0',
++        build_by_default: true,
++        command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
++        input: host_machine.cpu_family() / 'crt-src/crt0.S',
++        output: 'crt0.o',
++        install: true,
++        install_dir: get_option('libdir')
++    )
 +
-+	custom_target('crti',
-+		build_by_default: true,
-+		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
-+		input: host_machine.cpu_family() / 'crt-src/crti.S',
-+		output: 'crti.o',
-+		install: true,
-+		install_dir: get_option('libdir')
-+	)
++    custom_target('crti',
++        build_by_default: true,
++        command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
++        input: host_machine.cpu_family() / 'crt-src/crti.S',
++        output: 'crti.o',
++        install: true,
++        install_dir: get_option('libdir')
++    )
 +
-+	custom_target('crtn',
-+		build_by_default: true,
-+		command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
-+		input: host_machine.cpu_family() / 'crt-src/crtn.S',
-+		output: 'crtn.o',
-+		install: true,
-+		install_dir: get_option('libdir')
-+	)
++    custom_target('crtn',
++        build_by_default: true,
++        command: c_compiler.cmd_array() + ['-c', '-o', '@OUTPUT@', '@INPUT@'],
++        input: host_machine.cpu_family() / 'crt-src/crtn.S',
++        output: 'crtn.o',
++        install: true,
++        install_dir: get_option('libdir')
++    )
 +endif
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crt0.S b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
 new file mode 100644
-index 00000000..4a5cf860
+index 00000000..9b77ee78
 --- /dev/null
 +++ b/sysdeps/ilobilix/x86_64/crt-src/crt0.S
 @@ -0,0 +1,8 @@
 +.section .text
 +.global _start
 +_start:
-+    mov %rsp, %rdi
-+    mov $main, %rsi
-+    call __mlibc_entry
++	mov %rsp, %rdi
++	mov $main, %rsi
++	call __mlibc_entry
 +.section .note.GNU-stack,"",%progbits
 +
 diff --git a/sysdeps/ilobilix/x86_64/crt-src/crti.S b/sysdeps/ilobilix/x86_64/crt-src/crti.S

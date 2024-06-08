@@ -18,6 +18,13 @@ namespace vfs
         return thread ? thread->parent->root.get() : root_node;
     }
 
+    node_t *get_real(node_t *node)
+    {
+        if (node != get_root()->reduce(true) && node->fs->mounted_on && node == node->fs->mounted_on->mountgate)
+            return node->fs->mounted_on;
+        return node;
+    }
+
     node_t *node_t::internal_reduce(bool symlinks, bool automount, size_t cnt)
     {
         if (this->mountgate != nullptr && automount == true)
@@ -174,7 +181,7 @@ namespace vfs
                 auto node = current_node->res->children[segment]->reduce(false, is_last ? automount : true);
 
                 if (is_last == true)
-                    return { current_node, node, node->name };
+                    return { current_node, get_real(node), node->name };
 
                 current_node = node;
 
@@ -404,8 +411,7 @@ namespace vfs
         if (node == nullptr)
             return std::nullopt;
 
-        if (node != get_root()->reduce(true) && node->fs->mounted_on && node == node->fs->mounted_on->mountgate)
-            node = node->fs->mounted_on;
+        node = get_real(node);
 
         return node->res->stat;
     }
