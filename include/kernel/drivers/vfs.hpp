@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include <unordered_map>
 #include <lib/path.hpp>
 #include <lib/time.hpp>
+
+#include <unordered_map>
 #include <cerrno>
 #include <tuple>
 
@@ -128,7 +129,7 @@ namespace vfs
 
         filesystem(const std::string &name) : mounted_on(nullptr), mountdata(nullptr), root(nullptr), name(name) { }
 
-        std::optional<std::string> get_value(std::string_view key);
+        std::optional<std::string_view> get_value(std::string_view key);
 
         virtual node_t *mount(node_t *source, node_t *parent, std::string_view name, void *data) return_err_func(EINVAL, nullptr)
         virtual bool unmount() return_err_func(EINVAL, false)

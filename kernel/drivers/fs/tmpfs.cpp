@@ -3,8 +3,10 @@
 #include <drivers/fs/devtmpfs.hpp>
 #include <drivers/fs/tmpfs.hpp>
 #include <drivers/proc.hpp>
+
 #include <lib/alloc.hpp>
 #include <lib/misc.hpp>
+
 #include <mm/pmm.hpp>
 #include <mm/vmm.hpp>
 
@@ -156,7 +158,7 @@ namespace tmpfs
     {
         if (auto size = this->get_value("size"); size.has_value())
         {
-            size_t count = std::stoll(size.value());
+            size_t count = std::strtoll(size.value().data(), nullptr, 0);
             switch (size.value().back())
             {
                 case 'g':
@@ -178,7 +180,7 @@ namespace tmpfs
         }
         else if (auto blocks = this->get_value("nr_blocks"); blocks.has_value())
         {
-            size_t count = std::stoll(blocks.value());
+            size_t count = std::strtoll(blocks.value().data(), nullptr, 0);
             switch (blocks.value().back())
             {
                 case 'g':
@@ -199,7 +201,7 @@ namespace tmpfs
 
         if (auto inodes = this->get_value("nr_inodes"); inodes.has_value())
         {
-            size_t count = std::stoll(inodes.value());
+            size_t count = std::strtoll(inodes.value().data(), nullptr, 0);
             switch (inodes.value().back())
             {
                 case 'g':
@@ -219,13 +221,13 @@ namespace tmpfs
         else this->max_inodes = pmm::total() / pmm::page_size / 2;
 
         if (auto mode = this->get_value("mode"); mode.has_value())
-            this->root_mode = std::stoll(mode.value(), nullptr, 8);
+            this->root_mode = std::strtoll(mode.value().data(), nullptr, 8);
 
         if (auto gid = this->get_value("gid"); gid.has_value())
-            this->root_gid = std::stoll(gid.value(), nullptr);
+            this->root_gid = std::strtoll(gid.value().data(), nullptr, 0);
 
         if (auto uid = this->get_value("uid"); uid.has_value())
-            this->root_uid = std::stoll(uid.value(), nullptr);
+            this->root_uid = std::strtoll(uid.value().data(), nullptr, 0);
     }
 
     vfs::node_t *tmpfs::mount(vfs::node_t *, vfs::node_t *parent, std::string_view name, void *data)

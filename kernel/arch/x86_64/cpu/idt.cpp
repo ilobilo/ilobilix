@@ -146,13 +146,23 @@ namespace idt
         {
             auto &handler = handlers[regs->int_no];
 
-            if (handler.eoi_first == true)
+            if (handler.eoi_first)
                 eoi(regs->int_no);
+
+            uintptr_t cr3 = 0;
+            if (handler.load_lh)
+            {
+                cr3 = rdreg(cr3);
+                vmm::kernel_pagemap->load(false);
+            }
 
             if (handler.used())
                 handlers[regs->int_no](regs);
 
-            if (handler.eoi_first == false)
+            if (handler.load_lh)
+                wrreg(cr3, cr3);
+
+            if (!handler.eoi_first)
                 eoi(regs->int_no);
         }
         else PANIC("Unknown interrupt {}", regs->int_no);

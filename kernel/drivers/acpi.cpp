@@ -59,8 +59,8 @@ namespace acpi
 
             hdr = reinterpret_cast<acpi_madt *>(out_table->virt_addr);
 
-            auto start = tohh(reinterpret_cast<uintptr_t>(hdr->entries));
-            auto end = tohh(reinterpret_cast<uintptr_t>(hdr) + hdr->hdr.length);
+            auto start = reinterpret_cast<uintptr_t>(hdr->entries);
+            auto end = reinterpret_cast<uintptr_t>(hdr) + hdr->hdr.length;
 
             auto madt = reinterpret_cast<acpi_entry_hdr *>(start);
 
@@ -77,7 +77,6 @@ namespace acpi
                 }
             }
         }
-
     } // namespace madt
 
     void ec_init()

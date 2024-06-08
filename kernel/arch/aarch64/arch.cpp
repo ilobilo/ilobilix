@@ -86,15 +86,11 @@ namespace arch
         halt(false);
     }
 
-    void early_init()
+    void init()
     {
         smp::bsp_init();
 
         smp::init();
-    }
-
-    void init()
-    {
     }
 } // namespace arch
 

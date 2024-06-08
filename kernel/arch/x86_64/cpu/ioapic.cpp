@@ -3,11 +3,15 @@
 #include <arch/x86_64/cpu/ioapic.hpp>
 #include <arch/x86_64/cpu/idt.hpp>
 #include <arch/x86_64/cpu/pic.hpp>
+
 #include <drivers/acpi.hpp>
+
 #include <init/kernel.hpp>
+
 #include <lib/panic.hpp>
 #include <lib/mmio.hpp>
 #include <lib/log.hpp>
+
 #include <mm/vmm.hpp>
 
 namespace ioapic
@@ -40,7 +44,7 @@ namespace ioapic
 
     ioapic::ioapic(uintptr_t phys_mmio_base, uint32_t gsi_base) : gsi_base(gsi_base)
     {
-        this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
+        this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t), true);
         vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw, vmm::caching::mmio);
 
         this->redirs = ((this->read(0x01) >> 16) & 0xFF) + 1;
@@ -170,7 +174,6 @@ namespace ioapic
         for (const auto &entry : acpi::madt::ioapics)
             ioapics.emplace_back(entry.address, entry.gsi_base);
 
-        // TODO: everything is unmasked
         auto redirect_isa_irq = [](size_t i)
         {
             for (const auto &iso : acpi::madt::isos)
@@ -180,7 +183,7 @@ namespace ioapic
                     set(
                         iso.gsi, iso.source + 0x20,
                         delivery::fixed, destmode::physical,
-                        iso.flags /* | masked */, smp_request.response->bsp_lapic_id
+                        iso.flags | masked, smp_request.response->bsp_lapic_id
                     );
                     idt::handlers[iso.source + 0x20].reserve();
                     return;
@@ -190,7 +193,7 @@ namespace ioapic
             set(
                 i, i + 0x20,
                 delivery::fixed, destmode::physical,
-                /* masked */ 0, smp_request.response->bsp_lapic_id
+                masked, smp_request.response->bsp_lapic_id
             );
             idt::handlers[i + 0x20].reserve();
         };

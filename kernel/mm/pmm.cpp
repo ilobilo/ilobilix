@@ -118,7 +118,7 @@ namespace pmm
                     break;
                 case LIMINE_MEMMAP_KERNEL_AND_MODULES:
                 case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: // TODO: <- are we going to free those structs?
-                    usedmem += memmaps[i]->length;
+                    // usedmem += memmaps[i]->length;
                     break;
                 default:
                     continue;
