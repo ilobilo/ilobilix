@@ -41,11 +41,10 @@ void kernel_thread()
 
     // Create if it doesn't exist
     vfs::create(nullptr, "/tmp", 01777 | s_ifdir);
-    vfs::mount(nullptr, "", "/tmp", "tmpfs", 0, new char[] { "mode=01777" });
+    vfs::mount(nullptr, "", "/tmp", "tmpfs", 0, const_cast<void *>(reinterpret_cast<const void *>("mode=01777")));
 
     frm::init();
     term::init();
-    arch::init();
 
     tty::init();
     pty::init();
@@ -133,7 +132,7 @@ void kmain()
 
     time::init();
 
-    arch::early_init();
+    arch::init();
 
     kernel_proc = new proc::process("Kernel Process");
     kernel_proc->pagemap = vmm::kernel_pagemap;

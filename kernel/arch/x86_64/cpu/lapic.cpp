@@ -83,7 +83,7 @@ namespace lapic
         {
             auto phys_mmio_base = base & ~(0xFFF);
 
-            this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t));
+            this->mmio_base = vmm::alloc_vspace(vmm::vsptypes::other, 0x1000, sizeof(uint32_t), true);
             vmm::kernel_pagemap->map(this->mmio_base, phys_mmio_base, vmm::rw, vmm::caching::mmio);
         }
 

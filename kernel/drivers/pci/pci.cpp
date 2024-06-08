@@ -131,7 +131,7 @@ namespace pci
         if (this->base != vmm::invalid_addr)
             return this->base;
 
-        if (this->bit64 == true)
+        // if (this->bit64 == true)
         {
             if (vmm::kernel_pagemap->virt2phys(tohh(this->pbase)) == vmm::invalid_addr)
             {
@@ -140,7 +140,7 @@ namespace pci
                 auto albase = align_down(this->pbase, psize);
                 auto len = align_up(this->pbase + this->len, psize) - albase;
 
-                auto vaddr = vmm::alloc_vspace(vmm::vsptypes::bars, len, alignment ?: psize);
+                auto vaddr = vmm::alloc_vspace(vmm::vsptypes::bars, len, alignment ?: psize, !this->bit64);
 
                 vmm::kernel_pagemap->map_range(vaddr, albase, len, vmm::rw, vmm::mmio);
                 this->base = vaddr + (this->pbase - albase);
@@ -148,7 +148,7 @@ namespace pci
             else this->base = tohh(this->pbase);
         }
         // TODO: map 32 bit bars too
-        else this->base = tohh(this->pbase);
+        // else this->base = tohh(this->pbase);
 
         return this->base;
     }

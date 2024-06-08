@@ -119,6 +119,7 @@ struct chain_wrapper
     bool _chained;
 
     public:
+    constexpr chain_wrapper() : _val(), _chained(false) { }
     constexpr chain_wrapper(Type val) : _val(val), _chained(false) { }
 
     constexpr chain_wrapper(const chain_wrapper &other) : _other(const_cast<chain_wrapper*>(std::addressof(other))), _chained(true) { }
@@ -145,6 +146,17 @@ struct chain_wrapper
         return this->_val;
     }
 
+    constexpr Type *operator->()
+    {
+        return &this->get();
+    }
+
+    template<typename Type1>
+    constexpr auto operator[](Type1 &&i) -> decltype(auto)
+    {
+        return this->get()[std::forward<Type1>(i)];
+    }
+
     constexpr bool is_chained() const
     {
         return this->_chained;
@@ -152,7 +164,6 @@ struct chain_wrapper
 
     operator Type() { return this->get(); }
 };
-
 
 template<typename Type, typename Type1>
 inline Type1 get_member_type(Type1 Type:: *);

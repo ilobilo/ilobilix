@@ -304,5 +304,5 @@ namespace vmm
         ecam, bars,
         other
     };
-    uintptr_t alloc_vspace(vsptypes type, size_t increment = 0, size_t alignment = 0);
+    uintptr_t alloc_vspace(vsptypes type, size_t increment = 0, size_t alignment = 0, bool lower_half = false);
 } // namespace vmm

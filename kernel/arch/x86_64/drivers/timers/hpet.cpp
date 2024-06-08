@@ -13,7 +13,7 @@
 #include <lib/misc.hpp>
 #include <lib/log.hpp>
 
-// #include <mm/vmm.hpp>
+#include <mm/vmm.hpp>
 
 namespace timers::hpet
 {
@@ -70,11 +70,10 @@ namespace timers::hpet
 
     device::device(acpi_hpet *table)
     {
-        // auto vaddr = vmm::alloc_vspace(vmm::vsptypes::other, sizeof(registers), sizeof(uint64_t));
-        // vmm::kernel_pagemap->map_range(vaddr, table->address.address, sizeof(registers), vmm::rw, vmm::mmio);
+        auto vaddr = vmm::alloc_vspace(vmm::vsptypes::other, sizeof(registers), sizeof(uint64_t), true);
+        vmm::kernel_pagemap->map(vaddr, table->address.address, vmm::rw, vmm::mmio);
 
-        // this->regs = reinterpret_cast<registers *>(vaddr);
-        this->regs = reinterpret_cast<registers *>(tohh(table->address.address));
+        this->regs = reinterpret_cast<registers *>(vaddr);
 
         this->stop();
         this->regs->cmd &= ~0b10;
@@ -173,7 +172,8 @@ namespace timers::hpet
                     assert(gsi != 0xFFFFFFFF);
 
                     gsi_vector = gsi + 0x20;
-                    idt::handlers[gsi_vector].set([this](cpu::registers_t *)
+                    auto &handler = idt::handlers[gsi_vector];
+                    handler.set([this](cpu::registers_t *)
                     {
                         for (size_t i = 0; i < this->comp_count; i++)
                         {
@@ -197,6 +197,7 @@ namespace timers::hpet
                             }
                         }
                     });
+                    handler.load_lh = true;
 
                     ioapic::set(gsi, gsi_vector, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic::flags::level_sensative, this_cpu()->arch_id);
                 }

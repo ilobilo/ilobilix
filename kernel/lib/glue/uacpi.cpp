@@ -228,33 +228,31 @@ extern "C"
 
     void *uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len)
     {
-        return reinterpret_cast<uint8_t *>(tohh(addr));
+        // return reinterpret_cast<uint8_t *>(tohh(addr));
 
-        // TODO: FIXME
+        auto &pmap = vmm::kernel_pagemap;
+        auto [psize, flags] = pmap->required_size(len);
 
-        // auto &pmap = vmm::kernel_pagemap;
-        // auto [psize, flags] = pmap->required_size(len);
+        auto paddr = align_down(addr, psize);
+        auto size = align_up((addr - paddr) + len, psize);
 
-        // auto paddr = align_down(addr, psize);
-        // auto size = align_up((addr - paddr) + len, psize);
+        auto vaddr = vmm::alloc_vspace(vmm::vsptypes::uacpi, size, psize, true);
+        assert(pmap->map_range(vaddr, paddr, size, vmm::rw | flags, vmm::caching::mmio));
 
-        // auto vaddr = vmm::alloc_vspace(vmm::vsptypes::uacpi, size, psize);
-        // assert(pmap->map_range(vaddr, paddr, size, vmm::rw | flags));
-
-        // return reinterpret_cast<uint8_t *>(vaddr) + (addr - paddr);
+        return reinterpret_cast<uint8_t *>(vaddr) + (addr - paddr);
     }
 
     void uacpi_kernel_unmap(void *ptr, uacpi_size len)
     {
-        // auto addr = reinterpret_cast<uintptr_t>(ptr);
+        auto addr = reinterpret_cast<uintptr_t>(ptr);
 
-        // auto &pmap = vmm::kernel_pagemap;
-        // auto psize = pmap->get_psize();
+        auto &pmap = vmm::kernel_pagemap;
+        auto psize = pmap->get_psize();
 
-        // auto vaddr = align_down(addr, psize);
-        // auto size = align_up((addr - vaddr) + len, psize);
+        auto vaddr = align_down(addr, psize);
+        auto size = align_up((addr - vaddr) + len, psize);
 
-        // assert(pmap->unmap_range(vaddr, size));
+        assert(pmap->unmap_range(vaddr, size));
     }
 
     void *uacpi_kernel_alloc(uacpi_size size)

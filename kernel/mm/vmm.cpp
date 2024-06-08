@@ -93,8 +93,10 @@ namespace vmm
         kernel_pagemap->load(true);
     }
 
-    uintptr_t alloc_vspace(vsptypes type, size_t increment, size_t alignment)
+    uintptr_t alloc_vspace(vsptypes type, size_t increment, size_t alignment, bool lower_half)
     {
+        assert(alignment <= pmm::page_size);
+
         auto index = std::to_underlying(type);
 
         uintptr_t *entry = &vspbaddrs[index];
@@ -104,7 +106,7 @@ namespace vmm
         uintptr_t ret = alignment ? align_up(*entry, alignment) : *entry;
         *entry += increment + (ret - *entry);
 
-        return ret;
+        return lower_half ? fromhh(ret) : ret;
     }
 
     void *pagemap::get_next_lvl(ptentry &entry, bool allocate, uintptr_t vaddr, size_t opsize, size_t psize)

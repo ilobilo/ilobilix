@@ -16,6 +16,7 @@ namespace interrupts
 
         public:
         bool eoi_first = false;
+        bool load_lh = false;
 
         template<typename Func, typename ...Args>
         bool set(Func &&func, Args &&...args)

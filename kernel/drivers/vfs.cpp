@@ -80,12 +80,12 @@ namespace vfs
         return this->res->children.empty();
     }
 
-    std::optional<std::string> filesystem::get_value(std::string_view key)
+    std::optional<std::string_view> filesystem::get_value(std::string_view key)
     {
         if (this->mountdata == nullptr)
             return std::nullopt;
 
-        std::string datastr(static_cast<const char*>(this->mountdata));
+        std::string_view datastr(static_cast<const char*>(this->mountdata));
 
         auto pos = datastr.find(key);
         if (pos != std::string::npos && datastr.at(pos + key.length()) == '=')
@@ -252,7 +252,7 @@ namespace vfs
             return false;
 
         node->mountgate = mountgate;
-        fs->mounted_on = node;
+        mountgate->fs->mounted_on = node;
 
         if (source.empty())
             log::infoln("VFS: Mounted filesystem '{}' on '{}'", fs_name, target);
@@ -403,6 +403,9 @@ namespace vfs
 
         if (node == nullptr)
             return std::nullopt;
+
+        if (node != get_root()->reduce(true) && node->fs->mounted_on && node == node->fs->mounted_on->mountgate)
+            node = node->fs->mounted_on;
 
         return node->res->stat;
     }
