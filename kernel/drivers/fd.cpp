@@ -98,7 +98,7 @@ namespace proc
         else if (flags & o_creat && flags & o_excl)
             return_err(-1, EEXIST);
 
-        node = node->reduce(follow);
+        node = node->reduce(follow, false);
 
         if (node == nullptr)
             return -1;
@@ -142,8 +142,10 @@ namespace vfs
         if (this->node == nullptr || this->node->type() != s_ifdir)
             return_err(false, ENOTDIR);
 
+        auto node = this->node->reduce(true, true);
+
         this->dirents.clear();
-        for (const auto [name, child] : this->node->res->children)
+        for (const auto [name, child] : node->res->children)
         {
             auto cres = child->reduce(false)->res;
             auto reclen = dirent_len + name.length() + 1;
@@ -163,7 +165,7 @@ namespace vfs
         // . and .. are handled in path2node
         for (std::string_view name : { ".", ".." })
         {
-            auto cres = name == "." ? this->node->res : (this->node->name == "/" ? this->node->res : this->node->parent->res);
+            auto cres = name == "." ? node->res : (node->name == "/" ? node->res : node->parent->res);
             auto reclen = dirent_len + name.length() + 1;
 
             auto ent = malloc<dirent*>(reclen);

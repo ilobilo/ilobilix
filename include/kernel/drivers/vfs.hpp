@@ -161,6 +161,7 @@ namespace vfs
     }
 
     node_t *get_root();
+    node_t *get_real(node_t *node);
 
     bool register_fs(filesystem *fs);
     filesystem *find_fs(std::string_view name);
