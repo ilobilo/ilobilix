@@ -22,8 +22,26 @@ namespace syscall
         using ret = Ret;
     };
 
+    struct nullable_string
+    {
+        const char *str;
+        explicit constexpr nullable_string(const char *s) : str { s } { }
+    };
+    inline constexpr auto format_as(nullable_string n) { return n.str ?: "(null)"; }
+
     template<typename Type>
-    using to_formattable_ptr = typename std::conditional_t<std::is_pointer_v<Type> && (!fmt::is_formattable<Type>::value || std::same_as<Type, char *> /* for char* buffers */), const void *, Type>;
+    using to_formattable_ptr =
+        typename std::conditional_t<
+            std::is_pointer_v<Type>,
+            std::conditional_t<
+                std::is_constructible_v<
+                    std::string_view,
+                    Type
+                >,
+                nullable_string,
+                const void *
+            >, Type
+        >;
 
     template<typename ...Ts>
     auto ptr(const std::tuple<Ts...> &tup)

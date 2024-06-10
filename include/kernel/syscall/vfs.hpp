@@ -20,6 +20,8 @@ namespace vfs
     int sys_fstat(int fdnum, stat_t *statbuf);
     int sys_lstat(const char *pathname, stat_t *statbuf);
 
+    int sys_utimensat(int dirfd, const char *pathname, const timespec *times, int flags);
+
     off_t sys_lseek(int fdnum, off_t new_offset, int whence);
 
     int sys_ioctl(int fdnum, size_t request, uintptr_t arg);
@@ -56,7 +58,4 @@ namespace vfs
     [[clang::no_sanitize("alignment")]]
     ssize_t sys_getdents(unsigned int dirfd, dirent *dirp, unsigned int count);
     ssize_t sys_getdents64(int dirfd, void *dirp, size_t count);
-
-    int sys_chdir(const char *path);
-    int sys_fchdir(int fd);
 } // namespace vfs

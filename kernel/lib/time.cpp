@@ -3,11 +3,33 @@
 #include <arch/arch.hpp>
 #include <lib/time.hpp>
 #include <lib/misc.hpp>
+#include <vector>
 
 namespace time
 {
     timespec realtime;
     timespec monotonic;
+
+    static std::mutex timer_lock;
+    static std::vector<timer *> timers;
+
+    timer::timer(timespec when) : when(when), event(), armed(true), fired(false)
+    {
+        std::unique_lock guard(timer_lock);
+
+        timers.push_back(this);
+    }
+
+    timer::~timer()
+    {
+        std::unique_lock guard(timer_lock);
+
+        if (timers.size() == 0 || this->armed == false)
+            return;
+
+        timers.erase(std::remove(timers.begin(), timers.end(), this), timers.end());
+        this->armed = false;
+    }
 
     void init()
     {
@@ -21,6 +43,23 @@ namespace time
 
         realtime += interval;
         monotonic += interval;
+
+        if (timer_lock.try_lock())
+        {
+            for (auto tmr : timers)
+            {
+                if (tmr->fired)
+                    continue;
+
+                if ((tmr->when - monotonic).to_ns() == 0)
+                {
+                    tmr->event.trigger();
+                    tmr->fired = true;
+                }
+            }
+
+            timer_lock.unlock();
+        }
     }
 
     uint64_t time_ns()

@@ -3,10 +3,22 @@
 #pragma once
 
 #include <lib/types.hpp>
+#include <lib/event.hpp>
 #include <cstdint>
 
 namespace time
 {
+    struct timer
+    {
+        timespec when;
+        event_t event;
+        bool armed;
+        bool fired;
+
+        timer(timespec when);
+        ~timer();
+    };
+
     extern timespec realtime;
     extern timespec monotonic;
 

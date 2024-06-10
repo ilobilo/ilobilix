@@ -427,6 +427,15 @@ struct clone_args
     uint64_t cgroup;       // file descriptor for target cgroup of child (since Linux 5.7)
 };
 
+enum clocks
+{
+    clock_realtime = 0,
+    clock_monotonic = 1
+};
+
+#define UTIME_NOW ((1l << 30) - 1l)
+#define UTIME_OMIT ((1l << 30) - 2l)
+
 struct timespec
 {
     time_t tv_sec;

@@ -395,7 +395,7 @@ namespace vfs
         return ret;
     }
 
-    std::optional<stat_t> stat(node_t *parent, path_view_t path, int flags)
+    stat_t *stat(node_t *parent, path_view_t path, int flags)
     {
         std::unique_lock guard(lock);
 
@@ -403,16 +403,16 @@ namespace vfs
         auto [nparent, node, basename] = path2node(parent, path, automount);
 
         if (node == nullptr)
-            return std::nullopt;
+            return nullptr;
 
         bool follow_symlinks = (flags & at_symlink_follow || not (flags & at_symlink_nofollow));
         node = node->reduce(follow_symlinks, automount);
 
         if (node == nullptr)
-            return std::nullopt;
+            return nullptr;
 
         node = get_real(node);
 
-        return node->res->stat;
+        return &node->res->stat;
     }
 } // namespace vfs

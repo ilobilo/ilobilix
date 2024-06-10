@@ -1,6 +1,6 @@
-From 20713d1ffce503ee588b1861d8fbfb43d4afa2a7 Mon Sep 17 00:00:00 2001
+From af515804049f18542f67ff7eced35a9da2c595bb Mon Sep 17 00:00:00 2001
 From: ilobilo <ilia.chachanidze35@gmail.com>
-Date: Sun, 9 Jun 2024 01:04:04 +0400
+Date: Mon, 10 Jun 2024 18:32:07 +0400
 Subject: [PATCH] Add ilobilix sysdeps
 
 ---
@@ -11,7 +11,7 @@ Subject: [PATCH] Add ilobilix sysdeps
  sysdeps/ilobilix/aarch64/thread_entry.S       |  27 +
  sysdeps/ilobilix/generic/do_syscall.hpp       |  58 ++
  sysdeps/ilobilix/generic/entry.cpp            |  37 +
- sysdeps/ilobilix/generic/sysdeps.cpp          | 739 ++++++++++++++++++
+ sysdeps/ilobilix/generic/sysdeps.cpp          | 761 ++++++++++++++++++
  sysdeps/ilobilix/generic/thread.cpp           |  60 ++
  sysdeps/ilobilix/include/abi-bits/access.h    |   1 +
  sysdeps/ilobilix/include/abi-bits/auxv.h      |   1 +
@@ -58,14 +58,14 @@ Subject: [PATCH] Add ilobilix sysdeps
  sysdeps/ilobilix/include/abi-bits/vt.h        |   1 +
  sysdeps/ilobilix/include/abi-bits/wait.h      |   1 +
  sysdeps/ilobilix/include/abi-bits/xattr.h     |   1 +
- sysdeps/ilobilix/include/ilobilix/syscall.h   | 167 ++++
+ sysdeps/ilobilix/include/ilobilix/syscall.h   | 170 ++++
  .../ilobilix/include/mlibc/thread-entry.hpp   |  12 +
  sysdeps/ilobilix/meson.build                  |  99 +++
  sysdeps/ilobilix/x86_64/crt-src/crt0.S        |   8 +
  sysdeps/ilobilix/x86_64/crt-src/crti.S        |  11 +
  sysdeps/ilobilix/x86_64/crt-src/crtn.S        |   9 +
  sysdeps/ilobilix/x86_64/thread_entry.S        |  23 +
- 61 files changed, 1333 insertions(+)
+ 61 files changed, 1358 insertions(+)
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crt0.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crti.S
  create mode 100644 sysdeps/ilobilix/aarch64/crt-src/crtn.S
@@ -337,10 +337,10 @@ index 00000000..62b1c3cb
 +
 diff --git a/sysdeps/ilobilix/generic/sysdeps.cpp b/sysdeps/ilobilix/generic/sysdeps.cpp
 new file mode 100644
-index 00000000..d43275d7
+index 00000000..6fcafb3d
 --- /dev/null
 +++ b/sysdeps/ilobilix/generic/sysdeps.cpp
-@@ -0,0 +1,739 @@
+@@ -0,0 +1,761 @@
 +#include <mlibc/ansi-sysdeps.hpp>
 +#include <mlibc/posix-sysdeps.hpp>
 +#include <mlibc/linux-sysdeps.hpp>
@@ -375,17 +375,6 @@ index 00000000..d43275d7
 +#include <sched.h>
 +#include <fcntl.h>
 +#include <pthread.h>
-+
-+#ifdef __INTELLISENSE__
-+typedef __SIZE_TYPE__ size_t;
-+typedef long int ssize_t;
-+
-+struct timespec
-+{
-+    time_t tv_sec;
-+    long tv_nsec;
-+};
-+#endif
 +
 +#define STUB_ONLY(name)                               \
 +{                                                     \
@@ -523,7 +512,14 @@ index 00000000..d43275d7
 +    }
 +
 +    // int sys_fchownat(int dirfd, const char *pathname, uid_t owner, gid_t group, int flags) STUB_ONLY(sys_fchownat)
-+    // int sys_utimensat(int dirfd, const char *pathname, const timespec times[2], int flags) STUB_ONLY(sys_utimensat)
++
++    int sys_utimensat(int dirfd, const char *pathname, const timespec times[2], int flags)
++    {
++        auto ret = do_syscall(SYS_utimensat, dirfd, pathname, times, flags);
++        if (auto e = syscall_error(ret); e)
++            return e;
++        return 0;
++    }
 +
 +    int sys_vm_map(void *hint, size_t size, int prot, int flags, int fd, off_t offset, void **window)
 +    {
@@ -676,7 +672,17 @@ index 00000000..d43275d7
 +
 +#ifndef MLIBC_BUILDING_RTLD
 +
-+    int sys_clock_get(int clock, time_t *secs, long *nanos) STUB_ONLY(sys_clock_get)
++    int sys_clock_get(int clock, time_t *secs, long *nanos)
++    {
++        struct timespec tp = { };
++        auto ret = do_syscall(SYS_clock_gettime, clock, &tp);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *secs = tp.tv_sec;
++        *nanos = tp.tv_nsec;
++        return 0;
++    }
 +    // int sys_clock_getres(int clock, time_t *secs, long *nanos) STUB_ONLY(sys_clock_getres)
 +
 +    int sys_stat(fsfd_target fsfdt, int fd, const char *path, int flags, struct stat *statbuf)
@@ -741,7 +747,23 @@ index 00000000..d43275d7
 +        return 0;
 +    }
 +
-+    // int sys_sleep(time_t *secs, long *nanos) STUB_ONLY(sys_sleep)
++    int sys_sleep(time_t *secs, long *nanos)
++    {
++        struct timespec req
++        {
++            .tv_sec = *secs,
++            .tv_nsec = *nanos
++        };
++        struct timespec rem = { 0, 0 };
++
++        auto ret = do_syscall(SYS_nanosleep, &req, &rem);
++        if (auto e = syscall_error(ret); e)
++            return e;
++
++        *secs = rem.tv_sec;
++        *nanos = rem.tv_nsec;
++        return 0;
++    }
 +
 +    int sys_isatty(int fd)
 +    {
@@ -1509,10 +1531,10 @@ index 00000000..66412d70
 \ No newline at end of file
 diff --git a/sysdeps/ilobilix/include/ilobilix/syscall.h b/sysdeps/ilobilix/include/ilobilix/syscall.h
 new file mode 100644
-index 00000000..6efc1dbd
+index 00000000..a9496614
 --- /dev/null
 +++ b/sysdeps/ilobilix/include/ilobilix/syscall.h
-@@ -0,0 +1,167 @@
+@@ -0,0 +1,170 @@
 +#ifndef _ILOBILIX__SYSCALL_H
 +#define _ILOBILIX__SYSCALL_H
 +
@@ -1534,6 +1556,7 @@ index 00000000..6efc1dbd
 +#define SYS_ioctl 16
 +#define SYS_dup 32
 +#define SYS_dup2 33
++#define SYS_nanosleep 35
 +#define SYS_getpid 39
 +#define SYS_clone 56
 +#define SYS_fork 57
@@ -1557,6 +1580,7 @@ index 00000000..6efc1dbd
 +#define SYS_mknod 133
 +#define SYS_arch_prctl 158
 +#define SYS_getdents64 217
++#define SYS_clock_gettime 228
 +#define SYS_openat 257
 +#define SYS_mkdirat 258
 +#define SYS_mknodat 259
@@ -1565,6 +1589,7 @@ index 00000000..6efc1dbd
 +#define SYS_linkat 265
 +#define SYS_readlinkat 267
 +#define SYS_fchmodat 268
++#define SYS_utimensat 280
 +#define SYS_dup3 292
 +
 +#ifdef __SYSCALL_USE_INT__

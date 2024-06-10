@@ -424,4 +424,40 @@ namespace proc
             return which->pid;
         }
     }
+
+    int sys_nanosleep(timespec *req, timespec *rem)
+    {
+        if (req == nullptr)
+            return_err(-1, EINVAL);
+
+        if (req->tv_sec == 0 && req->tv_nsec == 0)
+            return 0;
+
+        if (req->tv_sec < 0 || req->tv_nsec < 0 || req->tv_nsec >= 1000000000)
+            return_err(-1, EINVAL);
+
+        time::timer tmr { *req };
+        if (tmr.event.await().has_value() == false)
+        {
+            if (rem != nullptr)
+            {
+                rem->tv_sec = time::monotonic.tv_sec - req->tv_sec;
+                rem->tv_nsec = time::monotonic.tv_nsec - req->tv_nsec;
+
+                if (rem->tv_nsec < 0)
+                {
+                    rem->tv_sec--;
+                    rem->tv_nsec += 1000000000;
+                }
+                if (rem->tv_sec < 0)
+                {
+                    rem->tv_sec = 0;
+                    rem->tv_nsec = 0;
+                }
+            }
+            return_err(-1, EINTR);
+        }
+
+        return 0;
+    }
 } // namespace proc
