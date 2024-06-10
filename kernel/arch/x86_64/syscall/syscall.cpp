@@ -6,6 +6,7 @@
 #include <frozen/map.h>
 
 #include <arch/x86_64/syscall/arch.hpp>
+#include <syscall/time.hpp>
 #include <syscall/proc.hpp>
 #include <syscall/vfs.hpp>
 #include <syscall/mm.hpp>
@@ -34,6 +35,7 @@ namespace syscall
         SYSCALL_ENTRY(16, "ioctl", vfs::sys_ioctl),
         SYSCALL_ENTRY(32, "dup", vfs::sys_dup),
         SYSCALL_ENTRY(33, "dup2", vfs::sys_dup2),
+        SYSCALL_ENTRY(35, "nanosleep", time::sys_nanosleep),
         SYSCALL_ENTRY(39, "getpid", proc::sys_getpid),
         SYSCALL_ENTRY(56, "clone", proc::sys_clone),
         SYSCALL_ENTRY(57, "fork", proc::sys_fork),
@@ -44,7 +46,7 @@ namespace syscall
         SYSCALL_ENTRY(72, "fcntl", vfs::sys_fcntl),
         SYSCALL_ENTRY(78, "getdents", vfs::sys_getdents),
         SYSCALL_ENTRY(79, "getcwd", vfs::sys_getcwd, [](uintptr_t val)
-            { return reinterpret_cast<char*>(val) == nullptr; }),
+            { return reinterpret_cast<char *>(val) == nullptr; }),
         SYSCALL_ENTRY(80, "chdir", vfs::sys_chdir),
         SYSCALL_ENTRY(81, "fchdir", vfs::sys_fchdir),
         SYSCALL_ENTRY(83, "mkdir", vfs::sys_mkdir),
@@ -58,6 +60,7 @@ namespace syscall
         SYSCALL_ENTRY(133, "mknod", vfs::sys_mknod),
         SYSCALL_ENTRY(158, "arch_prctl", arch::sys_arch_prctl),
         SYSCALL_ENTRY(217, "getdents64", vfs::sys_getdents64),
+        SYSCALL_ENTRY(228, "clock_gettime", time::sys_clock_gettime),
         SYSCALL_ENTRY(257, "openat", vfs::sys_openat),
         SYSCALL_ENTRY(258, "mkdirat", vfs::sys_mkdirat),
         SYSCALL_ENTRY(259, "mknodat", vfs::sys_mknodat),
@@ -66,6 +69,7 @@ namespace syscall
         SYSCALL_ENTRY(265, "linkat", vfs::sys_linkat),
         SYSCALL_ENTRY(267, "readlinkat", vfs::sys_readlinkat),
         SYSCALL_ENTRY(268, "fchmodat", vfs::sys_fchmodat),
+        SYSCALL_ENTRY(280, "utimensat", vfs::sys_utimensat),
         SYSCALL_ENTRY(292, "dup3", vfs::sys_dup3)
 #undef  SYSCALL_ENTRY
     });

@@ -61,6 +61,7 @@ src = files(
 
     'syscall/mm.cpp',
     'syscall/proc.cpp',
+    'syscall/time.cpp',
     'syscall/vfs.cpp'
 )
 

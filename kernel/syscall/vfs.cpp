@@ -114,7 +114,7 @@ namespace vfs
 
         auto proc = this_thread()->parent;
 
-        if (strlen(pathname) == 0)
+        if (pathname == nullptr || strlen(pathname) == 0)
         {
             if (!(flags & at_empty_path))
                 return_err(-1, ENOENT);
@@ -136,10 +136,10 @@ namespace vfs
                 return -1;
 
             auto val = stat(parent, pathname, flags);
-            if (val.has_value() == false)
+            if (val == nullptr)
                 return -1;
 
-            *statbuf = val.value();
+            *statbuf = *val;
         }
         return 0;
     }
@@ -157,6 +157,64 @@ namespace vfs
     int sys_lstat(const char *pathname, stat_t *statbuf)
     {
         return sys_fstatat(at_fdcwd, pathname, statbuf, at_symlink_nofollow);
+    }
+
+    int sys_utimensat(int dirfd, const char *pathname, const timespec *times, int flags)
+    {
+        auto proc = this_thread()->parent;
+
+        auto update = [&](stat_t &stat)
+        {
+            auto now = time::realtime;
+            if (times == nullptr)
+            {
+                stat.st_atim = now;
+                stat.st_mtim = now;
+                return;
+            }
+
+            if (times[0].tv_nsec != UTIME_OMIT)
+            {
+                if (times[0].tv_nsec == UTIME_NOW)
+                    stat.st_atim = now;
+                else
+                    stat.st_atim = times[0];
+            }
+
+            if (times[1].tv_nsec != UTIME_OMIT)
+            {
+                if (times[1].tv_nsec == UTIME_NOW)
+                    stat.st_mtim = now;
+                else
+                    stat.st_mtim = times[1];
+            }
+        };
+
+        if ((flags & at_empty_path) || pathname == nullptr || strlen(pathname) == 0)
+        {
+            if (dirfd == at_fdcwd)
+                update(proc->cwd.get()->res->stat);
+            else
+            {
+                auto fd = proc->fd_table->num2fd(dirfd);
+                if (fd == nullptr)
+                    return -1;
+                update(fd->handle->res->stat);
+            }
+        }
+        else
+        {
+            auto parent = get_parent_dir(dirfd, pathname);
+            if (parent == nullptr)
+                return -1;
+
+            auto val = stat(parent, pathname, flags);
+            if (val == nullptr)
+                return -1;
+
+            update(*val);
+        }
+        return 0;
     }
 
     off_t sys_lseek(int fdnum, off_t new_offset, int whence)

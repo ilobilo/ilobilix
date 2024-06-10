@@ -179,5 +179,5 @@ namespace vfs
     node_t *link(node_t *old_parent, path_view_t old_path, node_t *new_parent, path_view_t new_path, int flags = 0);
     bool unlink(node_t *parent, path_view_t path, int flags = 0);
 
-    std::optional<stat_t> stat(node_t *parent, path_view_t path, int flags);
+    stat_t *stat(node_t *parent, path_view_t path, int flags);
 } // namespace vfs
