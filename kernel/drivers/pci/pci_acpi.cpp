@@ -167,7 +167,7 @@ namespace pci::acpi
     {
         using namespace ::acpi;
 
-        uacpi_table *mcfgtable;
+        uacpi_table mcfgtable;
         auto ret = uacpi_table_find_by_signature("MCFG", &mcfgtable);
         if (ret == UACPI_STATUS_NOT_FOUND)
         {
@@ -175,7 +175,7 @@ namespace pci::acpi
             return false;
         }
 
-        auto *mcfg = reinterpret_cast<acpi_mcfg *>(mcfgtable->virt_addr);
+        auto *mcfg = reinterpret_cast<acpi_mcfg *>(mcfgtable.virt_addr);
 
         if (mcfg->hdr.length < sizeof(acpi_mcfg) + sizeof(acpi_mcfg_allocation))
         {
