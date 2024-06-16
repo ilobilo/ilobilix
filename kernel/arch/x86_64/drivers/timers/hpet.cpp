@@ -276,16 +276,16 @@ namespace timers::hpet
     {
         log::infoln("HPET: Initialising...");
 
-        uacpi_table *out_table;
+        uacpi_table out_table;
         if (uacpi_table_find_by_signature("HPET", &out_table) != UACPI_STATUS_OK)
         {
             log::errorln("HPET table not found");
             return;
         }
 
-        while (out_table != nullptr)
+        while (true)
         {
-            devices.push_back(new device(reinterpret_cast<acpi_hpet *>(out_table->virt_addr)));
+            devices.push_back(new device(reinterpret_cast<acpi_hpet *>(out_table.virt_addr)));
             if (uacpi_table_find_next_with_same_signature(&out_table) != UACPI_STATUS_OK)
                 break;
         }

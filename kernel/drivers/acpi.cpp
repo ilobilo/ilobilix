@@ -53,11 +53,11 @@ namespace acpi
 
         void init()
         {
-            uacpi_table *out_table;
+            uacpi_table out_table;
             if (uacpi_table_find_by_signature("APIC", &out_table) != UACPI_STATUS_OK)
                 return;
 
-            hdr = reinterpret_cast<acpi_madt *>(out_table->virt_addr);
+            hdr = reinterpret_cast<acpi_madt *>(out_table.virt_addr);
 
             auto start = reinterpret_cast<uintptr_t>(hdr->entries);
             auto end = reinterpret_cast<uintptr_t>(hdr) + hdr->hdr.length;
