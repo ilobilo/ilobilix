@@ -9,6 +9,8 @@
 #include <arch/arch.hpp>
 
 #include <mm/pmm.hpp>
+
+#include <utility>
 #include <deque>
 
 // #include <lib/log.hpp>

@@ -15,7 +15,8 @@ cxx = meson.get_compiler('cpp')
 ld = cxx.get_linker_id()
 arch = host_machine.cpu_family()
 
-initrd_dir = meson.source_root() / 'sysroot'
+initrd_dir = meson.source_root() / 'userspace/sysroot'
+old_initrd_dir = meson.source_root() / 'sysroot'
 logfile = meson.source_root() / 'log.txt'
 
 # iso_dir = meson.source_root() / 'iso'
@@ -106,7 +107,7 @@ incs = [
 
 macros = [
     '-DLVL5_PAGING=' + (get_option('5lvl_paging') ? '1' : '0'),
-    '-DSYSCALL_DEBUG=' + (get_option('syscall_debug') ? '1' : '0'),
+    '-DSYSCALL_LOG=' + (get_option('syscall_log') ? '1' : '0'),
     '-DUACPI_FORMATTED_LOGGING'
 ]
 
@@ -119,6 +120,7 @@ warnigns = [
 
 add_global_arguments([
     warnigns, macros,
+    '-nostdinc',
     '-ffreestanding',
     '-fno-stack-protector',
     '-fno-omit-frame-pointer',
@@ -189,7 +191,11 @@ subdir('kernel')
 
 fs = import('fs')
 if not fs.is_dir(initrd_dir)
-    error('Directory \'' + fs.name(initrd_dir) + '\' not found!')
+    message('Directory \'' + initrd_dir + '\' not found! trying \'' + old_initrd_dir + '\'')
+    if not fs.is_dir(old_initrd_dir)
+        error('Directory \'' + old_initrd_dir + '\' not found!')
+    endif
+    initrd_dir = old_initrd_dir
 endif
 
 no_ext_mods = ext_mods.length() == 0

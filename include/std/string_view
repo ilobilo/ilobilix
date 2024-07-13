@@ -6,7 +6,7 @@
 using namespace std::literals::string_view_literals;
 
 /*
-// Copyright (C) 2022-2023  ilobilo
+// Copyright (C) 2022-2024  ilobilo
 
 #pragma once
 

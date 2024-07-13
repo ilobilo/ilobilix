@@ -1,3 +1,0 @@
-# Begin ~/.bashrc
-
-# End ~/.bashrc

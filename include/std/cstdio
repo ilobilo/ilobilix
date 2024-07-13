@@ -3,33 +3,3 @@
 #pragma once
 
 #include <stdio.h>
-
-namespace std
-{
-    // Stub for fmtlib
-    using ::FILE;
-
-    using ::fputc;
-    using ::fputs;
-    using ::fputws;
-
-    using ::fprintf;
-    using ::fwrite;
-
-    using ::printf;
-    using ::vprintf;
-
-    using ::sprintf;
-    using ::vsprintf;
-
-    using ::snprintf;
-    using ::vsnprintf;
-
-    using ::vasprintf;
-    using ::asprintf;
-
-    using ::fctprintf;
-    using ::vfctprintf;
-
-    [[gnu::noreturn]] void terminate() noexcept;
-} // namespace std

@@ -1,0 +1,7 @@
+package("frigg")
+    add_urls("https://github.com/managarm/frigg.git")
+    add_versions("latest", "master")
+
+    on_install(function (package)
+        os.cp("include", package:installdir())
+    end)

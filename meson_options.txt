@@ -8,7 +8,7 @@ option('kernel_ubsan', type : 'boolean', value : false, description : 'Enable ub
 option('modules_ubsan', type : 'boolean', value : false, description : 'Enable ubsanitizer in modules')
 
 option('5lvl_paging', type : 'boolean', value : false, description : 'Enable 5 level paging in kernel')
-option('syscall_debug', type : 'boolean', value : false, description : 'Print syscall log on serial')
+option('syscall_log', type : 'boolean', value : false, description : 'Print syscall log on serial')
 
 option('gdb', type : 'boolean', value : false, description : 'Add -s -S to qemu')
 

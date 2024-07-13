@@ -13,6 +13,11 @@ extern "C"
     FILE *stdout = (FILE*)&stdout;
     FILE *stderr = (FILE*)&stderr;
 
+    int fflush (FILE *stream) { return 0; }
+
+    void flockfile(FILE *stream) { }
+    void funlockfile(FILE *stream) { }
+
     int fputc(char c, FILE *stream)
     {
         log::printc(c);

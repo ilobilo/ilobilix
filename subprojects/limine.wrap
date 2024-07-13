@@ -1,6 +1,6 @@
 [wrap-git]
 url = https://github.com/limine-bootloader/limine
-revision = v5.x-branch-binary
+revision = v7.x-binary
 depth = 1
 patch_filename = limine.tar
 

@@ -290,7 +290,7 @@ namespace timers::hpet
                 break;
         }
 
-#if !SYSCALL_DEBUG
+#if !SYSCALL_LOG
         arch::int_toggle(false);
 
         static constexpr size_t ns = 1'000'000;

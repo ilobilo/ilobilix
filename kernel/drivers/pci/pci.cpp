@@ -131,24 +131,20 @@ namespace pci
         if (this->base != vmm::invalid_addr)
             return this->base;
 
-        // if (this->bit64 == true)
+        // TODO
+        if (vmm::kernel_pagemap->virt2phys(tohh(this->pbase)) == vmm::invalid_addr)
         {
-            if (vmm::kernel_pagemap->virt2phys(tohh(this->pbase)) == vmm::invalid_addr)
-            {
-                auto psize = vmm::kernel_pagemap->get_psize();
+            auto psize = vmm::kernel_pagemap->get_psize();
 
-                auto albase = align_down(this->pbase, psize);
-                auto len = align_up(this->pbase + this->len, psize) - albase;
+            auto albase = align_down(this->pbase, psize);
+            auto len = align_up(this->pbase + this->len, psize) - albase;
 
-                auto vaddr = vmm::alloc_vspace(vmm::vsptypes::bars, len, alignment ?: psize, !this->bit64);
+            auto vaddr = vmm::alloc_vspace(vmm::vsptypes::bars, len, alignment ?: psize, !this->bit64);
 
-                vmm::kernel_pagemap->map_range(vaddr, albase, len, vmm::rw, vmm::mmio);
-                this->base = vaddr + (this->pbase - albase);
-            }
-            else this->base = tohh(this->pbase);
+            vmm::kernel_pagemap->map_range(vaddr, albase, len, vmm::rw, vmm::mmio);
+            this->base = vaddr + (this->pbase - albase);
         }
-        // TODO: map 32 bit bars too
-        // else this->base = tohh(this->pbase);
+        else this->base = tohh(this->pbase);
 
         return this->base;
     }
@@ -217,7 +213,7 @@ namespace pci
 
         auto base = table_bar.map() + this->msix.table.offset;
 
-        volatile auto *table = reinterpret_cast<volatile msix::entry*>(tohh(base));
+        volatile auto *table = reinterpret_cast<volatile msix::entry *>(tohh(base));
 
         msi::data data { };
         msi::address address { };
@@ -242,38 +238,6 @@ namespace pci
 
         return true;
     }
-
-//     bool device_t::enable_irqs(uint64_t cpuid, size_t vector)
-//     {
-//         if (this->msix_set(cpuid, vector, -1))
-//             return true;
-
-//         if (this->msi_set(cpuid, vector, -1))
-//             return true;
-
-// #if defined(__x86_64__)
-//         if (ioapic::initialised == false)
-//         {
-//             // this->write<uint8_t>(PCI_INTERRUPT_LINE, vector);
-//             // idt::unmask(vector - 0x20);
-//             // return true;
-//             return false;
-//         }
-//         if (this->route == nullptr)
-//             return false;
-
-//         auto ioapic_flags = 0;
-//         if (!(this->route->flags & ACPI_SMALL_IRQ_EDGE_TRIGGERED))
-//             ioapic_flags |= ioapic::flags::level_sensative;
-//         if (this->route->flags & ACPI_SMALL_IRQ_ACTIVE_LOW)
-//             ioapic_flags |= ioapic::flags::active_low;
-
-//         log::errorln("{}", this->route->gsi);
-//         ioapic::set(this->route->gsi, vector, ioapic::delivery::fixed, ioapic::destmode::physical, ioapic_flags, smp::bsp_id);
-//         return true;
-// #endif
-//         return false;
-//     }
 
 #if defined(__x86_64__)
     struct entry
@@ -345,6 +309,7 @@ namespace pci
 
         this->irq_index = gsis[this->route->gsi].functions.size();
         gsis[this->route->gsi].functions.emplace_back(this, function);
+
         return this->irq_registered = true;
 
         exit:
