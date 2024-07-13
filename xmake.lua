@@ -1,7 +1,5 @@
 -- Copyright (C) 2022-2024  ilobilo
 
--- TODO: vnc
-
 set_project("Ilobilix")
 set_version("v0.1")
 
@@ -28,12 +26,12 @@ set_optimize("aggressive")
 option("extra_cflags")
     set_default("")
     set_showmenu(true)
-    set_description("Extra shared cflags")
+    set_description("Extra CFLAGS")
 
 option("extra_cxxflags")
     set_default("")
     set_showmenu(true)
-    set_description("Extra shared cxxflags")
+    set_description("Extra CXXFLAGS")
 
 option("extra_qemuflags")
     set_default("")
@@ -45,7 +43,7 @@ option("ubsan")
     set_showmenu(true)
     set_description("UBSanitizer in kernel and modules. Requires rebuild")
 
-option("lvl5_paging")
+option("vmm_5lvl")
     set_default(false)
     set_showmenu(true)
     set_description("5 level paging. Requires rebuild")
@@ -126,7 +124,7 @@ toolchain("ilobilix-clang")
     set_toolset("ar", "llvm-ar", "ar")
     set_toolset("strip", "llvm-strip", "strip")
 
-    add_defines("LVL5_PAGING=" .. (is_config("lvl5_paging") and "1" or "0"))
+    add_defines("LVL5_PAGING=" .. (is_config("vmm_5lvl") and "1" or "0"))
     add_defines("SYSCALL_LOG=" .. (is_config("syscall_log") and "1" or "0"))
 
     add_defines("UACPI_FORMATTED_LOGGING")

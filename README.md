@@ -6,8 +6,7 @@ Second attempt at making an OS
 ## Building and Running
 
 Make sure you have following programs installed:
-* meson
-* ninja
+* xmake
 * clang/clang++ (version >= 17)
 * lld
 * llvm
@@ -19,70 +18,42 @@ Make sure you have following programs installed:
 
 Note: you may need more packages to build the sysroot, such as ``flex bison automake autoconf autopoint gperf help2man texinfo libgmp-dev libmpc-dev libmpfr-dev`` etc
 
-On debian based systems, I recommend installing llvm, clang and lld from here: https://apt.llvm.org \
-If you are on a up-to-date Debian based system (Ubuntu, linux mint, Pop_os!, etc) you can install most of them with this command:\
-``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``\
-For meson, ninja and xbstrap, first make sure you have python and python-pip installed and then run:\
-``python -m pip install meson ninja xbstrap``
+* If you are on a Debian based system (Ubuntu, linux mint, Pop_os!, etc) you can install most of the required packages with a single command:\
+``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``
+* On not-so-up-to-date systems, install llvm, clang and lld from: https://apt.llvm.org
+* To install ``xmake``, simply follow instructions on this link: https://xmake.io/#/getting_started?id=installation
+* For ``xbstrap``, make sure you have python pip installed, then run: ``python -m pip install xbstrap``
 
 Follow these steps to build and run the os:
-1. Clone this repo with:\
-``git clone --depth=1 https://github.com/ilobilo/ilobilix``
-
-2. Currently you have to manually build the sysroot:
-* Set the architecture in `boostrap.yml`
-* ``mkdir build-sysroot``
-* ``pushd build-sysroot``
-* ``xbstrap init ..``
-* ``xbstrap install base``
-* If symlink named ``sysroot`` does not exist in ``$PROJECT_ROOT`` that links to ``$BUILD_SYSROOT_DIR/system-root``, then create it with:\
-``ln -s $BUILD_SYSROOT_DIR/system-root $PROJECT_ROOT/userspace/sysroot``\
-For example: \
-``ln -s ../build-sysroot/system-root userspace/sysroot``
-* ``popd``
-3. Set up the build system:\
-``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64)(-ccache).cross-file -Doptions=values``
-
-4. Build and run the kernel:\
-``ninja -C builddir <see Ninja Targets>``
-
-### Ninja Targets
-|  Target Name   |               Description               |
-| ---------------| --------------------------------------- |
-| run_bios       | Run with legacy BIOS (only on x86_64)   |
-| run_bios_debug | Same but with debugging enabled         |
-| run_uefi       | Run with UEFI                           |
-| run_uefi_debug | Same but with debugging enabled         |
-| norun          | Do not run the OS                       |
-
-Notes:
-* run_(bios/uefi)_debug: Runs QEMU with `-d int` and `-monitor telnet:127.0.0.1:12345`. If `gdb` option is enabled, adds `-s -S`
-* If target is not specified and architecture supports bios mode, `run_bios` will be used, otherwise `run_uefi`.
-
-### Options
-
-|  Project options  | Default Value |                Description                |
-| ----------------- | ------------- | ----------------------------------------- |
-| kernel_cflags     |               | Extra c compiler arguments for kernel     |
-| kernel_cxxflags   |               | Extra cpp compiler arguments for kernel   |
-| modules_cflags    |               | Extra c compiler arguments for modules    |
-| modules_cxxflags  |               | Extra cpp compiler arguments for modules  |
-| kernel_ubsan      | false         | Enable ubsanitizer in kernel              |
-| modules_ubsan     | false         | Enable ubsanitizer in modules             |
-| 5lvl_paging       | false         | Enable 5 level paging in kernel           |
-| syscall_log     | false         | Print syscall log in serial console       |
-| gdb               | false         | Add `-s -S` to QEMU when debugging        |
-| noaccel           | false         | Disable QEMU accelerators                 |
-| vnc               | false         | Start QEMU VNC server on `127.0.0.1:5901` |
+1. Clone this repository with: ``git clone --depth=1 https://github.com/ilobilo/ilobilix``
+2. Manually build the sysroot:
+   * Set the architecture in ``boostrap.yml``
+   * ``mkdir build-sysroot``
+   * ``pushd build-sysroot``
+   * ``xbstrap init ..``
+   * ``xbstrap install base``
+   * If symlink named ``sysroot`` does not exist in ``$PROJECT_ROOT/userspace`` that links to ``$BUILD_SYSROOT_DIR/system-root``, create it with:\
+   ``ln -s $BUILD_SYSROOT_DIR/system-root $PROJECT_ROOT/userspace/sysroot``\
+   For example, run this command from project root: \
+   ``ln -s ../build-sysroot/system-root userspace/sysroot``
+   * ``popd``
+3. Optionally configure the kernel with: ``xmake f --menu -y``
+4. To quickly switch between architectures use: ``xmake f --arch=<arch> -y``
+5. Build and run the kernel: ``xmake build -j$(nproc) && xmake run`` or just ``xmake run -j$(nproc)``
+6. Default run target is ``uefi``. Possible values are: ``bios`` ``bios-debug`` ``uefi`` and ``uefi-debug``. For example: ``xmake run uefi-debug``
+7. Rebuild the kernel if configuration is changed: ``xmake build -r --all -j$(nproc)``
 
 ## Discord Server
 https://discord.gg/fM5GK3RpS7
 
 ## Resources and Projects:
-* meson: https://mesonbuild.com
-* osdev wiki: https://wiki.osdev.org
+* xmake: https://xmake.io
+* osdev wiki: https://osdev.wiki
 * osdev discord server: https://discord.gg/RnCtsqD
 * managarm: https://github.com/managarm/managarm
+* limine: https://github.com/limine-bootloader/limine
+* uACPI: https://github.com/UltraOS/uACPI
+* mlibc: https://github.com/managarm/mlibc
 * tart: https://github.com/qookei/tart
 * toaruOS: https://github.com/klange/toaruos
 * LemonOS: https://github.com/LemonOSProject/LemonOS
@@ -90,11 +61,8 @@ https://discord.gg/fM5GK3RpS7
 * Luna: https://github.com/thomtl/Luna
 * vinix: https://github.com/vlang/vinix
 * lyre: https://github.com/lyre-os/lyre
-* limine: https://github.com/limine-bootloader/limine
 * unifont: https://ftp.gnu.org/gnu/unifont/unifont-14.0.02
-* uACPI: https://github.com/UltraOS/uACPI
 * frigg: https://github.com/managarm/frigg
-* mlibc: https://github.com/managarm/mlibc
 * magic_enum: https://github.com/Neargye/magic_enum
 * frozen: https://github.com/serge-sans-paille/frozen
 * fmt: https://github.com/fmtlib/fmt
@@ -109,6 +77,7 @@ https://discord.gg/fM5GK3RpS7
 * ovmf: https://github.com/ilobilo/ovmf-binaries
 * compiler-rt: https://github.com/ilobilo/compiler-rt-builtins
 * libstdc++: https://github.com/ilobilo/libstdcxx-headers
+* and more...
 
 ## TODO
 
