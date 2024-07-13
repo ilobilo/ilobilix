@@ -63,7 +63,12 @@ option("qaccel")
 option("qgdb")
     set_default(false)
     set_showmenu(true)
-    set_description("Pass '-s -S' to qemu when debugging")
+    set_description("Pass '-s -S' to QEMU when debugging")
+
+option("qvnc")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Start headless QEMU VNC server on localhost:5901")
 
 -- <-- options
 
@@ -412,8 +417,10 @@ task("qemu")
             table.insert(qemu_args, extra_qemu_args)
         end
 
-        if not option.get("debug") and get_config("qaccel") then
-            multi_insert(qemu_args, unpack(qemu_accel_args))
+        if get_config("qvnc") then
+            multi_insert(qemu_args,
+                "-vnc", "127.0.0.1:1"
+            )
         end
 
         local qemu_exec = ""
@@ -453,6 +460,8 @@ task("qemu")
                     "-s", "-S"
                 )
             end
+        elseif get_config("qaccel") then
+            multi_insert(qemu_args, unpack(qemu_accel_args))
         end
 
         local iso = project.target("iso")

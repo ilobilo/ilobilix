@@ -2,8 +2,6 @@
 
 target("ilobilix.elf")
     set_kind("binary")
-    set_default(false)
-
     add_deps("modules")
 
     add_ldflags(
@@ -42,3 +40,6 @@ target("ilobilix.elf")
         add_files("$(projectdir)/kernel/arch/aarch64/**.cpp")
         -- add_files("$(projectdir)/kernel/arch/aarch64/**.S")
     end
+
+    on_run(function (target)
+    end)
