@@ -6,6 +6,7 @@
 #include <stdarg.h>
 
 #define ATTR_FORMAT(fmt_index, first_arg) __attribute__((format(printf, (fmt_index), (first_arg))))
+#define EOF (-1)
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,6 +16,11 @@ extern "C" {
 typedef size_t FILE;
 extern FILE *stdout;
 extern FILE *stderr;
+
+int fflush (FILE *stream);
+
+void flockfile(FILE *stream);
+void funlockfile(FILE *stream);
 
 int fputc(char c, FILE *stream);
 int fputs(const char *str, FILE *stream);
@@ -40,4 +46,39 @@ int vfctprintf(void (*out)(char c, void *extra_arg), void *extra_arg, const char
 
 #ifdef __cplusplus
 } // extern "C"
+
+namespace std
+{
+    using ::FILE;
+
+    using ::fflush;
+
+    using ::flockfile;
+    using ::funlockfile;
+
+    using ::fputc;
+    using ::fputs;
+    using ::fputws;
+
+    using ::fprintf;
+    using ::fwrite;
+
+    using ::printf;
+    using ::vprintf;
+
+    using ::sprintf;
+    using ::vsprintf;
+
+    using ::snprintf;
+    using ::vsnprintf;
+
+    using ::vasprintf;
+    using ::asprintf;
+
+    using ::fctprintf;
+    using ::vfctprintf;
+
+    [[gnu::noreturn]] void terminate() noexcept;
+} // namespace std
+
 #endif

@@ -5,6 +5,7 @@
 #include <lib/containers.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
+
 #include <module.hpp>
 
 #include "e1000.hpp"
@@ -14,6 +15,7 @@ namespace e1000
     void Controller::irq_handler()
     {
         auto cause = this->read(spec::registers::icause);
+        this->write(spec::registers::icause, cause);
 
         // TODO
         if (cause & 0x01) { /* Transmit OK */ }
@@ -133,24 +135,22 @@ namespace e1000
         this->reset();
 
         log::infoln("E1000: EEPROM available: {}", this->detect_eeprom());
-
-        if (this->eeprom == true)
         {
-            auto mac0 = this->eeprom_read(0);
-            auto mac2 = this->eeprom_read(1);
-            auto mac4 = this->eeprom_read(2);
+            uint32_t mac0 = 0;
+            uint16_t mac4 = 0;
 
-            this->mac[0] = mac0 & 0xFF;
-            this->mac[1] = (mac0 >> 8) & 0xFF;
-            this->mac[2] = mac2 & 0xFF;
-            this->mac[3] = (mac2 >> 8) & 0xFF;
-            this->mac[4] = mac4 & 0xFF;
-            this->mac[5] = (mac4 >> 8) & 0xFF;
-        }
-        else if (this->is_mmio == true)
-        {
-            auto mac0 = this->read(spec::registers::mac0);
-            auto mac4 = this->read(spec::registers::mac4);
+            if (this->eeprom == true)
+            {
+                mac0 = (this->eeprom_read(0) | (static_cast<uint32_t>(this->eeprom_read(1)) << 16));
+                mac4 = this->eeprom_read(2);
+
+            }
+            else if (this->is_mmio == true)
+            {
+                mac0 = this->read(spec::registers::mac0);
+                mac4 = this->read(spec::registers::mac4);
+            }
+            else return std::unexpected("Could not get MAC address. Neither EEPROM nor MMIO is available");
 
             this->mac[0] = mac0 & 0xFF;
             this->mac[1] = (mac0 >> 8) & 0xFF;
@@ -159,7 +159,6 @@ namespace e1000
             this->mac[4] = mac4 & 0xFF;
             this->mac[5] = (mac4 >> 8) & 0xFF;
         }
-        else return std::unexpected("Could not get MAC address. Neither EEPROM nor MMIO is available");
 
         this->rxs.allocate(rx_desc_num);
         {

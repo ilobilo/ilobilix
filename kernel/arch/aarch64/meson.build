@@ -14,6 +14,6 @@ src += files(
 )
 
 args += [
-    '-mgeneral-regs-only',
+    # '-mgeneral-regs-only',
     '-mcmodel=small'
 ]

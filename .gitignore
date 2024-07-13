@@ -8,7 +8,10 @@ log.txt
 
 build*
 sysroot
-sources
+userspace/*
+!userspace/tools
+!userspace/base-files
+!userspace/sysroot
 
 subprojects/*
 !subprojects/*.wrap

@@ -38,7 +38,7 @@ namespace e1000::spec
         mta0 = 0x5200,
 
         mac0 = 0x5400,
-        mac4 = 0x5404,
+        mac4 = 0x5404
     };
 
     template<typename Type>

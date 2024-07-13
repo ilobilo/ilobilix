@@ -207,7 +207,7 @@ namespace nvme
         if (bar0.type != pci::PCI_BARTYPE_MMIO)
             return std::unexpected("BAR0 is not MMIO");
 
-        this->regs = reinterpret_cast<Registers*>(bar0.map(vmm::gib1 * 2));
+        this->regs = reinterpret_cast<Registers *>(bar0.map());
 
         uint32_t mjr = this->regs->version.mjr;
         uint32_t mnr = this->regs->version.mnr;

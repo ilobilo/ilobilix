@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 namespace cpu { struct registers_t; }
 

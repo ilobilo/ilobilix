@@ -73,7 +73,7 @@ namespace syscall
                     }, args), ...);
                 }, args);
 
-#if SYSCALL_DEBUG
+#if SYSCALL_LOG
                 auto [pid, tid] = proc::pid();
                 log::infoln("syscall: [{}:{}] {}{}", pid, tid, name, ptr(args));
 #endif
@@ -84,12 +84,12 @@ namespace syscall
                 auto val = magic_enum::enum_cast<errno_t>(errno);
                 if (val.has_value() && check_func(uintptr_t(ret)))
                 {
-#if SYSCALL_DEBUG
+#if SYSCALL_LOG
                     log::infoln("syscall: [{}:{}] {} -> {}", pid, tid, name, val.value());
 #endif
                     return -intptr_t(val.value());
                 }
-#if SYSCALL_DEBUG
+#if SYSCALL_LOG
                 else log::infoln("syscall: [{}:{}] {} -> {}", pid, tid, name, ret);
 #endif
                 return uintptr_t(ret);

@@ -11,6 +11,8 @@
 
 #include <magic_enum.hpp>
 
+#include <utility>
+
 namespace vmm
 {
     pagemap *kernel_pagemap = nullptr;

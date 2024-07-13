@@ -35,10 +35,10 @@ Follow these steps to build and run the os:
 * ``pushd build-sysroot``
 * ``xbstrap init ..``
 * ``xbstrap install base``
-* If symlink named ``sysroot`` does not exist in ilobilix source that links to ``build-sysroot/system-root``, then create it with:\
-``ln -s $BUILD_SYSROOT_DIR$/system-root $KERNEL_DIR$/sysroot``\
+* If symlink named ``sysroot`` does not exist in ``$PROJECT_ROOT`` that links to ``$BUILD_SYSROOT_DIR/system-root``, then create it with:\
+``ln -s $BUILD_SYSROOT_DIR/system-root $PROJECT_ROOT/userspace/sysroot``\
 For example: \
-``ln -s build-sysroot/system-root ../sysroot``
+``ln -s ../build-sysroot/system-root userspace/sysroot``
 * ``popd``
 3. Set up the build system:\
 ``meson setup builddir --cross-file cross-files/meson-kernel-clang-(x86_64/aarch64)(-ccache).cross-file -Doptions=values``
@@ -70,7 +70,7 @@ Notes:
 | kernel_ubsan      | false         | Enable ubsanitizer in kernel              |
 | modules_ubsan     | false         | Enable ubsanitizer in modules             |
 | 5lvl_paging       | false         | Enable 5 level paging in kernel           |
-| syscall_debug     | false         | Print syscall log in serial console       |
+| syscall_log     | false         | Print syscall log in serial console       |
 | gdb               | false         | Add `-s -S` to QEMU when debugging        |
 | noaccel           | false         | Disable QEMU accelerators                 |
 | vnc               | false         | Start QEMU VNC server on `127.0.0.1:5901` |
