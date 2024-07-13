@@ -1,6 +1,6 @@
 -- Copyright (C) 2022-2024  ilobilo
 
--- TODO: gdb vnc
+-- TODO: vnc
 
 set_project("Ilobilix")
 set_version("v0.1")
@@ -43,22 +43,27 @@ option("extra_qemuflags")
 option("ubsan")
     set_default(false)
     set_showmenu(true)
-    set_description("UBSanitizer in kernel and modules")
+    set_description("UBSanitizer in kernel and modules. Requires rebuild")
 
 option("lvl5_paging")
     set_default(false)
     set_showmenu(true)
-    set_description("5 level paging")
+    set_description("5 level paging. Requires rebuild")
 
 option("syscall_log")
     set_default(false)
     set_showmenu(true)
-    set_description("Log system calls to serial")
+    set_description("Log system calls to serial. Requires rebuild")
 
-option("accel")
+option("qaccel")
     set_default(true)
     set_showmenu(true)
-    set_description("Enable QEMU accelerators")
+    set_description("Enable QEMU accelerators. Disabled when debugging")
+
+option("qgdb")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Pass '-s -S' to qemu when debugging")
 
 -- <-- options
 
@@ -402,9 +407,12 @@ task("qemu")
         import("core.project.project")
         import("lib.detect.find_program")
 
-        table.insert(qemu_args, get_config("extra_qemuflags"))
+        local extra_qemu_args = get_config("extra_qemuflags")
+        if extra_qemu_args ~= "" then
+            table.insert(qemu_args, extra_qemu_args)
+        end
 
-        if get_config("accel") then
+        if not option.get("debug") and get_config("qaccel") then
             multi_insert(qemu_args, unpack(qemu_accel_args))
         end
 
@@ -440,6 +448,11 @@ task("qemu")
 
         if option.get("debug") then
             multi_insert(qemu_args, unpack(qemu_dbg_args))
+            if get_config("qgdb") then
+                multi_insert(qemu_args,
+                    "-s", "-S"
+                )
+            end
         end
 
         local iso = project.target("iso")
