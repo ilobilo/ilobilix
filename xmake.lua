@@ -244,6 +244,7 @@ includes("modules/xmake.lua")
 includes("kernel/xmake.lua")
 
 target("initrd")
+    set_default(false)
     set_kind("object")
     add_deps("modules")
 
@@ -273,8 +274,10 @@ target("initrd")
 
             print(" => copying external modules to sysroot...")
 
-            for idx, val in ipairs(extmods) do
-                os.cp(val, modules_dir)
+            if extmods ~= nil then
+                for idx, val in ipairs(extmods) do
+                    os.cp(val, modules_dir)
+                end
             end
 
             print(" => building the initrd...")
@@ -283,7 +286,9 @@ target("initrd")
             created = true
         end
 
-        depend.on_changed(create_initrd, { files = extmods })
+        if extmods ~= nil then
+            depend.on_changed(create_initrd, { files = extmods })
+        end
 
         if not created and not os.isfile(targetfile) then
             create_initrd()
@@ -291,9 +296,10 @@ target("initrd")
     end)
 
 target("iso")
+    set_default(false)
     set_kind("phony")
-    add_deps("ilobilix.elf")
     add_deps("initrd")
+    add_deps("modules", "ilobilix.elf")
 
     add_packages("ovmf-binaries")
 
@@ -481,8 +487,8 @@ task("qemu")
     end)
 
 target("bios")
-    set_kind("phony")
     set_default(false)
+    set_kind("phony")
     add_deps("iso")
 
     on_run(function (target)
@@ -492,8 +498,8 @@ target("bios")
     end)
 
 target("bios-debug")
-    set_kind("phony")
     set_default(false)
+    set_kind("phony")
     add_deps("iso")
 
     on_run(function (target)
@@ -503,8 +509,8 @@ target("bios-debug")
     end)
 
 target("uefi")
-    set_kind("phony")
     set_default(true)
+    set_kind("phony")
     add_deps("iso")
 
     on_run(function (target)
@@ -514,8 +520,8 @@ target("uefi")
     end)
 
 target("uefi-debug")
-    set_kind("phony")
     set_default(false)
+    set_kind("phony")
     add_deps("iso")
 
     on_run(function (target)

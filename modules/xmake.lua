@@ -1,32 +1,17 @@
 -- Copyright (C) 2022-2024  ilobilo
 
-target("modules.is_external")
-    set_kind("phony")
-
+-- flags just for modules
 target("modules.dependencies")
     set_kind("phony")
-    set_toolchains("ilobilix-clang", { public = true })
+    add_deps("ilobilix.modules")
 
     if is_arch("x86_64") then
         add_cxflags(
             "-mcmodel=large",
-            "-mno-mmx",
-            "-mno-sse",
-            "-mno-sse2",
             { force = true, public = true }
         )
     elseif is_arch("aarch64") then
     end
-
-    add_packages(
-        "compiler-rt-builtins", "demangler",
-        "cwalk", "printf", "uacpi",
-        "libstdcxx", "frigg",
-        "string", "smart_ptr", "veque", "parallel_hashmap",
-        "fmt", "frozen", "magic_enum",
-        "limine-terminal", "limine",
-        { public = true }
-    )
 
 target("modules.relocatable")
     set_kind("phony")
@@ -39,6 +24,7 @@ target("modules.relocatable")
     )
 
 target("modules")
+    set_default(false)
     set_kind("phony")
 
     set_values("modules.deps", { })
@@ -71,10 +57,11 @@ target("modules")
                     raise("please use set_kind(\"object\") for modules")
                 end
 
-                local objects = child:objectfiles()
+                local objects_all = child:objectfiles()
+                local objects = os.files(path.join(path.directory(objects_all[1]), "*.o"))
 
                 local values = child:get("values", "modules.is_external")
-                if not (values == nil) and values["modules.is_external"] then
+                if values ~= nil and values["modules.is_external"] then
                     -- TODO: clean this up
                     table.remove(split, 1)
                     table.remove(split, 1)

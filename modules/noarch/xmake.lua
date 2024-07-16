@@ -8,6 +8,7 @@ modules = {
 }
 
 target("modules.noarch")
+    set_default(false)
     set_kind("phony")
 
     local list = { }
