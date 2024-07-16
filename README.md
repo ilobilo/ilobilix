@@ -27,10 +27,10 @@ Note: you may need more packages to build the sysroot, such as ``flex bison auto
 Follow these steps to build and run the os:
 1. Clone this repository with: ``git clone --depth=1 https://github.com/ilobilo/ilobilix``
 2. Manually build the sysroot:
-   * Set the architecture in ``boostrap.yml``
+   * Set the architecture in ``userspace/boostrap.yml``
    * ``mkdir build-sysroot``
    * ``pushd build-sysroot``
-   * ``xbstrap init ..``
+   * ``xbstrap init ../userspace``
    * ``xbstrap install base``
    * If symlink named ``sysroot`` does not exist in ``$PROJECT_ROOT/userspace`` that links to ``$BUILD_SYSROOT_DIR/system-root``, create it with:\
    ``ln -s $BUILD_SYSROOT_DIR/system-root $PROJECT_ROOT/userspace/sysroot``\

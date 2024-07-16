@@ -5,6 +5,7 @@ modules = {
 }
 
 target("modules.aarch64")
+    set_default(false)
     set_kind("phony")
 
     local list = { }

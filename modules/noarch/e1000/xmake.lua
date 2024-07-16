@@ -1,6 +1,7 @@
 -- Copyright (C) 2022-2024  ilobilo
 
 target("modules.noarch.e1000")
+    set_default(false)
     add_deps("modules.dependencies")
     set_values("modules.is_external", true)
 
