@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/ilobilo/ovmf-binaries
-revision = master
-depth = 1
-patch_filename = ovmf_binaries.tar
-
-[provide]
-ovmf_binaries = ovmf_binaries_dep

@@ -7,7 +7,8 @@ Second attempt at making an OS
 
 Make sure you have following programs installed:
 * xmake
-* clang/clang++ (version >= 17)
+* clang/clang++ (tested versions >= 19)
+* clang-tools (for clang-scan-deps)
 * lld
 * llvm
 * xorriso
@@ -18,9 +19,9 @@ Make sure you have following programs installed:
 
 Note: you may need more packages to build the sysroot, such as ``flex bison automake autoconf autopoint gperf help2man texinfo libgmp-dev libmpc-dev libmpfr-dev`` etc
 
-* If you are on a Debian based system (Ubuntu, linux mint, Pop_os!, etc) you can install most of the required packages with a single command:\
-``sudo apt install clang lld llvm xorriso tar qemu-system-x86 qemu-system-arm``
-* On not-so-up-to-date systems, install llvm, clang and lld from: https://apt.llvm.org
+* If you are on a Debian based system you can install some of the required packages with this command:\
+``sudo apt install xorriso tar qemu-system-x86 qemu-system-arm``
+* Install llvm, lld, clang and clang-tools from: https://apt.llvm.org
 * To install ``xmake``, simply follow instructions on this link: https://xmake.io/#/getting_started?id=installation
 * For ``xbstrap``, make sure you have python pip installed, then run: ``python -m pip install xbstrap``
 

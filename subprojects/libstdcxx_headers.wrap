@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/ilobilo/libstdcxx-headers
-revision = master
-depth = 1
-patch_filename = libstdcxx_headers.tar
-
-[provide]
-libstdcxx_headers = libstdcxx_headers_dep

@@ -5,10 +5,11 @@ set_version("v0.1")
 
 set_license("GPL-3.0")
 
-add_rules("plugin.compile_commands.autoupdate", { outputdir = "$(buildir)" })
+add_rules("plugin.compile_commands.autoupdate", { outputdir = ".vscode" })
 
 set_policy("run.autobuild", true)
 set_policy("build.c++.modules", true)
+set_policy("build.c++.modules.std", false)
 
 set_allowedarchs("x86_64", "aarch64")
 set_defaultarchs("x86_64")
@@ -16,10 +17,10 @@ set_defaultarchs("x86_64")
 set_allowedplats("ilobilix")
 set_defaultplat("ilobilix")
 
-set_languages("c17", "c++23")
+set_languages("c++23", "c17")
 
 set_symbols("debug")
-set_optimize("aggressive")
+set_optimize("fastest")
 
 -- options -->
 
