@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/ilobilo/veque
-revision = master
-depth = 1
-patch_filename = veque.tar
-
-[provide]
-veque = veque_dep

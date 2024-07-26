@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/ilobilo/smart_ptr
-revision = master
-depth = 1
-patch_filename = smart_ptr.tar
-
-[provide]
-smart_ptr = smart_ptr_dep

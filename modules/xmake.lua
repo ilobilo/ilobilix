@@ -1,9 +1,11 @@
 -- Copyright (C) 2022-2024  ilobilo
 
--- flags just for modules
+-- only for modules
 target("modules.dependencies")
     set_kind("phony")
-    add_deps("ilobilix.modules")
+
+    add_deps("ilobilix.modules", { inherit = false })
+    add_deps("ilobilix.dependencies")
 
     if is_arch("x86_64") then
         add_cxflags(
