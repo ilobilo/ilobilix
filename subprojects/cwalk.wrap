@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/likle/cwalk
-revision = master
-depth = 1
-patch_filename = cwalk.tar
-
-[provide]
-cwalk = cwalk_dep

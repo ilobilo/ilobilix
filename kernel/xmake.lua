@@ -1,6 +1,6 @@
 -- Copyright (C) 2022-2024  ilobilo
 
--- flags shared between kernel and modules
+-- shared between kernel and modules
 target("ilobilix.dependencies")
     set_kind("phony")
     set_toolchains("ilobilix-clang", { public = true })
@@ -25,12 +25,26 @@ target("ilobilix.dependencies")
     elseif is_arch("aarch64") then
     end
 
-target("ilobilix.modules")
-    set_default(false)
-    set_kind("moduleonly")
+-- only for kernel
+target("ilobilix.kernel.dependencies")
+    set_kind("phony")
     add_deps("ilobilix.dependencies")
 
-    add_files("interfaces/**.cppm|interfaces/arch/**.cppm")
+    if is_arch("x86_64") then
+        add_cxflags(
+            "-mcmodel=kernel",
+            { force = true, public = true }
+        )
+    elseif is_arch("aarch64") then
+    end
+
+target("ilobilix.modules")
+    set_default(false)
+    set_kind("static")
+
+    add_deps("ilobilix.kernel.dependencies")
+
+    add_files("interfaces/**.cppm|interfaces/arch/**.cppm", { public = true })
 
     -- if is_arch("x86_64") then
     --     add_files("interfaces/arch/x86_64/**.cppm")
@@ -44,7 +58,8 @@ target("ilobilix.modules")
 target("ilobilix.elf")
     set_default(false)
     set_kind("binary")
-    -- add_deps("modules")
+
+    add_deps("modules", { inherit = false })
     add_deps("ilobilix.modules")
 
     add_files("**.cpp|arch/**.cpp")
@@ -57,17 +72,13 @@ target("ilobilix.elf")
         -- add_files("arch/aarch64/**.S")
     end
 
-    -- flags just for kernel
+    -- linker flags
     add_ldflags(
         "-zmax-page-size=0x1000",
         { force = true }
     )
 
     if is_arch("x86_64") then
-        add_cxflags(
-            "-mcmodel=kernel",
-            { force = true }
-        )
         add_ldflags(
             "-T" .. "$(projectdir)/kernel/linker-x86_64.ld",
             { force = true }
