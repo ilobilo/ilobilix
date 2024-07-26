@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/ilobilo/limine-terminal
-revision = master
-depth = 1
-clone-recursive = true
-
-[provide]
-limine_terminal = limine_terminal_dep

@@ -3042,6 +3042,7 @@ export namespace std
     using std::piecewise_construct_t _USING_IF_EXISTS;
     using std::tuple_element _USING_IF_EXISTS;
     using std::tuple_size _USING_IF_EXISTS;
+    using std::to_underlying _USING_IF_EXISTS;
     namespace rel_ops
     {
         using rel_ops::operator!= _USING_IF_EXISTS;

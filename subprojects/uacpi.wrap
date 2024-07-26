@@ -1,8 +1,0 @@
-[wrap-git]
-url = https://github.com/UltraOS/uACPI
-revision = master
-depth = 1
-patch_filename = uacpi.tar
-
-[provide]
-uacpi = uacpi_dep
