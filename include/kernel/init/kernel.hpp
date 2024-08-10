@@ -10,7 +10,6 @@ inline constexpr uintptr_t user_stack_size = 0x200000; // 2 mib
 extern const char *cmdline;
 extern uintptr_t hhdm_offset;
 extern uint64_t paging_mode;
-extern bool uefi;
 
 #define if_max_pgmode(then) (paging_mode == LIMINE_PAGING_MODE_MAX) ? (then)
 
@@ -18,7 +17,6 @@ extern bool uefi;
 // extern volatile limine_dtb_request dtb_request;
 // #endif
 
-extern volatile limine_efi_system_table_request efi_system_table_request;
 extern volatile limine_framebuffer_request framebuffer_request;
 extern volatile limine_smp_request smp_request;
 extern volatile limine_paging_mode_request paging_mode_request;

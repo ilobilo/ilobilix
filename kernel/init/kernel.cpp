@@ -13,10 +13,8 @@
 
 #include <string.h>
 
-const char *cmdline = nullptr;
 uintptr_t hhdm_offset = 0;
 uint64_t paging_mode = 0;
-bool uefi = false;
 
 LIMINE_BASE_REVISION(1)
 
@@ -28,13 +26,6 @@ LIMINE_BASE_REVISION(1)
 //     .response = nullptr
 // };
 // #endif
-
-volatile limine_efi_system_table_request efi_system_table_request
-{
-    .id = LIMINE_EFI_SYSTEM_TABLE_REQUEST,
-    .revision = 0,
-    .response = nullptr
-};
 
 volatile limine_framebuffer_request framebuffer_request
 {
@@ -65,7 +56,8 @@ volatile limine_paging_mode_request paging_mode_request
 #else
     .mode = LIMINE_PAGING_MODE_DEFAULT,
 #endif
-    .flags = 0
+    .max_mode = LIMINE_PAGING_MODE_MAX,
+    .min_mode = LIMINE_PAGING_MODE_MIN
 };
 
 volatile limine_memmap_request memmap_request
@@ -166,9 +158,6 @@ extern "C" void _start()
     assert(hhdm_request.response, "Could not get hhdm response");
     assert(kernel_address_request.response, "Could not get kernel address response");
     assert(stack_size_request.response, "Could not get stack size response");
-
-    cmdline = kernel_file_request.response->kernel_file->cmdline;
-    uefi = efi_system_table_request.response != nullptr;
 
     kmain();
     arch::halt();
