@@ -5,11 +5,6 @@
 #include <cstdint>
 #include <cstddef>
 
-// GCC and Clang folding hack (C++11)
-#define fold(x) __builtin_constant_p(x) ? x : x
-
-#define SYMLOOP_MAX 40
-
 using off_t = long;
 
 using dev_t = unsigned long;
@@ -433,8 +428,8 @@ enum clocks
     clock_monotonic = 1
 };
 
-#define UTIME_NOW ((1l << 30) - 1l)
-#define UTIME_OMIT ((1l << 30) - 2l)
+inline constexpr auto utime_now = ((1l << 30) - 1l);
+inline constexpr auto utime_omit = ((1l << 30) - 2l);
 
 struct timespec
 {
@@ -551,10 +546,6 @@ struct stat_t
     timespec st_mtim;
     timespec st_ctim;
 
-    #define st_atime st_atim.tv_sec
-    #define st_mtime st_mtim.tv_sec
-    #define st_ctime st_ctim.tv_sec
-
     long __unused1[3];
 
     constexpr types type()
@@ -631,7 +622,6 @@ struct utsname
     char domainname[65];
 };
 
-#define NCCS 32
 struct termios
 {
     tcflag_t c_iflag;
@@ -639,7 +629,7 @@ struct termios
     tcflag_t c_cflag;
     tcflag_t c_lflag;
     cc_t c_line;
-    cc_t c_cc[NCCS];
+    cc_t c_cc[32];
     speed_t ispeed;
     speed_t ospeed;
 };

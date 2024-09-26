@@ -2,9 +2,14 @@ package("limine-terminal")
     add_urls("https://github.com/ilobilo/limine-terminal.git")
     add_versions("latest", "master")
 
+    add_deps("freestnd-c-hdrs")
+
     on_install(function (package)
         io.writefile("xmake.lua", [[
+            add_requires("freestnd-c-hdrs")
             target("limine-terminal")
+                add_packages("freestnd-c-hdrs")
+
                 set_kind("static")
 
                 add_includedirs("fonts", "src")

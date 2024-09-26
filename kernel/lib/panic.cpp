@@ -79,7 +79,7 @@
 
 extern "C"
 {
-    [[noreturn]] void abort() noexcept
+    [[gnu::noreturn]] void abort() noexcept
     {
         panic("abort()");
     }

@@ -27,12 +27,14 @@ namespace vfs
 
     node_t *node_t::internal_reduce(bool symlinks, bool automount, size_t cnt)
     {
+        static constexpr auto symloop_max = 40;
+
         if (this->mountgate != nullptr && automount == true)
             return this->mountgate->internal_reduce(symlinks, automount, 0);
 
         if (this->target.empty() == false && symlinks == true)
         {
-            if (cnt >= SYMLOOP_MAX - 1)
+            if (cnt >= symloop_max - 1)
             {
                 errno = ELOOP;
                 return nullptr;
@@ -162,7 +164,7 @@ namespace vfs
             return parent;
         };
 
-        for (const auto [segment, type, is_last, _] : path.segments())
+        for (auto [segment, type, _, is_last] : path.segments())
         {
             if (type != CWK_NORMAL)
             {

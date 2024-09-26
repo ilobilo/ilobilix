@@ -8,7 +8,7 @@ target("ilobilix.dependencies")
     add_packages(
         "compiler-rt-builtins", "demangler",
         "cwalk", "printf", "uacpi",
-        "libstdcxx-headers", "frigg",
+        "freestnd-cxx-hdrs", "freestnd-c-hdrs", "frigg",
         "string", "smart_ptr", "veque", "parallel_hashmap",
         "fmt", "frozen", "magic_enum",
         "limine-terminal", "limine",

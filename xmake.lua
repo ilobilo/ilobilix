@@ -8,6 +8,7 @@ set_license("GPL-3.0")
 add_rules("plugin.compile_commands.autoupdate", { outputdir = ".vscode" })
 
 set_policy("run.autobuild", true)
+set_policy("package.install_locally", true)
 set_policy("build.c++.modules", true)
 set_policy("build.c++.modules.std", false)
 
@@ -165,6 +166,7 @@ toolchain("ilobilix-clang")
             "-DFMT_USE_LONG_DOUBLE=0",
             "-DFMT_USE_DOUBLE=0",
             "-DFMT_USE_FLOAT=0",
+            "-DFMT_USE_LOCALE=0",
 
             "-Wno-unused-parameter",
             "-Wno-non-virtual-dtor"
@@ -231,7 +233,7 @@ add_repositories("local-repo repo")
 add_requires(
     "compiler-rt-builtins", "demangler",
     "cwalk", "printf", "uacpi",
-    "libstdcxx-headers", "frigg",
+    "freestnd-cxx-hdrs", "freestnd-c-hdrs", "frigg",
     "string", "smart_ptr", "veque", "parallel_hashmap",
     "fmt", "frozen", "magic_enum",
     "limine-terminal", "limine", "ovmf-binaries"
@@ -330,7 +332,7 @@ target("iso")
             "$(projectdir)/misc/bg.png",
             "$(projectdir)/misc/dtb.img",
             "$(projectdir)/misc/font.bin",
-            "$(projectdir)/misc/limine.cfg",
+            "$(projectdir)/misc/limine.conf",
             path.join(limine_binaries, "limine-uefi-cd.bin")
         }
         local iso_files_eb = { }

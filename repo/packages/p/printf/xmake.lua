@@ -2,6 +2,8 @@ package("printf")
     add_urls("https://github.com/eyalroz/printf.git")
     add_versions("latest", "master")
 
+    add_deps("freestnd-c-hdrs")
+
     on_install(function (package)
         io.writefile("src/printf_config.h", [[
             #pragma once
@@ -28,9 +30,11 @@ package("printf")
             #endif // PRINTF_CONFIG_H_
         ]])
         io.writefile("xmake.lua", [[
+            add_requires("freestnd-c-hdrs")
             target("printf")
-                set_kind("static")
+                add_packages("freestnd-c-hdrs")
 
+                set_kind("static")
                 set_languages("c99")
 
                 add_defines("PRINTF_INCLUDE_CONFIG_H=1")

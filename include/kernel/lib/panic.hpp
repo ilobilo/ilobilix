@@ -25,6 +25,4 @@ namespace cpu { struct registers_t; }
     vpanic(regs, 0, 0, format, fmt::make_format_args(args...), false);
 }
 
-extern "C" [[noreturn]] void abort() noexcept;
-
 #define PANIC(msg, ...) panic(__FILE__, __LINE__, __PRETTY_FUNCTION__, msg __VA_OPT__(,) __VA_ARGS__)

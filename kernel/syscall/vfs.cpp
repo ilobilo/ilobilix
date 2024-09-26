@@ -173,17 +173,17 @@ namespace vfs
                 return;
             }
 
-            if (times[0].tv_nsec != UTIME_OMIT)
+            if (times[0].tv_nsec != utime_omit)
             {
-                if (times[0].tv_nsec == UTIME_NOW)
+                if (times[0].tv_nsec == utime_now)
                     stat.st_atim = now;
                 else
                     stat.st_atim = times[0];
             }
 
-            if (times[1].tv_nsec != UTIME_OMIT)
+            if (times[1].tv_nsec != utime_omit)
             {
-                if (times[1].tv_nsec == UTIME_NOW)
+                if (times[1].tv_nsec == utime_now)
                     stat.st_mtim = now;
                 else
                     stat.st_mtim = times[1];

@@ -7,7 +7,7 @@
 
 namespace net::ipv4
 {
-    enum class protocols : uint8_t
+    enum class protocol : uint8_t
     {
         icmp = 0x01,
         tcp = 0x06,

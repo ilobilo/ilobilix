@@ -2,11 +2,16 @@ package("compiler-rt-builtins")
     add_urls("https://github.com/ilobilo/compiler-rt-builtins.git")
     add_versions("latest", "master")
 
+    add_deps("freestnd-c-hdrs")
+
     on_install(function (package)
         io.writefile("xmake.lua", [[
+            add_requires("freestnd-c-hdrs")
             target("compiler-rt-builtins")
+                add_packages("freestnd-c-hdrs")
+
                 set_kind("static")
-                add_languages("c17")
+                set_languages("c17")
 
                 add_cflags("-fno-builtin")
                 add_cflags("-fvisibility=hidden")

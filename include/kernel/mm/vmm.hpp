@@ -111,7 +111,9 @@ namespace vmm
         struct global;
         struct local;
 
-        inline constexpr auto map_failed = fold(reinterpret_cast<void*>(-1));
+#define fold(x) __builtin_constant_p(x) ? x : x
+        inline constexpr auto map_failed = fold(reinterpret_cast<void *>(-1));
+#undef fold
 
         inline constexpr auto map_shared = 0x01;
         inline constexpr auto map_private = 0x02;

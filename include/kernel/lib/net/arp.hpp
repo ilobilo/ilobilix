@@ -7,7 +7,7 @@
 
 namespace net::arp
 {
-    enum hwtypes : uint16_t
+    enum hwtype : uint16_t
     {
         ethernet = 0x0001
     };
@@ -15,7 +15,7 @@ namespace net::arp
     {
         ipv4 = 0x0800
     };
-    enum opcodes : uint16_t
+    enum opcode : uint16_t
     {
         arp_request = 1,
         arp_reply = 2,
@@ -47,7 +47,7 @@ namespace net::arp
             ret.prosize = bytes[5];
             ret.opcode = (uint16_t(bytes[6]) << 8) | bytes[7];
 
-            assert(ret.hwtype == hwtypes::ethernet);
+            assert(ret.hwtype == hwtype::ethernet);
             assert(ret.protype == protypes::ipv4);
             assert(ret.hwsize == 6);
             assert(ret.prosize == 4);
@@ -62,7 +62,7 @@ namespace net::arp
 
         constexpr uint8_t *to_bytes(uint8_t *ptr)
         {
-            assert(this->hwtype == hwtypes::ethernet);
+            assert(this->hwtype == hwtype::ethernet);
             assert(this->protype == protypes::ipv4);
             assert(this->hwsize == 6);
             assert(this->prosize == 4);
@@ -88,12 +88,12 @@ namespace net::arp
 
         static constexpr frame query_for(mac::address smac, ipv4::address sip, ipv4::address dip)
         {
-            return { hwtypes::ethernet, protypes::ipv4, 6, 4, opcodes::arp_request, smac, sip, { }, dip };
+            return { hwtype::ethernet, protypes::ipv4, 6, 4, opcode::arp_request, smac, sip, { }, dip };
         }
 
         static constexpr frame reply_for(mac::address smac, ipv4::address sip, mac::address dmac, ipv4::address dip)
         {
-            return { hwtypes::ethernet, protypes::ipv4, 6, 4, opcodes::arp_reply, smac, sip, dmac, dip };
+            return { hwtype::ethernet, protypes::ipv4, 6, 4, opcode::arp_reply, smac, sip, dmac, dip };
         }
     };
 
