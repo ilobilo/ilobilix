@@ -4,8 +4,10 @@
 #include <lib/panic.hpp>
 #include <lib/hash.hpp>
 #include <lib/log.hpp>
+
 #include <cxxabi.h>
 #include <cstdint>
+#include <new>
 
 extern "C"
 {
@@ -109,6 +111,9 @@ namespace std
     {
         return FNV1a(key, len, seed);
     }
+
+    bad_alloc::~bad_alloc() throw() { }
+    const char *bad_alloc::what() const throw() { return "bad_alloc"; }
 } // namespace std
 
 namespace cxxabi

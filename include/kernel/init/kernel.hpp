@@ -11,7 +11,7 @@ extern const char *cmdline;
 extern uintptr_t hhdm_offset;
 extern uint64_t paging_mode;
 
-#define if_max_pgmode(then) (paging_mode == LIMINE_PAGING_MODE_MAX) ? (then)
+#define if_max_pgmode(then) (paging_mode == LIMINE_PAGING_MODE_X86_64_5LVL) ? (then)
 
 // #if defined(__aarch64__)
 // extern volatile limine_dtb_request dtb_request;

@@ -38,6 +38,10 @@ namespace rtl8139
         .syser = 1
     };
 
+    template<typename Type, typename Type1>
+    inline Type1 get_member_type(Type1 Type:: *);
+    #define MEMBER_TYPE(x) decltype(get_member_type(& x))
+
     struct Controller : net::nic
     {
         private:

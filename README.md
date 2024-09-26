@@ -69,6 +69,8 @@ https://discord.gg/fM5GK3RpS7
 * fmt: https://github.com/fmtlib/fmt
 * printf: https://github.com/eyalroz/printf
 * cwalk: https://github.com/likle/cwalk
+* cxx headers: https://github.com/osdev0/freestnd-cxx-hdrs
+* c headers: https://github.com/osdev0/freestnd-c-hdrs
 * hashmap: https://github.com/ilobilo/parallel-hashmap
 * smart_ptr: https://github.com/ilobilo/smart_ptr
 * veque: https://github.com/ilobilo/veque
@@ -77,7 +79,6 @@ https://discord.gg/fM5GK3RpS7
 * ilar: https://github.com/ilobilo/ilar
 * ovmf: https://github.com/ilobilo/ovmf-binaries
 * compiler-rt: https://github.com/ilobilo/compiler-rt-builtins
-* libstdc++: https://github.com/ilobilo/libstdcxx-headers
 * and more...
 
 ## TODO

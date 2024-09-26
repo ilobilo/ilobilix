@@ -2,9 +2,9 @@
 
 #include <drivers/smp.hpp>
 
-#include <lib/containers.hpp>
 #include <lib/panic.hpp>
 #include <lib/log.hpp>
+#include <ranges>
 
 #include <module.hpp>
 
@@ -291,7 +291,7 @@ __init__ bool init()
     bool at_least_one = false;
     for (const auto dev : pci::get_devices())
     {
-        if (dev->vendorid != e1000::vendorid || !contains(e1000::deviceids, dev->deviceid))
+        if (dev->vendorid != e1000::vendorid || !std::ranges::contains(e1000::deviceids, dev->deviceid))
             continue;
 
         log::infoln("E1000: Found controller");

@@ -52,11 +52,12 @@ volatile limine_paging_mode_request paging_mode_request
     .revision = 0,
     .response = nullptr,
 #if LVL5_PAGING
-    .mode = LIMINE_PAGING_MODE_MAX,
+    .mode = LIMINE_PAGING_MODE_X86_64_5LVL,
+    .max_mode = LIMINE_PAGING_MODE_X86_64_5LVL,
 #else
-    .mode = LIMINE_PAGING_MODE_DEFAULT,
+    .mode = LIMINE_PAGING_MODE_X86_64_4LVL,
+    .max_mode = LIMINE_PAGING_MODE_X86_64_4LVL,
 #endif
-    .max_mode = LIMINE_PAGING_MODE_MAX,
     .min_mode = LIMINE_PAGING_MODE_MIN
 };
 

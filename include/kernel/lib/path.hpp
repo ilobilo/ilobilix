@@ -11,8 +11,8 @@ struct path_segment
 {
     std::string_view segment;
     cwk_segment_type type;
-    bool is_last;
     cwk_segment seg;
+    bool is_last;
 };
 
 class path_view_t
@@ -186,8 +186,7 @@ class path_view_t
             ret.push_back({
                 std::string_view(seg.begin, seg.size),
                 cwk_path_get_segment_type(&seg),
-                false,
-                seg
+                seg, false,
             });
         } while (cwk_path_get_next_segment(&seg));
 

@@ -1,6 +1,6 @@
 package("limine")
     add_urls("https://github.com/limine-bootloader/limine.git")
-    add_versions("7", "v7.x-binary")
+    add_versions("8", "v8.x-binary")
 
     on_install(function (package)
         local configs = {

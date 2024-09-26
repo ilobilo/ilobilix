@@ -27,11 +27,11 @@ namespace net::arp
         auto arp = arp::frame::from_ethernet(frame);
         switch (arp.opcode)
         {
-            case opcodes::arp_request:
+            case opcode::arp_request:
                 if (arp.dip == this->_sender->ipv4())
                     this->submit_reply(arp.smac, arp.sip);
                 break;
-            case opcodes::arp_reply:
+            case opcode::arp_reply:
                 for (auto &route : this->routes)
                 {
                     if (route->ip != arp.sip)
