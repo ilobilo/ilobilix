@@ -13,9 +13,7 @@ target("modules.dependencies")
 
     add_ldflags(
         "-nostdlib",
-        "-static",
         "-znoexecstack",
-        "--shared",
         "-T" .. "$(projectdir)/modules/module.ld",
         { force = true, public = true }
     )
@@ -48,7 +46,7 @@ target("modules")
     includes("noarch")
     add_deps("modules.noarch")
 
-    on_build(function (target)
+    after_config(function (target)
         import("core.project.project")
         import("core.project.depend")
         import("core.tool.linker")
@@ -56,19 +54,24 @@ target("modules")
         local kernel = project.target("ilobilix.elf")
 
         for idx, val in ipairs(target:values("modules.deps")) do
-            split = val:trim():split(".", { plain = true })
+            local split = val:trim():split(".", { plain = true })
             if #split > 2 then
                 local child = project.target(val)
+
+                child:add("deps", "modules.dependencies")
+                child:set("kind", "shared")
+                child:set("default", false)
 
                 if not (child:get("kind") == "shared") then
                     raise("please use set_kind(\"shared\") for modules")
                 end
 
+                table.remove(split, 1)
+                table.remove(split, 1)
+
                 local values = child:get("values")
-                if values ~= nil and values["modules.is_external"] then
+                if values ~= nil and values["is_external"] then
                     local targetfile = child:targetfile()
-                    table.remove(split, 1)
-                    table.remove(split, 1)
                     local dot_ko = table.concat(split, ".") .. ".ko"
 
                     depend.on_changed(function ()
@@ -81,7 +84,7 @@ target("modules")
                     local objects = os.files(path.join(path.directory(objects_all[1]), "*.o"))
 
                     depend.on_changed(function ()
-                        print(" => internal module: " .. val)
+                        print(" => internal module: " .. table.concat(split, "."))
                     end, { files = objects })
 
                     for odx, obj in ipairs(objects) do
