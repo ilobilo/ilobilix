@@ -52,13 +52,3 @@ export namespace mod
     template<typename Type, typename Deps>
     declare(const char *, const char *, Type, Deps) -> declare<Deps::count>;
 } // export namespace mod
-
-// declare_module(nvme_module) {
-//     "nvme", "NVMe disk driver",
-//     mod::generic {
-//         init, fini
-//     },
-//     mod::deps {
-//         "pci", "acpi", "test"
-//     }
-// };

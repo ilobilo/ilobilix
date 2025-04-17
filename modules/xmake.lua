@@ -4,12 +4,20 @@
 target("modules.dependencies")
     set_kind("phony")
 
-    add_deps("ilobilix.modules", { inherit = false })
-    add_deps("ilobilix.dependencies")
+    add_deps("ilobilix.modules")
 
     add_defines(
         "declare_module(name)=[[gnu::used, gnu::section(\".modules\")]] const mod::declare name",
         { public = true }
+    )
+
+    add_ldflags(
+        "-nostdlib",
+        "-static",
+        "-znoexecstack",
+        "--shared",
+        "-T" .. "$(projectdir)/modules/module.ld",
+        { force = true, public = true }
     )
 
     if is_arch("x86_64") then
@@ -20,16 +28,6 @@ target("modules.dependencies")
         add_asflags(flags, { force = true, public = true })
     elseif is_arch("aarch64") then
     end
-
-target("modules.relocatable")
-    set_kind("phony")
-    add_ldflags(
-        "-nostdlib",
-        "-static",
-        "-znoexecstack",
-        "-relocatable",
-        { force = true, public = true }
-    )
 
 -- loadable kernel modules, not C++ modules
 target("modules")
@@ -62,35 +60,26 @@ target("modules")
             if #split > 2 then
                 local child = project.target(val)
 
-                if not (child:get("kind") == "object") then
-                    raise("please use set_kind(\"object\") for modules")
+                if not (child:get("kind") == "shared") then
+                    raise("please use set_kind(\"shared\") for modules")
                 end
 
-                local objects_all = child:objectfiles()
-                local objects = os.files(path.join(path.directory(objects_all[1]), "*.o"))
-
-                local values = child:get("values", "modules.is_external")
+                local values = child:get("values")
                 if values ~= nil and values["modules.is_external"] then
-                    -- TODO: clean this up
+                    local targetfile = child:targetfile()
                     table.remove(split, 1)
                     table.remove(split, 1)
                     local dot_ko = table.concat(split, ".") .. ".ko"
-                    local out = path.join(child:targetdir(), dot_ko)
 
                     depend.on_changed(function ()
-                        print(" => external module: " .. val .. " => " .. dot_ko)
+                        print(" => external module: " .. dot_ko)
+                    end, { files = targetfile })
 
-                        os.mkdir(path.directory(out))
-
-                        local program, argv = linker.linkargv("binary", "cc", objects, out, { target = project.target("modules.relocatable") })
-                        table.insert(argv, "-relocatable")
-                        os.execv(program, argv)
-                    end, { files = objects })
-
-                    for odx, obj in ipairs(objects) do
-                        target:add("values", "modules.external_modules", out)
-                    end
+                    target:add("values", "modules.external_modules", path.join(os.projectdir(), targetfile))
                 else
+                    local objects_all = child:objectfiles()
+                    local objects = os.files(path.join(path.directory(objects_all[1]), "*.o"))
+
                     depend.on_changed(function ()
                         print(" => internal module: " .. val)
                     end, { files = objects })

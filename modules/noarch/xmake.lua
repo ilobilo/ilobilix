@@ -2,6 +2,7 @@
 
 -- add modules here
 modules = {
+    "example"
 }
 
 target("modules.noarch")

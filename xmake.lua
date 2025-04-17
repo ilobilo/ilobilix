@@ -139,7 +139,8 @@ toolchain("ilobilix-clang")
 
     set_toolset("as", "clang")
     set_toolset("cc", "clang")
-    set_toolset("cxx", "clang++", "clang")
+    set_toolset("cxx", "clang++")
+    set_toolset("sh", "clang++", "clang")
 
     set_toolset("ld", "ld.lld", "lld")
 
@@ -163,6 +164,7 @@ toolchain("ilobilix-clang")
 
     on_load(function (toolchain)
         local cx_args = {
+            "-fPIC",
             "-ffreestanding",
             "-fno-stack-protector",
             "-fno-omit-frame-pointer",
@@ -306,7 +308,12 @@ target("initramfs")
 
             if extmods ~= nil then
                 for idx, val in ipairs(extmods) do
-                    os.cp(val, modules_dir)
+                    split = val:trim():split(".", { plain = true })
+                    table.remove(split, 1)
+                    table.remove(split, 1)
+                    table.remove(split, 2)
+                    pretty = table.concat(split, ".") .. ".ko"
+                    os.cp(val, path.join(modules_dir, pretty))
                 end
             end
 

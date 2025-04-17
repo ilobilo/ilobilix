@@ -28,6 +28,7 @@ target("limine")
 
     on_build(function (target)
         local clang = import("lib.detect.find_tool")("clang")
+        os.mkdir(path.join(os.projectdir(), path.directory(target:targetfile())))
         os.execv(clang["program"], {
             path.join(os.projectdir(), "dependencies/limine/limine/limine.c"),
             "-o", path.join(os.projectdir(), target:targetfile())

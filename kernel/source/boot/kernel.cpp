@@ -5,7 +5,7 @@ import std;
 
 namespace uacpi
 {
-    extern "C++" void init_workers();
+    void init_workers();
 } // namespace uacpi
 
 void kthread()

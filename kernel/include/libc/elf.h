@@ -49,6 +49,17 @@ typedef struct
     Elf64_Half e_shstrndx;
 } Elf64_Ehdr;
 
+#define ELFMAG "\177ELF"
+#define	SELFMAG 4
+
+#define EI_CLASS 4
+#define ELFCLASS64 2
+
+#define EI_DATA 5
+#define ELFDATA2LSB 1
+
+#define ET_REL 1
+
 typedef struct
 {
     Elf64_Word p_type;
@@ -62,6 +73,7 @@ typedef struct
 } Elf64_Phdr;
 
 #define PT_LOAD 1
+#define PT_DYNAMIC 2
 
 #define PF_X (1 << 0)
 #define PF_W (1 << 1)
@@ -98,6 +110,17 @@ typedef struct
 #define ELF32_ST_TYPE(val) ((val) & 0xf)
 #define ELF64_ST_TYPE(val) ELF32_ST_TYPE (val)
 
-#define STT_NOTYPE 0
 #define STT_OBJECT 1
 #define STT_FUNC 2
+#define SHT_RELA 4
+#define SHT_NOBITS 8
+
+typedef struct
+{
+    Elf64_Sxword d_tag;
+    union
+    {
+        Elf64_Xword d_val;
+        Elf64_Addr d_ptr;
+    } d_un;
+} Elf64_Dyn;

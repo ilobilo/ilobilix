@@ -1,6 +1,6 @@
 // Copyright (C) 2024-2025  ilobilo
 
-export module system.bin.elf;
+export module system.bin.elf:symbols;
 
 import lib;
 import std;
