@@ -18,8 +18,7 @@ namespace bin::elf::mod
         enum class status { };
         struct entry
         {
-            std::string name;
-            std::string description;
+            bool internal;
 
             std::uintptr_t addr;
             std::vector<
@@ -29,16 +28,80 @@ namespace bin::elf::mod
                 >
             > memory;
 
-            std::remove_const_t<
-                decltype(::mod::declare<0>::interface)
-            > interface;
-            std::vector<std::string> deps;
+            ::mod::declare<0> *header;
+            std::vector<std::string_view> deps;
 
             status status;
         };
 
         lib::map::flat_hash<std::string_view, entry> modules;
+
+        void log_entry(const auto &entry)
+        {
+            auto ptr = entry.header;
+            log::info("elf: internal module: {}", ptr->name);
+            log::info("elf: - description: {}", ptr->description);
+
+            std::visit(
+                lib::overloaded {
+                    [&](const ::mod::generic &) { log::info("elf: - type: generic"); },
+                    [&](const ::mod::pci &) { log::info("elf: - type: pci"); },
+                    [&](const ::mod::acpi &) { log::info("elf: - type: acpi"); }
+                }, ptr->interface
+            );
+
+            const auto ndeps = entry.deps.size();
+            log::info("elf: - dependencies: {}", ndeps);
+
+            if (ndeps != 0)
+                log::print(log::level::info, "elf: -  ");
+            for (std::size_t i = 0; i < ndeps; i++)
+            {
+                auto mod = entry.deps[i];
+                log::print("{}{}", mod, i == ndeps - 1 ? "" : ", ");
+            }
+            if (ndeps != 0)
+                log::println();
+        }
     } // namespace
+
+    extern "C" char __section_modules_start[];
+    extern "C" char __section_modules_end[];
+
+    void load_internal()
+    {
+        using base_type = ::mod::declare<0>;
+        constexpr std::size_t base_size = sizeof(base_type);
+
+        const auto start = reinterpret_cast<std::uintptr_t>(__section_modules_start);
+        const auto end = reinterpret_cast<std::uintptr_t>(__section_modules_end);
+
+        auto current = start;
+        while (current < end)
+        {
+            const auto magic = *reinterpret_cast<std::uint64_t *>(current);
+            if (magic != base_type::header_magic)
+            {
+                current++;
+                continue;
+            }
+
+            const auto ptr = reinterpret_cast<base_type *>(current);
+            const auto ndeps = ptr->dependencies.ndeps;
+            const auto deps = reinterpret_cast<const char *const *>(ptr->dependencies.list);
+
+            auto &entry = modules[ptr->name];
+            entry.internal = true;
+            entry.header = ptr;
+
+            for (std::size_t i = 0; i < ndeps; i++)
+                entry.deps.push_back(deps[i]);
+
+            log_entry(entry);
+
+            current += base_size + ndeps * sizeof(const char *);
+        }
+    }
 
     bool load(std::uintptr_t addr, std::size_t size)
     {

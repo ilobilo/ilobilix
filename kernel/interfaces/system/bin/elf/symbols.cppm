@@ -5,7 +5,7 @@ export module system.bin.elf:symbols;
 import lib;
 import std;
 
-export namespace bin::elf
+export namespace bin::elf::sym
 {
     struct symbol
     {
@@ -16,6 +16,7 @@ export namespace bin::elf
 
         constexpr auto operator<=>(const symbol &rhs) const { return address <=> rhs.address; }
         constexpr auto operator<=>(std::uintptr_t rhs) const { return address <=> rhs; }
+
         constexpr bool operator==(const symbol &rhs) const
         {
             return
@@ -25,10 +26,12 @@ export namespace bin::elf
                 type == rhs.type;
         }
     };
-    constexpr symbol empty_symbol { { }, -1ul, 0, 0 };
+    constexpr symbol empty { { }, -1ul, 0, 0 };
 
     using symbol_table = std::vector<symbol>;
-    const std::tuple<symbol, std::uintptr_t, std::string_view> lookup(std::uintptr_t addr, std::uint8_t type);
 
-    void init_ksyms();
-} // export namespace bin::elf
+    auto lookup(std::uintptr_t addr, std::uint8_t type) -> const std::tuple<symbol, std::uintptr_t, std::string_view>;
+    const symbol klookup(std::string_view name);
+
+    void load_kernel();
+} // export namespace bin::elf::sym

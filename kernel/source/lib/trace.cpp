@@ -29,8 +29,8 @@ namespace lib
 
         auto print = [prefix](std::uintptr_t ip)
         {
-            auto [sym, offset, where] = bin::elf::lookup(ip, STT_FUNC);
-            if (sym == bin::elf::empty_symbol)
+            auto [sym, offset, where] = bin::elf::sym::lookup(ip, STT_FUNC);
+            if (sym == bin::elf::sym::empty)
                 return false;
 
             int status = 1;

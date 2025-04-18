@@ -23,13 +23,20 @@ export namespace mod
     struct [[gnu::packed]] deps
     {
         static inline constexpr std::size_t count = NDeps;
-        const char *deps[NDeps];
+        const std::size_t ndeps = NDeps;
+        const char *list[NDeps];
+
+        constexpr deps(const deps &) = default;
+
+        template<typename ...Args> requires (!(... && std::same_as<std::decay_t<Args>, deps>))
+        constexpr deps(Args &&...deps) : list { deps... } { }
     };
 
     template<std::size_t NDeps>
     struct [[gnu::packed]] declare
     {
-        const std::uint64_t magic_start = 0x737BDF086B7EF53C;
+        static inline constexpr std::uint64_t header_magic = 0x737BDF086B7EF53C;
+        const std::uint64_t magic = header_magic;
 
         const char *name;
         const char *description;
@@ -40,9 +47,7 @@ export namespace mod
         > interface;
         const deps<NDeps> dependencies;
 
-        const std::uint64_t magic_end = 0x27C704CC79A3CED1;
-
-        declare(const char *name, const char *description, auto interface, auto &&...args)
+        constexpr declare(const char *name, const char *description, auto interface, auto &&...args)
             : name { name }, description { description }, interface { interface }, dependencies { args... } { }
     };
 

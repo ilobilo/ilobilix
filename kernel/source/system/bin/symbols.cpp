@@ -11,7 +11,7 @@ import boot;
 import lib;
 import std;
 
-namespace bin::elf
+namespace bin::elf::sym
 {
     namespace
     {
@@ -52,7 +52,7 @@ namespace bin::elf
                     continue;
 #endif
 
-                const std::uintptr_t value = sym.st_value < address ? sym.st_value + address : sym.st_value;
+                const std::uintptr_t value = sym.st_value;
                 const std::size_t size = sym.st_size;
                 const std::uint8_t type = ELF64_ST_TYPE(sym.st_info);
                 if (type != STT_FUNC && type != STT_OBJECT)
@@ -61,31 +61,39 @@ namespace bin::elf
                 symbols.emplace_back(name, value, size, type);
             }
 
-            std::ranges::sort(symbols, std::less { });
+            std::sort(symbols.begin(), symbols.end(), std::less { });
             return symbols;
         }
     } // namespace
 
-    const std::tuple<symbol, std::uintptr_t, std::string_view> lookup(std::uintptr_t addr, std::uint8_t type)
+    auto lookup(std::uintptr_t addr, std::uint8_t type) -> const std::tuple<symbol, std::uintptr_t, std::string_view>
     {
         auto search_in = [&](const symbol_table &table) -> std::pair<symbol, std::uintptr_t>
         {
             if (table.empty())
-                return { empty_symbol, -1ul };
+                return { empty, -1ul };
 
-            auto prev = table.front();
-            auto end = table.back();
+            auto it = std::find_if(table.cbegin(), table.cend(), [&addr, &type](const symbol &sym) {
+                return sym.type == type && sym.address <= addr && addr <= (sym.address + sym.size);
+            });
 
-            if (addr < prev.address || addr > (end.address + end.size))
-                return { empty_symbol, -1ul };
+            if (it != table.end())
+                return { *it, addr - it->address };
 
-            for (const auto &entry : table)
-            {
-                if (entry.address >= addr && prev.address <= addr && prev.type == type)
-                    return { prev, addr - prev.address };
-                prev = entry;
-            }
-            return { empty_symbol, -1ul };
+            // auto prev = table.front();
+            // auto end = table.back();
+
+            // if (addr < prev.address || addr > (end.address + end.size))
+            //     return { empty, -1ul };
+
+            // for (const auto &entry : table)
+            // {
+            //     if (entry.address >= addr && prev.address <= addr && prev.type == type)
+            //         return { prev, addr - prev.address };
+            //     prev = entry;
+            // }
+
+            return { empty, -1ul };
         };
 
         // TODO: modules
@@ -93,9 +101,15 @@ namespace bin::elf
         return { sym, offset, "kernel" };
     }
 
-    void init_ksyms()
+    const symbol klookup(std::string_view name)
+    {
+        auto it = std::ranges::find_if(kernel_symbols, [&name](const symbol &sym) { return sym.name == name; });
+        return it == kernel_symbols.end() ? empty : *it;
+    }
+
+    void load_kernel()
     {
         auto kfile = reinterpret_cast<std::uintptr_t>(boot::requests::kernel_file.response->executable_file->address);
         kernel_symbols = get_symbols(kfile);
     }
-} // namespace bin::elf
+} // namespace bin::elf::sym

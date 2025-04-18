@@ -199,6 +199,7 @@ toolchain("ilobilix-clang")
             "-static",
             "-znoexecstack"
         }
+        local sh_args = { }
 
         local target = ""
 
@@ -209,6 +210,7 @@ toolchain("ilobilix-clang")
             )
             table.insert(cxx_args, "-fwhole-program-vtables")
             table.insert(ld_args, "--lto=full")
+            table.insert(sh_args, "-flto=full")
             toolchain:add("defines", "ILOBILIX_DEBUG=0");
         else
             toolchain:add("defines", "ILOBILIX_DEBUG=1");
@@ -254,6 +256,7 @@ toolchain("ilobilix-clang")
         toolchain:add("asflags", c_args, { force = true })
 
         toolchain:add("ldflags", ld_args, { force = true })
+        toolchain:add("shflags", sh_args, { force = true })
     end)
 toolchain_end()
 

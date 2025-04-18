@@ -16,10 +16,10 @@ namespace pmm
 
         constinit lib::spinlock<false> lock;
         constinit lib::bitmap bitmap;
-        std::size_t page_count = 0;
-        std::size_t index = 0;
+        constinit std::size_t page_count = 0;
+        constinit std::size_t index = 0;
 
-        memory mem;
+        constinit memory mem;
     } // namespace
 
     memory info()

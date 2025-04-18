@@ -7,5 +7,6 @@ import std;
 
 export namespace bin::elf::mod
 {
+    void load_internal();
     bool load(std::uintptr_t addr, std::size_t size);
 } // export namespace bin::elf::mod

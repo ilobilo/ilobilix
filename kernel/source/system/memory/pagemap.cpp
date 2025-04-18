@@ -18,8 +18,8 @@ namespace vmm
 {
     namespace
     {
-        std::uintptr_t vspace_base;
-        std::uintptr_t vspaces[magic_enum::enum_count<space_type>()];
+        constinit std::uintptr_t vspace_base;
+        constinit std::uintptr_t vspaces[magic_enum::enum_count<space_type>()];
     } // namespace
 
     auto pagemap::getlvl(entry &entry, bool allocate) -> table *

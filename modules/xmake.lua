@@ -11,19 +11,14 @@ target("modules.dependencies")
         { public = true }
     )
 
-    add_ldflags(
-        "-nostdlib",
-        "-znoexecstack",
-        "-T" .. "$(projectdir)/modules/module.ld",
+    add_shflags(
+        "-Wl,-nostdlib",
+        "-Wl,-znoexecstack",
+        "-Wl,-T" .. "$(projectdir)/modules/module.ld",
         { force = true, public = true }
     )
 
     if is_arch("x86_64") then
-        local flags = {
-            "-mcmodel=large"
-        }
-        add_cxflags(flags, { force = true, public = true })
-        add_asflags(flags, { force = true, public = true })
     elseif is_arch("aarch64") then
     end
 

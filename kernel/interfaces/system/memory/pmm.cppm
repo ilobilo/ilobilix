@@ -9,12 +9,12 @@ export namespace pmm
 
     struct memory
     {
-        std::size_t top;
-        std::size_t usable_top;
+        std::size_t top = 0;
+        std::size_t usable_top = 0;
 
-        std::size_t total;
-        std::size_t usable;
-        std::size_t used;
+        std::size_t total = 0;
+        std::size_t usable = 0;
+        std::size_t used = 0;
     };
     memory info();
 

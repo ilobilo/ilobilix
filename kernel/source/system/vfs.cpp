@@ -27,7 +27,7 @@ namespace vfs
         if (filesystems.contains(fs->name))
             return false;
 
-        log::debug("vfs: registering filesystem '{}'", fs->name);
+        log::info("vfs: registering filesystem '{}'", fs->name);
         filesystems[fs->name] = std::move(fs);
         return true;
     }
@@ -196,7 +196,7 @@ namespace vfs
         target_node->mountpoint = root;
         instance->mounted_on = target_node;
 
-        log::debug("vfs: mount('{}', '{}', '{}')", source, target, fsname);
+        log::info("vfs: mount('{}', '{}', '{}')", source, target, fsname);
 
         return { };
     }
