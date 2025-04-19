@@ -78,8 +78,9 @@ namespace bin::elf::mod
 
             std::size_t nmod = 0;
 
-            start = lib::align_up(start, 8zu);
-            end = lib::align_down(end, 8zu);
+            // they should already be aligned
+            // start = lib::align_up(start, 8zu);
+            // end = lib::align_down(end, 8zu);
 
             auto current = start;
             while (current < end)
