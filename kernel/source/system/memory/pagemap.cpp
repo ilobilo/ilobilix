@@ -81,6 +81,34 @@ namespace vmm
         return { };
     }
 
+    std::expected<void, error> pagemap::protect(std::uintptr_t vaddr, std::size_t length, flag flags, page_size psize, caching cache)
+    {
+        psize = fixpsize(psize);
+
+        const auto npsize = from_page_size(psize);
+        if (vaddr % npsize)
+            return std::unexpected { error::addr_not_aligned };
+
+        const std::unique_lock _ { _lock };
+
+        const auto aflags = to_arch(flags, cache, psize);
+
+        for (std::size_t i = 0; i < length; i += npsize)
+        {
+            const auto ret = getpte(vaddr + i, psize, false);
+            if (ret.has_value())
+            {
+                auto &pte = ret.value().get();
+                pte.clearflags();
+                pte.setflags(aflags, true);
+                invalidate(vaddr + i);
+            }
+            else return std::unexpected { ret.error() };
+        }
+
+        return { };
+    }
+
     std::expected<void, error> pagemap::unmap(std::uintptr_t vaddr, std::size_t length, page_size psize)
     {
         lib::ensure(magic_enum::enum_contains(psize));

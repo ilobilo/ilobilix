@@ -7,7 +7,7 @@ target("modules.dependencies")
     add_deps("ilobilix.modules")
 
     add_defines(
-        "declare_module(name)=[[gnu::used, gnu::section(\".modules\")]] const mod::declare name",
+        "declare_module(name)=[[gnu::used, gnu::section(\".modules\"), gnu::aligned(8)]] const mod::declare name",
         { public = true }
     )
 

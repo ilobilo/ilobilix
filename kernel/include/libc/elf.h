@@ -58,7 +58,10 @@ typedef struct
 #define EI_DATA 5
 #define ELFDATA2LSB 1
 
-#define ET_REL 1
+#define EI_OSABI 7
+#define ELFOSABI_SYSV 0
+
+#define ET_DYN 3
 
 typedef struct
 {
@@ -72,6 +75,7 @@ typedef struct
     Elf64_Xword p_align;
 } Elf64_Phdr;
 
+#define PT_NULL 0
 #define PT_LOAD 1
 #define PT_DYNAMIC 2
 
@@ -124,3 +128,31 @@ typedef struct
         Elf64_Addr d_ptr;
     } d_un;
 } Elf64_Dyn;
+
+#define DT_PLTRELSZ 2
+#define DT_STRTAB 5
+#define DT_SYMTAB 6
+#define DT_RELA 7
+#define DT_RELASZ 8
+#define DT_RELAENT 9
+#define DT_STRSZ 10
+#define DT_JMPREL 23
+#define	DT_INIT_ARRAY 25
+#define	DT_FINI_ARRAY 26
+#define	DT_INIT_ARRAYSZ 27
+#define	DT_FINI_ARRAYSZ 28
+
+typedef struct
+{
+    Elf64_Addr r_offset;
+    Elf64_Xword r_info;
+    Elf64_Sxword r_addend;
+} Elf64_Rela;
+
+#define ELF64_R_SYM(i) ((i) >> 32)
+#define ELF64_R_TYPE(i) ((i) & 0xffffffff)
+
+#define R_X86_64_64 1
+#define R_X86_64_GLOB_DAT 6
+#define R_X86_64_JUMP_SLOT 7
+#define R_X86_64_RELATIVE 8

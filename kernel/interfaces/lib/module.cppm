@@ -5,22 +5,22 @@ import std;
 
 export namespace mod
 {
-    struct [[gnu::packed]] generic
+    struct generic
     {
         bool (*init)();
         bool (*fini)();
     };
 
-    struct [[gnu::packed]] pci
+    struct pci
     {
     };
 
-    struct [[gnu::packed]] acpi
+    struct acpi
     {
     };
 
     template<std::size_t NDeps>
-    struct [[gnu::packed]] deps
+    struct deps
     {
         static inline constexpr std::size_t count = NDeps;
         const std::size_t ndeps = NDeps;
@@ -33,7 +33,7 @@ export namespace mod
     };
 
     template<std::size_t NDeps>
-    struct [[gnu::packed]] declare
+    struct declare
     {
         static inline constexpr std::uint64_t header_magic = 0x737BDF086B7EF53C;
         const std::uint64_t magic = header_magic;

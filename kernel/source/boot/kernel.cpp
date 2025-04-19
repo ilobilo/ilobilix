@@ -28,7 +28,7 @@ void kthread()
     initramfs::init();
     pmm::reclaim();
 
-    bin::elf::mod::load_internal();
+    bin::elf::mod::load();
 
     arch::halt(true);
 }
